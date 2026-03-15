@@ -31,33 +31,70 @@
   <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicons/favicon-16x16.png">
   <link rel="manifest" href="assets/images/favicons/site.webmanifest">
 
+  
   <!-- fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Geologica:wght@100..900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
 
   <!-- COMPRESSED STYLES - All CSS combined into one file -->
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/compressed/all-styles.min.css" />
+  <?php echo cssWithCache('assets/compressed/all-styles.min.css'); ?>
   
   <!-- Flaticon CSS for icons -->
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/vendors/travhub-icons/style.css" />
+  <?php echo cssWithCache('assets/vendors/travhub-icons/style.css'); ?>
+  
+  <!-- Layout Optimization CSS -->
+  <?php echo cssWithCache('assets/css/layout-optimization.css'); ?>
+  
+  <!-- Spacing Utilities -->
+  <?php echo cssWithCache('assets/css/utilities/spacing.css'); ?>
   
   <!-- Design Improvements CSS -->
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/design-improvements.css" />
+  <?php echo cssWithCache('assets/css/design-improvements.css'); ?>
+  
+  <!-- Global Theme CSS (Applied to all pages) -->
+  <?php echo cssWithCache('assets/css/global-theme.css'); ?>
   
   <!-- Responsive Improvements CSS -->
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/responsive-improvements.css" />
+  <?php echo cssWithCache('assets/css/responsive-improvements.css'); ?>
+  
+  <!-- Spacing Fixes CSS (All pages & sections) -->
+  <?php echo cssWithCache('assets/css/spacing-fixes.css'); ?>
+  
+  <!-- Search Section Responsive Fixes -->
+  <?php echo cssWithCache('assets/css/search-section-responsive.css'); ?>
+  
+  <!-- Footer Layout Fix CSS -->
+  <?php echo cssWithCache('assets/css/footer-layout-fix.css'); ?>
+  
+  <!-- Banner Height Fix CSS -->
+  <?php echo cssWithCache('assets/css/banner-height-fix.css'); ?>
+  
+  <!-- Contact Page Fix CSS -->
+  <?php echo cssWithCache('assets/css/contact-page-fix.css'); ?>
   
   <!-- AJAX Search CSS -->
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ajax-search.css" />
+  <?php echo cssWithCache('assets/css/ajax-search.css'); ?>
   
   <!-- Flatpickr CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   
   <!-- Attractive Datepicker CSS -->
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/attractive-datepicker.css" />
+  <?php echo cssWithCache('assets/css/attractive-datepicker.css'); ?>
+  
+  <!-- Routing Fix for URL Navigation -->
+  <script src="<?php echo BASE_URL; ?>assets/js/routing-fix.js"></script>
   
   <?php if (isset($extra_css) && $extra_css): echo $extra_css; endif; ?>
+
+  <!-- Header spacing fix (loaded after page-specific CSS to keep header consistent across all pages) -->
+  <?php echo cssWithCache('assets/css/header-spacing-fix.css'); ?>
+
+  <!-- Booking form theme (scoped styles; safe to load globally) -->
+  <?php echo cssWithCache('assets/css/booking-form-theme.css'); ?>
+
+  <!-- Global UI overrides (buttons + icons consistent across all pages) -->
+  <?php echo cssWithCache('assets/css/global-ui-overrides.css'); ?>
   
   <?php 
   // Google Analytics integration from settings
@@ -159,7 +196,9 @@
                 </ul>
             </li>
         <?php else: ?>
-            <li><a href="<?php echo navUrl('login'); ?>">Login</a></li>
+            <li <?php echo (isset($current_page) && $current_page == 'login') ? 'class="current"' : ''; ?>>
+                <a href="<?php echo navUrl('login'); ?>">Login</a>
+            </li>
         <?php endif; ?>
     </ul>
 </nav><!-- /.main-header__nav -->

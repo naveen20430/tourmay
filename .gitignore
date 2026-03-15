@@ -1,6 +1,3 @@
-# Database configuration files (contains sensitive credentials)
-config/database.php
-
 # Common ignore patterns
 *.log
 *.tmp

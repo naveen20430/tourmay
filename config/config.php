@@ -173,4 +173,31 @@ spl_autoload_register(function ($class) {
         require_once $classFile;
     }
 });
+
+/**
+ * Get cache-busting version for CSS/JS files
+ * Returns file modification time as version to clear cache automatically
+ * 
+ * @param string $filePath Relative path from BASE_PATH (e.g., 'assets/css/index.css')
+ * @return string Version number based on file modification time
+ */
+function getCacheVersion($filePath) {
+    $fullPath = BASE_PATH . $filePath;
+    if (file_exists($fullPath)) {
+        return filemtime($fullPath);
+    }
+    // Return current timestamp if file doesn't exist (fallback)
+    return time();
+}
+
+/**
+ * Generate CSS link with cache busting
+ * 
+ * @param string $filePath Relative path from BASE_PATH (e.g., 'assets/css/index.css')
+ * @return string HTML link tag with cache-busting version
+ */
+function cssWithCache($filePath) {
+    $version = getCacheVersion($filePath);
+    return '<link rel="stylesheet" href="' . BASE_URL . $filePath . '?v=' . $version . '" />';
+}
 ?>
