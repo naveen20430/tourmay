@@ -28,6 +28,56 @@ $inclusions = json_decode($tour['inclusions'], true) ?: [];
 $exclusions = json_decode($tour['exclusions'], true) ?: [];
 $itinerary = json_decode($tour['itinerary'], true) ?: [];
 
+// Panel data for slide sidebar (same as tours listing)
+$availability = '';
+if (!empty($tour['availability_start']) || !empty($tour['availability_end'])) {
+    $start = !empty($tour['availability_start']) ? date('d M Y', strtotime($tour['availability_start'])) : 'Open';
+    $end = !empty($tour['availability_end']) ? date('d M Y', strtotime($tour['availability_end'])) : 'Open';
+    $availability = $start . ' — ' . $end;
+}
+
+$tour_panel_data = [];
+$tour_panel_data[(int) $tour['id']] = [
+    'id' => (int) $tour['id'],
+    'title' => $tour['title'],
+    'slug' => $tour['slug'],
+    'destination' => $tour['destination_name'] ?? '',
+    'country' => $tour['country'] ?? '',
+    'booking_url' => bookingUrl((int) $tour['id']),
+    'detail_url' => tourUrl($tour['slug']),
+    'cart_url' => navUrl('cart'),
+    'default_people' => max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8))),
+    'price' => (float) ($tour['discount_price'] ?: $tour['price']),
+    'panels' => [
+        'description' => [
+            'title' => 'Description',
+            'short' => $tour['short_description'] ?? '',
+            'body' => $tour['description'] ?? '',
+        ],
+        'inclusion' => [
+            'title' => 'Inclusion',
+            'inclusions' => $inclusions,
+            'exclusions' => $exclusions,
+        ],
+        'timings' => [
+            'title' => 'Timings',
+            'duration_days' => (int) ($tour['duration_days'] ?? 0),
+            'duration_nights' => (int) ($tour['duration_nights'] ?? 0),
+            'availability' => $availability,
+            'itinerary' => $itinerary,
+        ],
+        'useful' => [
+            'title' => 'Useful Info',
+            'destination' => trim(($tour['destination_name'] ?? '') . (!empty($tour['country']) ? ', ' . $tour['country'] : '')),
+            'body' => $tour['destination_description'] ?? '',
+        ],
+    ],
+];
+
+$defaultPeople = max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8)));
+$tomorrow = date('Y-m-d', strtotime('+1 day'));
+$tour_price = (float) ($tour['discount_price'] ?: $tour['price']);
+
 // Get related tours
 $related_tours = $db->fetchAll("
     SELECT t.*, d.name as destination_name
@@ -762,22 +812,102 @@ $extra_css = '<style>
 </style>';
 
 $extra_css .= '<style>
-.tour-top-tabs{position:sticky;top:84px;z-index:50;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.08);overflow:hidden;margin:0 0 22px 0}
-.tour-top-tabs__inner{display:flex;align-items:stretch}
-.tour-top-tabs__link{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 12px;color:#334155;font-weight:700;text-decoration:none;border-right:1px solid rgba(148,163,184,.35);background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);transition:all .2s ease}
-.tour-top-tabs__link:last-child{border-right:0}
-.tour-top-tabs__link i{color:#0f172a;opacity:.8}
-.tour-top-tabs__link:hover{background:#f8fafc}
-.tour-top-tabs__link.is-active{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
-.tour-top-tabs__link.is-active i{color:#fff;opacity:1}
-.tour-top-tabs__link--cta{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border-right:0}
-.tour-top-tabs__link--cta i{color:#fff;opacity:1}
-.tour-top-tabs__link--cta:hover{background:linear-gradient(135deg,#5a67d8 0%,#6b46c1 100%);color:#fff}
-button.tour-top-tabs__link{border:0}
-@media (max-width: 768px){
-  .tour-top-tabs{top:74px}
-  .tour-top-tabs__inner{overflow:auto}
-  .tour-top-tabs__link{min-width:140px;flex:0 0 auto}
+.tour-detail-card{background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.08);margin-bottom:28px;overflow:hidden;border:1px solid rgba(0,0,0,0.03)}
+.tour-detail-card .tour-head{padding:20px 25px 15px}
+.tour-detail-card .tour-meta-line{display:flex;align-items:center;gap:15px;color:#6c757d;font-weight:600;font-size:0.95rem;margin-bottom:12px}
+.tour-detail-card .tour-meta-line i{color:#667eea}
+.tour-detail-card .tour-flags{display:flex;gap:15px;flex-wrap:wrap;color:#28a745;font-weight:600;font-size:0.85rem}
+.tour-detail-card .tour-flags i{margin-right:6px}
+.tour-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #f1f3f5;border-bottom:1px solid #f1f3f5;background:#f8f9fa}
+.tour-tabs div{padding:12px 10px;border-right:1px solid #e9ecef;font-weight:600;color:#495057;font-size:0.85rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all 0.3s ease;cursor:pointer}
+.tour-tabs div:hover{background:#fff;color:#667eea}
+.tour-tabs div i{font-size:1.1rem;color:#aeb5bc}
+.tour-tabs div:hover i{color:#667eea}
+.tour-tabs div:last-child{border-right:0}
+.tour-bottom{display:flex;align-items:stretch;justify-content:space-between;gap:12px;background:#fff;border-top:1px solid #f1f3f5}
+.tour-price{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;padding:15px 20px;color:#6c757d;font-size:0.85rem;font-weight:600;text-transform:uppercase}
+.tour-price b{font-size:1.6rem;color:#1a202c;margin-top:2px;line-height:1}
+.tour-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;flex-shrink:0}
+.tour-cart-form{margin:0;display:flex}
+.tour-cart-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid #667eea;border-radius:6px;background:#fff;color:#667eea;font-weight:700;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.3px;cursor:pointer;transition:all .2s ease;white-space:nowrap}
+.tour-cart-btn:hover{background:#eef2ff}
+.tour-book-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border:0;border-radius:6px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;font-weight:700;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.5px;text-decoration:none;transition:all .2s ease;white-space:nowrap}
+.tour-book-btn:hover{background:linear-gradient(135deg,#5a67d8 0%,#6b46c1 100%);color:#fff;box-shadow:0 4px 12px rgba(102,126,234,0.35)}
+.tour-tab-btn.active{background:#fff;color:#667eea;box-shadow:inset 0 -3px 0 #667eea}
+.tour-tab-btn.active i{color:#667eea}
+.tour-info-sidebar{position:fixed;inset:0;z-index:10050;pointer-events:none;visibility:hidden}
+.tour-info-sidebar.is-open{pointer-events:auto;visibility:visible}
+.tour-info-sidebar__overlay{position:absolute;inset:0;background:rgba(15,23,42,0.45);opacity:0;transition:opacity .3s ease}
+.tour-info-sidebar.is-open .tour-info-sidebar__overlay{opacity:1}
+.tour-info-sidebar__panel{position:absolute;top:0;right:0;width:min(640px,92vw);max-width:100%;height:100%;background:#fff;box-shadow:-12px 0 40px rgba(15,23,42,0.18);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.tour-info-sidebar.is-open .tour-info-sidebar__panel{transform:translateX(0)}
+.tour-info-sidebar__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 22px;border-bottom:1px solid #f1f3f5;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
+.tour-info-sidebar__head h2{margin:0;font-size:1.15rem;font-weight:700;line-height:1.35}
+.tour-info-sidebar__head p{margin:6px 0 0;font-size:0.85rem;opacity:0.9}
+.tour-info-sidebar__close{border:0;background:rgba(255,255,255,0.2);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;flex-shrink:0;font-size:1.25rem;line-height:1}
+.tour-info-sidebar__close:hover{background:rgba(255,255,255,0.32)}
+.tour-info-sidebar__tabs{display:flex;gap:0;border-bottom:1px solid #e9ecef;background:#f8f9fa;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tour-info-sidebar__tab{flex:1;min-width:90px;border:0;background:transparent;padding:12px 8px;font-size:0.78rem;font-weight:700;color:#6c757d;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.tour-info-sidebar__tab.is-active{color:#667eea;border-bottom-color:#667eea;background:#fff}
+.tour-info-sidebar__body{flex:1;overflow-y:auto;padding:22px;color:#374151;font-size:0.95rem;line-height:1.65}
+.tour-info-sidebar__body h4{margin:0 0 10px;font-size:1rem;color:#1a202c}
+.tour-info-sidebar__body .lead{color:#6c757d;font-size:1rem;margin-bottom:12px}
+.tour-info-sidebar__list{margin:0;padding:0;list-style:none}
+.tour-info-sidebar__list li{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed #f1f3f5}
+.tour-info-sidebar__list li i{margin-top:4px;color:#28a745;flex-shrink:0}
+.tour-info-sidebar__list li.is-exclude i{color:#dc3545}
+.tour-info-sidebar__day{padding:12px 0;border-bottom:1px solid #f1f3f5}
+.tour-info-sidebar__day strong{display:block;color:#1a202c;margin-bottom:4px}
+.tour-info-sidebar__meta{display:grid;gap:10px;margin-bottom:16px}
+.tour-info-sidebar__meta div{background:#f8f9fa;border-radius:8px;padding:12px 14px}
+.tour-info-sidebar__meta span{display:block;font-size:0.75rem;text-transform:uppercase;color:#6c757d;font-weight:700;letter-spacing:0.04em}
+.tour-info-sidebar__meta b{font-size:1rem;color:#1a202c}
+.tour-info-sidebar__empty{color:#6c757d;font-style:italic}
+.tour-info-sidebar__foot{padding:14px 18px 18px;border-top:1px solid #f1f3f5;background:#fff;flex-shrink:0}
+.tour-info-sidebar__foot-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%}
+.tour-info-sidebar__foot a,.tour-info-sidebar__foot button{text-decoration:none;font-weight:700;border-radius:8px;cursor:pointer;transition:all .2s ease;box-sizing:border-box;font-family:inherit}
+.tour-info-sidebar__foot .btn-view{flex:1 1 100%;text-align:center;padding:8px 12px;font-size:0.82rem;color:#667eea;border:1px solid #e9ecef;background:#f8f9fa}
+.tour-info-sidebar__foot .btn-view:hover{background:#eef2ff;border-color:#667eea}
+.tour-info-sidebar__foot .btn-cart{flex:1 1 auto;min-width:0;width:100%;text-align:center;padding:10px 14px;font-size:0.88rem;border:1px solid #667eea;color:#667eea;background:#fff}
+.tour-info-sidebar__foot .btn-cart i{margin-right:6px;font-size:0.85em}
+.tour-info-sidebar__foot .btn-cart:hover{background:#eef2ff}
+.tour-info-sidebar__foot .btn-book{flex:0 0 auto;padding:8px 16px;font-size:0.8rem;border:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;white-space:nowrap}
+.tour-info-sidebar__foot .btn-book:hover{filter:brightness(1.05);box-shadow:0 4px 12px rgba(102,126,234,0.35)}
+.tour-info-sidebar__foot-form{flex:1 1 auto;min-width:0;margin:0;display:flex}
+.tour-info-sidebar__foot-form .btn-cart{width:100%}
+.tour-info-sidebar--detail .btn-view{display:none}
+body.tour-sidebar-open{overflow:hidden}
+@media (max-width:767px){
+.tour-tabs{grid-template-columns:repeat(2,1fr)}
+.tour-tabs div{border-bottom:1px solid #e9ecef;padding:15px 10px}
+.tour-tabs div:nth-child(3),.tour-tabs div:nth-child(4){border-bottom:0}
+.tour-tabs div:nth-child(even){border-right:0}
+.tour-bottom{flex-direction:column;align-items:stretch}
+.tour-price{padding:15px 20px;text-align:center;align-items:center}
+.tour-actions{justify-content:center;padding:12px 15px 15px;flex-wrap:wrap}
+.tour-cart-form,.tour-cart-btn,.tour-book-btn{flex:1 1 auto;min-width:120px}
+}
+@media (max-width:991px){
+.tour-info-sidebar__panel{width:min(560px,100%)}
+.tour-info-sidebar__head{padding:16px 18px}
+.tour-info-sidebar__body{padding:18px 16px}
+}
+@media (min-width:576px){
+.tour-info-sidebar__foot-actions{flex-wrap:wrap}
+.tour-info-sidebar__foot .btn-view{flex:1 1 100%;order:3}
+.tour-info-sidebar__foot-form{order:1;flex:1 1 0;min-width:140px;max-width:calc(100% - 120px)}
+.tour-info-sidebar__foot .btn-book{order:2}
+}
+@media (max-width:575px){
+.tour-info-sidebar__panel{width:100%}
+.tour-info-sidebar__tabs{flex-wrap:nowrap}
+.tour-info-sidebar__tab{min-width:72px;font-size:0.72rem;padding:10px 6px}
+.tour-info-sidebar__head h2{font-size:1rem}
+.tour-info-sidebar__foot{padding:12px 14px 16px}
+.tour-info-sidebar__foot-actions{flex-direction:column;align-items:stretch}
+.tour-info-sidebar__foot-form{order:1;width:100%;max-width:none}
+.tour-info-sidebar__foot .btn-book{order:2;width:100%;text-align:center;padding:10px 14px;font-size:0.85rem}
+.tour-info-sidebar__foot .btn-view{order:3;flex:1 1 auto;margin-top:4px}
 }
 </style>';
 
@@ -799,69 +929,6 @@ $extra_css .= '<style>
 
 $extra_js = '<script>
 (function(){
-  function getHeaderOffset(){
-    var stickyHeader = document.querySelector(\'.main-header.sticky-header\');
-    var headerH = stickyHeader ? stickyHeader.getBoundingClientRect().height : 0;
-    return Math.max(90, Math.round(headerH) + 20);
-  }
-
-  function setActiveTab(tabs, id){
-    tabs.forEach(function(a){
-      var target = a.getAttribute(\'href\') || \'\';
-      var isActive = target === \'#\' + id;
-      if (isActive) a.classList.add(\'is-active\');
-      else a.classList.remove(\'is-active\');
-    });
-  }
-
-  function init(){
-    var tabRoot = document.getElementById(\'tourTopTabs\');
-    if (!tabRoot) return;
-    var tabs = Array.prototype.slice.call(tabRoot.querySelectorAll(\'.tour-top-tabs__link\'));
-    if (!tabs.length) return;
-
-    tabs.forEach(function(a){
-      a.addEventListener(\'click\', function(e){
-        var href = a.getAttribute(\'href\') || \'\';
-        if (!href || href.charAt(0) !== \'#\') return;
-        var target = document.querySelector(href);
-        if (!target) return;
-        e.preventDefault();
-        var top = target.getBoundingClientRect().top + window.pageYOffset - getHeaderOffset();
-        window.scrollTo({ top: top, behavior: \'smooth\' });
-      });
-    });
-
-    var sectionIds = tabs.map(function(a){
-      var href = a.getAttribute(\'href\') || \'\';
-      return href.charAt(0) === \'#\' ? href.slice(1) : null;
-    }).filter(Boolean);
-
-    var sections = sectionIds.map(function(id){ return document.getElementById(id); }).filter(Boolean);
-    if (!sections.length) return;
-
-    function onScroll(){
-      var y = window.pageYOffset + getHeaderOffset() + 5;
-      var activeId = sectionIds[0];
-      for (var i=0;i<sections.length;i++){
-        var s = sections[i];
-        if (!s) continue;
-        if (s.offsetTop <= y) activeId = s.id;
-      }
-      setActiveTab(tabs, activeId);
-    }
-
-    window.addEventListener(\'scroll\', onScroll, { passive: true });
-    onScroll();
-  }
-
-  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', init);
-  else init();
-})();
-</script>';
-
-$extra_js .= '<script>
-(function(){
   function initHeroSlider(){
     var slides = Array.prototype.slice.call(document.querySelectorAll(\'.tour-hero__bg-slide\'));
     if (!slides.length) return;
@@ -878,7 +945,9 @@ $extra_js .= '<script>
   if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', initHeroSlider);
   else initHeroSlider();
 })();
-</script>';
+</script>'
+    . '<script>window.TOURS_PANEL_DATA = ' . json_encode($tour_panel_data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';</script>'
+    . jsWithCache('assets/js/tours-list.js');
 
 // Include header
 include 'includes/header.php';
@@ -928,125 +997,60 @@ $hero_images = array_slice($hero_images, 0, 6);
                 <div class="col-lg-12 col-md-12">
                     <!-- Tour Overview -->
                     <div class="tour-content">
-                        <div class="tour-top-tabs" id="tourTopTabs">
-                            <div class="tour-top-tabs__inner">
-                                <a class="tour-top-tabs__link is-active" href="#tour-overview">
-                                    <i class="fas fa-align-left"></i>
-                                    <span>Description</span>
-                                </a>
-                                <?php if (!empty($tour['destination_description'])): ?>
-                                    <a class="tour-top-tabs__link" href="#tour-useful-info">
-                                        <i class="fas fa-info-circle"></i>
-                                        <span>Useful Info</span>
-                                    </a>
-                                <?php endif; ?>
-                                <a class="tour-top-tabs__link" href="#tour-inclusions">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Inclusion</span>
-                                </a>
-                                <?php if ($itinerary): ?>
-                                    <a class="tour-top-tabs__link" href="#tour-itinerary">
-                                        <i class="fas fa-route"></i>
-                                        <span>Itinerary</span>
-                                    </a>
-                                <?php endif; ?>
-                                <?php if ($related_tours): ?>
-                                    <a class="tour-top-tabs__link" href="#tour-related">
-                                        <i class="fas fa-th-large"></i>
-                                        <span>More</span>
-                                    </a>
-                                <?php endif; ?>
-                                <a class="tour-top-tabs__link tour-top-tabs__link--cta" href="<?php echo bookingUrl((int)$tour['id']); ?>">
-                                    <i class="fas fa-calendar-plus"></i>
-                                    <span>Book Now</span>
-                                </a>
-                                <?php
-                                $defaultPeople = max((int)$tour['min_people'], min(2, (int)$tour['max_people']));
-                                $tomorrow = date('Y-m-d', strtotime('+1 day'));
-                                ?>
-                                <form method="POST" action="<?php echo navUrl('cart'); ?>" style="margin:0;flex:1;display:flex;">
-                                    <input type="hidden" name="action" value="add">
-                                    <input type="hidden" name="tour_id" value="<?php echo (int)$tour['id']; ?>">
-                                    <input type="hidden" name="tour_date" value="<?php echo htmlspecialchars($tomorrow); ?>">
-                                    <input type="hidden" name="people" value="<?php echo (int)$defaultPeople; ?>">
-                                    <input type="hidden" name="return_url" value="<?php echo htmlspecialchars((string)($_SERVER['REQUEST_URI'] ?? '')); ?>">
-                                    <button type="submit" class="tour-top-tabs__link tour-top-tabs__link--cta tour-top-tabs__btn" style="flex:1;">
-                                        <i class="fas fa-shopping-cart"></i>
-                                        <span>Add to Cart</span>
-                                    </button>
-                                </form>
+                        <div class="tour-detail-card" data-tour-id="<?php echo (int) $tour['id']; ?>">
+                            <div class="tour-head">
+                                <div class="tour-meta-line">
+                                    <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($tour['destination_name']); ?><?php echo !empty($tour['country']) ? ', ' . htmlspecialchars($tour['country']) : ''; ?></span>
+                                    <span><i class="far fa-clock"></i> Duration: <?php echo (int) $tour['duration_days']; ?> Days</span>
+                                </div>
+                                <div class="d-flex flex-wrap gap-3 mb-2">
+                                    <span class="badge bg-primary px-3 py-2">
+                                        <i class="fas fa-clock me-1"></i>
+                                        <?php echo $tour['duration_days']; ?> Days / <?php echo $tour['duration_nights']; ?> Nights
+                                    </span>
+                                    <span class="badge bg-success px-3 py-2">
+                                        <i class="fas fa-users me-1"></i>
+                                        Max <?php echo $tour['max_people']; ?> People
+                                    </span>
+                                    <span class="badge bg-info px-3 py-2">
+                                        <i class="fas fa-mountain me-1"></i>
+                                        <?php echo ucfirst($tour['difficulty_level']); ?>
+                                    </span>
+                                    <span class="badge bg-secondary px-3 py-2">
+                                        <i class="fas fa-tag me-1"></i>
+                                        <?php echo ucfirst($tour['tour_type']); ?>
+                                    </span>
+                                </div>
+                                <div class="tour-flags">
+                                    <span><i class="far fa-check-circle"></i> IMPORTANT INFORMATION</span>
+                                    <span><i class="far fa-check-circle"></i> REFUNDABLE</span>
+                                </div>
+                            </div>
+                            <div class="tour-tabs">
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="description" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="far fa-file-alt"></i> Description</div>
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="inclusion" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="fas fa-pen-square"></i> Inclusion</div>
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="timings" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="far fa-clock"></i> Timings</div>
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="useful" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="fas fa-info-circle"></i> Useful Info</div>
+                            </div>
+                            <div class="tour-bottom">
+                                <div class="tour-price">
+                                    FROM INR <b>₹ <?php echo number_format($tour_price, 2); ?></b>
+                                </div>
+                                <div class="tour-actions">
+                                    <form method="POST" action="<?php echo htmlspecialchars(navUrl('cart')); ?>" class="tour-cart-form">
+                                        <input type="hidden" name="action" value="add">
+                                        <input type="hidden" name="tour_id" value="<?php echo (int) $tour['id']; ?>">
+                                        <input type="hidden" name="tour_date" value="<?php echo htmlspecialchars($tomorrow); ?>">
+                                        <input type="hidden" name="people" value="<?php echo (int) $defaultPeople; ?>">
+                                        <input type="hidden" name="return_url" value="<?php echo htmlspecialchars((string) ($_SERVER['REQUEST_URI'] ?? '')); ?>">
+                                        <button type="submit" class="tour-cart-btn">
+                                            <i class="fas fa-shopping-cart"></i> Add to Cart
+                                        </button>
+                                    </form>
+                                    <a href="<?php echo bookingUrl((int) $tour['id']); ?>" class="tour-book-btn">Book Now</a>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="mb-4">
-                            <div class="d-flex flex-wrap gap-3 mb-3">
-                                <span class="badge bg-primary px-3 py-2">
-                                    <i class="fas fa-clock me-1"></i>
-                                    <?php echo $tour['duration_days']; ?> Days / <?php echo $tour['duration_nights']; ?> Nights
-                                </span>
-                                <span class="badge bg-success px-3 py-2">
-                                    <i class="fas fa-users me-1"></i>
-                                    Max <?php echo $tour['max_people']; ?> People
-                                </span>
-                                <span class="badge bg-info px-3 py-2">
-                                    <i class="fas fa-mountain me-1"></i>
-                                    <?php echo ucfirst($tour['difficulty_level']); ?>
-                                </span>
-                                <span class="badge bg-secondary px-3 py-2">
-                                    <i class="fas fa-tag me-1"></i>
-                                    <?php echo ucfirst($tour['tour_type']); ?>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="mb-5" id="tour-overview">
-                            <h3 class="mb-3">Tour Overview</h3>
-                            <p class="lead text-muted"><?php echo htmlspecialchars($tour['short_description']); ?></p>
-                            <p><?php echo nl2br(htmlspecialchars($tour['description'])); ?></p>
-                        </div>
-
-                        <!-- Inclusions & Exclusions -->
-                        <?php if (!empty($tour['destination_description'])): ?>
-                            <div class="mb-5" id="tour-useful-info">
-                                <h3 class="mb-3">Useful Info</h3>
-                                <p class="text-muted" style="margin-bottom:10px;">
-                                    <?php echo htmlspecialchars($tour['destination_name']); ?><?php echo !empty($tour['country']) ? ', ' . htmlspecialchars($tour['country']) : ''; ?>
-                                </p>
-                                <p><?php echo nl2br(htmlspecialchars((string)$tour['destination_description'])); ?></p>
-                            </div>
-                        <?php endif; ?>
-
-                        <div class="row mb-5" id="tour-inclusions">
-                            <div class="col-md-6">
-                                <h4 class="mb-3 text-success">What's Included</h4>
-                                <ul class="feature-list">
-                                    <?php foreach ($inclusions as $inclusion): ?>
-                                        <li><i class="fas fa-check"></i><?php echo htmlspecialchars($inclusion); ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h4 class="mb-3 text-danger">What's Not Included</h4>
-                                <ul class="feature-list">
-                                    <?php foreach ($exclusions as $exclusion): ?>
-                                        <li><i class="fas fa-times text-danger"></i><?php echo htmlspecialchars($exclusion); ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Itinerary -->
-                        <?php if ($itinerary): ?>
-                            <div class="mb-5" id="tour-itinerary">
-                                <h3 class="mb-4">Tour Itinerary</h3>
-                                <?php foreach ($itinerary as $day): ?>
-                                    <div class="itinerary-day">
-                                        <h5 class="fw-bold">Day <?php echo $day['day']; ?>: <?php echo htmlspecialchars($day['title']); ?></h5>
-                                        <p class="text-muted"><?php echo htmlspecialchars($day['description']); ?></p>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
 
                         <!-- Photo Collage Gallery -->
                         <?php 
@@ -1180,7 +1184,6 @@ $hero_images = array_slice($hero_images, 0, 6);
                         </div>
                         <?php endif; ?>
 
-                        <!-- Related Tours -->
                         <?php if ($related_tours): ?>
                             <div class="mb-5" id="tour-related">
                                 <h3 class="mb-4">Related Tours</h3>
@@ -1493,5 +1496,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+    <!-- Tour info slide sidebar (same as tours listing) -->
+    <div id="tourInfoSidebar" class="tour-info-sidebar tour-info-sidebar--detail" aria-hidden="true">
+        <div class="tour-info-sidebar__overlay" data-tour-sidebar-close></div>
+        <aside class="tour-info-sidebar__panel" role="dialog" aria-modal="true" aria-labelledby="tourInfoSidebarTitle">
+            <header class="tour-info-sidebar__head">
+                <div>
+                    <h2 id="tourInfoSidebarTitle">Tour details</h2>
+                    <p id="tourInfoSidebarMeta"></p>
+                </div>
+                <button type="button" class="tour-info-sidebar__close" data-tour-sidebar-close aria-label="Close">&times;</button>
+            </header>
+            <nav class="tour-info-sidebar__tabs" id="tourInfoSidebarTabs">
+                <button type="button" class="tour-info-sidebar__tab is-active" data-panel-tab="description">Description</button>
+                <button type="button" class="tour-info-sidebar__tab" data-panel-tab="inclusion">Inclusion</button>
+                <button type="button" class="tour-info-sidebar__tab" data-panel-tab="timings">Timings</button>
+                <button type="button" class="tour-info-sidebar__tab" data-panel-tab="useful">Useful Info</button>
+            </nav>
+            <div class="tour-info-sidebar__body" id="tourInfoSidebarBody"></div>
+            <footer class="tour-info-sidebar__foot">
+                <div class="tour-info-sidebar__foot-actions">
+                    <form method="POST" action="<?php echo htmlspecialchars(navUrl('cart')); ?>" class="tour-info-sidebar__foot-form" id="tourInfoSidebarCartForm">
+                        <input type="hidden" name="action" value="add">
+                        <input type="hidden" name="tour_id" id="tourInfoSidebarTourId" value="">
+                        <input type="hidden" name="tour_date" id="tourInfoSidebarTourDate" value="<?php echo htmlspecialchars($tomorrow); ?>">
+                        <input type="hidden" name="people" id="tourInfoSidebarPeople" value="<?php echo (int) $defaultPeople; ?>">
+                        <input type="hidden" name="return_url" id="tourInfoSidebarReturnUrl" value="<?php echo htmlspecialchars((string) ($_SERVER['REQUEST_URI'] ?? '')); ?>">
+                        <button type="submit" class="btn-cart">
+                            <i class="fas fa-shopping-cart"></i> Add to Cart
+                        </button>
+                    </form>
+                    <a href="#" class="btn-book" id="tourInfoSidebarBookLink">Book Now</a>
+                    <a href="#" class="btn-view" id="tourInfoSidebarViewLink">View full tour</a>
+                </div>
+            </footer>
+        </aside>
+    </div>
 
 <?php include 'includes/footer.php'; ?>

@@ -159,6 +159,13 @@
             bookLink.href = tour.booking_url || '#';
         }
 
+        const cartTourId = document.getElementById('tourInfoSidebarTourId');
+        const cartPeople = document.getElementById('tourInfoSidebarPeople');
+        const cartReturn = document.getElementById('tourInfoSidebarReturnUrl');
+        if (cartTourId) cartTourId.value = tour.id;
+        if (cartPeople) cartPeople.value = tour.default_people || 2;
+        if (cartReturn) cartReturn.value = window.location.pathname + window.location.search;
+
         bodyEl.innerHTML = renderPanelContent(tour, activeTab);
         setSidebarTabs(activeTab);
         setActiveListTab(tourId, activeTab);
