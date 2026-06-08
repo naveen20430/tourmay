@@ -1,10 +1,10 @@
-﻿<!-- Destinations & Cab Facilities Section -->
 <!-- Destinations & Cab Facilities Section -->
-<section class="destinations-cab-section section-space" style="background: #f8f9fa; padding: 60px 0;">
+<!-- Destinations & Cab Facilities Section -->
+<section id="destinations-cab-section" class="destinations-cab-section" style="background: #f8f9fa;">
     <div class="container">
-        <div class="row">
+        <div class="row destinations-cab-layout">
             <!-- 80% - Destinations & Tours -->
-            <div class="col-lg-9 col-md-12 mb-4">
+            <div class="col-lg-6 col-md-12 mb-4 destinations-cab-main">
                 <?php 
                 // DEBUG: Check total destinations
                 $total_destinations = $db->fetchAll("
@@ -22,7 +22,14 @@
                     WHERE d.status = 'active' AND d.popular = 1
                     GROUP BY d.id
                     HAVING tour_count > 0
-                    ORDER BY d.created_at DESC
+                    ORDER BY 
+                        CASE 
+                            WHEN LOWER(d.name) LIKE '%shila%' OR LOWER(d.name) LIKE '%shimla%' THEN 1
+                            WHEN LOWER(d.name) LIKE '%manali%' THEN 2
+                            WHEN LOWER(d.name) LIKE '%dharmashala%' OR LOWER(d.name) LIKE '%dharamshala%' THEN 3
+                            ELSE 4
+                        END,
+                        d.created_at DESC
                 ");
 
                 // DEBUG: Output what we found
@@ -47,7 +54,7 @@
                         FROM tours t 
                         WHERE t.destination_id = ? AND t.status = 'active'
                         ORDER BY t.featured DESC, t.popular DESC, t.created_at DESC 
-                        LIMIT 6
+                        LIMIT 2
                     ", [$dest['id']]);
 
                     // DEBUG: Output tour count
@@ -63,12 +70,17 @@
                 <!-- Destination Section -->
                 <div class="destination-section mb-5" style="<?php echo $index > 0 ? 'margin-top: 50px;' : ''; ?>">
                     <!-- Destination Header -->
-                    <div class="destination-header mb-4" style="display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-map-marker-alt" style="color: #667eea; font-size: 1.8rem;"></i>
-                        <h1 style="font-size: 2rem; font-weight: 700; color: #333; margin: 0;">
-                            <?php echo htmlspecialchars($dest['name']); ?> Tours
-                            <small style="font-size: 0.6em; color: #999; font-weight: 400;">(<?php echo count($destination_tours); ?> tours)</small>
-                        </h1>
+                   <div class="destination-header mb-3" style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                        <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-start;">
+                            <i class="fas fa-map-marker-alt" style="color: #667eea; font-size: 1.8rem;"></i>
+                            <h1 style="font-size: 2rem; font-weight: 700; color: #333; margin: 0;">
+                                <?php echo htmlspecialchars($dest['name']); ?> Tours
+                                <small style="font-size: 0.6em; color: #999; font-weight: 400;">(<?php echo count($destination_tours); ?> tours)</small>
+                            </h1>
+                        </div>
+                        <a href="<?php echo toursUrl(['destination' => $dest['slug']]); ?>" style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: #fff; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; line-height: 1; white-space: nowrap;">
+                            View all <i class="fas fa-arrow-right"></i>
+                        </a>
                     </div>
                     
                     <!-- Tours Slider -->
@@ -130,8 +142,8 @@
                                             <?php endif; ?>
                                         </div>
                                         
-                                        <a href="<?php echo tourUrl($tour['slug']); ?>" class="btn w-100" style="background: #764ba2; color: white; border: none; border-radius: 0; padding: 12px; font-weight: 600;">
-                                            Explore Details
+                                        <a href="<?php echo tourUrl($tour['slug']); ?>" class="btn w-100" style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important; color: white; border: none; border-radius: 0; padding: 12px; font-weight: 600;">
+                                            View  Tour Details
                                         </a>
                                     </div>
                                 </div>
@@ -140,77 +152,15 @@
                     </div>
                     
                     <!-- View All Tours Link -->
-                    <div class="text-center mt-3">
-                        <a href="<?php echo toursUrl(['destination' => $dest['slug']]); ?>" style="color: #667eea; font-weight: 600; text-decoration: none;">
-                            View all <?php echo htmlspecialchars($dest['name']); ?> tours <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
+                   
                 </div>
                 
                 <?php endforeach; ?>
             </div>
             
             <!-- 20% - Cab Routes Sidebar -->
-           <div class="col-lg-3 col-md-12">
-                <div class="cab-routes-sidebar" style="position: sticky; top: 80px;">
-                    <div class="section-header mb-4" style="background: #1bbc9b; padding: 15px; border-radius: 8px;">
-                        <h4 style="font-size: 1.2rem; font-weight: 700; color: white; margin-bottom: 5px;">
-                            <i class="fas fa-route"></i> 🚗 Transport Facilities
-                        </h4>
-                        <p style="color: rgba(255, 255, 255, 0.9); font-size: 0.75rem; margin: 0;">Popular routes available</p>
-                    </div>
-                    
-                    <?php 
-                    $cab_routes = $db->fetchAll("
-                        SELECT * 
-                        FROM cab_routes 
-                        WHERE status = 'active' 
-                        ORDER BY display_order ASC 
-                        LIMIT 8
-                    ");
-
-                    foreach ($cab_routes as $route): 
-                        $cheapest = $db->fetch("
-                            SELECT MIN(crp.one_way_price) as min_price
-                            FROM cab_route_pricing crp
-                            WHERE crp.route_id = ? AND crp.status = 'active' AND crp.one_way_price > 0
-                        ", [$route['id']]);
-
-                        $starting_price = $cheapest['min_price'] ?? 0;
-                    ?>
-                    <div class="card mb-3" style="border: none; border-radius: 0; box-shadow: 0 4px 15px rgba(102,126,234,0.15); overflow: hidden; background: white;">
-                        <div style="background: #1bbc9b; padding: 12px 15px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="color: white; font-weight: 600; font-size: 0.85rem;">
-                                    <?php echo htmlspecialchars($route['from_location']); ?> → <?php echo htmlspecialchars($route['to_location']); ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="card-body text-center">
-                            <?php if ($starting_price > 0): ?>
-                                <div style="font-size: 0.8rem; color: #6c757d;">Starts from</div>
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #1bbc9b;">
-                                    <?php echo formatPriceINR($starting_price); ?>
-                                </div>
-                            <?php else: ?>
-                                <div style="font-size: 0.9rem; color: #6c757d;">Price on request</div>
-                            <?php endif; ?>
-                            <a href="<?php echo BASE_URL; ?>cab-route-details.php?route_id=<?php echo $route['id']; ?>" class="btn w-100" style="background: #764ba2; color: white; border: none; border-radius: 0; padding: 10px 15px; font-weight: 600; font-size: 0.8rem;">
-                                <i class="fas fa-info-circle"></i> View Details
-                            </a>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-
-                    <div class="card" style="border: none; border-radius: 0; background: #1bbc9b; color: white;">
-                        <div class="card-body text-center">
-                            <i class="fas fa-headset fa-2x mb-2"></i>
-                            <h6 style="font-weight: 700; margin-bottom: 8px;">Need Help?</h6>
-                            <p style="font-size: 0.8rem;">24/7 support</p>
-                            <a href="<?php echo navUrl('contact'); ?>" class="btn w-100" style="background: white; color: #764ba2; border: none; border-radius: 0; padding: 8px; font-weight: 600;">Contact</a>
-                        </div>
-                    </div>
-                </div>
+           <div class="col-lg-3 col-md-12 destinations-cab-sidebar">
+                <?php include 'cab_sidebar.php'; ?>
             </div>
         </div>
     </div>
@@ -221,39 +171,77 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css" />
 
 <style>
+/* Keep Tours + Transport Facilities side-by-side on desktop */
+.destinations-cab-section .destinations-cab-layout {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+@media (min-width: 992px) {
+    .destinations-cab-section .destinations-cab-layout {
+        flex-wrap: nowrap;
+    }
+
+    .destinations-cab-section .destinations-cab-main {
+        flex: 0 0 75%;
+        max-width: 75%;
+    }
+
+    .destinations-cab-section .destinations-cab-sidebar {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+}
+
 /* OwlCarousel Container */
-.owl-carousel {
-    margin: 0 -10px;
+.destinations-cab-section .owl-carousel {
+   display: flex;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    margin: 0;
 }
 
-.owl-carousel .item {
-    padding: 10px;
+.destinations-cab-section .owl-carousel .item {
+    padding: 0;
 }
 
-.owl-carousel .card {
-   
+@media (max-width: 991px) {
+    .destinations-cab-section .owl-carousel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575px) {
+    .destinations-cab-section .owl-carousel {
+        grid-template-columns: 1fr;
+    }
+}
+
+.destinations-cab-section .owl-carousel .card {
     display: flex !important;
     flex-direction: column !important;
     border: none !important;
-    border-radius: 0 !important; 
+    border-radius: 0 !important;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1) !important;
     transition: all 0.3s ease !important;
     overflow: hidden !important;
     background: white !important;
+    height: 100%;
 }
 
-.owl-carousel .card:hover {
+.destinations-cab-section .owl-carousel .card:hover {
     transform: translateY(-5px) !important;
     box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2) !important;
 }
 
-.owl-carousel .card .card-body {
+.destinations-cab-section .owl-carousel .card .card-body {
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
 }
 
-.owl-carousel .card .btn {
+.destinations-cab-section .owl-carousel .card .btn {
     margin-top: auto !important;
 }
 
@@ -282,6 +270,13 @@
         margin-top: 30px;
     }
 }
+
+/* Cab Route Button Hover Effect */
+.cab-route-btn:hover {
+    background: linear-gradient(135deg, #1bbc9b 0%, #17a689 100%) !important;
+    transform: translateY(-2px) scale(1.02) !important;
+    box-shadow: 0 5px 15px rgba(27, 188, 155, 0.4) !important;
+}
 </style>
 
 <!-- jQuery (required for OwlCarousel) -->
@@ -296,6 +291,7 @@ jQuery(document).ready(function($) {
     // Wait for all images to load before initializing carousels
     $(window).on('load', function() {
         console.log('All images loaded, initializing carousels...');
+        return;
         
         <?php foreach ($destinations_list as $dest_init): ?>
         var carousel<?php echo $dest_init['id']; ?> = $('.tours-carousel-<?php echo $dest_init['id']; ?>');

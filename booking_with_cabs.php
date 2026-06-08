@@ -19,6 +19,9 @@ if ($_POST) {
     // Validation
     if (empty($tour_id)) $errors[] = 'Tour selection is required';
     if (empty($tour_date)) $errors[] = 'Tour date is required';
+    if (!empty($tour_date) && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tour_date) || $tour_date <= date('Y-m-d'))) {
+        $errors[] = 'Tour date must be tomorrow or later';
+    }
     if (empty($people)) $errors[] = 'Number of people is required';
     if (empty($guest_name)) $errors[] = 'Your name is required';
     if (empty($guest_email)) $errors[] = 'Your email is required';

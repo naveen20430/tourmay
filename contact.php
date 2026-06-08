@@ -91,15 +91,15 @@ include 'includes/header.php';
 ?>
 
 <!-- Page Header Start -->
-<section class="page-header" style="background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('assets/images/backgrounds/hero-2-1.jpg') center/cover; padding: 120px 0 60px;">
+<section class="page-header">
     <div class="container">
         <div class="row">
             <div class="col-lg-12">
                 <div class="page-header__inner text-center">
                     <h1 class="page-header__title text-white">Contact Us</h1>
-                    <ul class="list-unstyled page-header__breadcrumb">
-                        <li><a href="<?php echo navUrl('home'); ?>" class="text-white-50">Home</a></li>
-                        <li class="text-white">Contact</li>
+                    <ul class="travhub-breadcrumb list-unstyled">
+                        <li><a href="<?php echo navUrl('home'); ?>">Home</a></li>
+                        <li>Contact</li>
                     </ul>
                 </div>
             </div>

@@ -4,43 +4,36 @@ RewriteEngine On
 # RewriteLog "logs/rewrite.log"
 # RewriteLogLevel 3
 
-# Remove trailing slashes (do this first)
+# ===== PREVENT REWRITE FOR EXISTING FILES AND DIRECTORIES =====
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ===== REMOVE TRAILING SLASHES =====
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.+)/$ /$1 [R=301,L]
 
-# ===== MAIN PAGES =====
-# Home page
-RewriteRule ^home/?$ index.php [NC,L]
+# ===== ADMIN PANEL (PROCESS FIRST) =====
+# Admin dashboard
+RewriteRule ^admin/?$ admin/index.php [NC,L]
+# Admin pages: /admin/page-name
+RewriteRule ^admin/([a-z0-9\-]+)/?$ admin/$1.php [NC,L,QSA]
+# Admin actions: /admin/action/id
+RewriteRule ^admin/([a-z0-9\-]+)/([0-9]+)/?$ admin/$1.php?id=$2 [NC,L,QSA]
 
-# Tours listing
-RewriteRule ^tours/?$ tours.php [NC,L,QSA]
+# ===== API ENDPOINTS =====
+# API routes
+RewriteRule ^api/([a-z0-9\-]+)/?$ api/$1.php [NC,L,QSA]
 
-# Destinations listing  
-RewriteRule ^destinations/?$ destinations.php [NC,L,QSA]
-
-# Blog listing
-RewriteRule ^blog/?$ blog.php [NC,L,QSA]
-
-# Contact page
-RewriteRule ^contact/?$ contact.php [NC,L]
-
-# About page
-RewriteRule ^about/?$ about.php [NC,L]
-
-# Gallery
-RewriteRule ^gallery/?$ gallery.php [NC,L]
-
-# ===== DETAILED PAGES =====
+# ===== DETAILED/SPECIFIC PAGES (BEFORE GENERAL RULES) =====
 # Tour details: /tour/tour-name
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^tour/([a-z0-9\-]+)/?$ tour-details.php?slug=$1 [NC,L,QSA]
 
 # Destination details: /destination/destination-name
 RewriteRule ^destination/([a-z0-9\-]+)/?$ destination-details.php?slug=$1 [NC,L,QSA]
 
-# Blog post: /blog/post-name
-RewriteRule ^blog/([a-z0-9\-]+)/?$ blog-post.php?slug=$1 [NC,L,QSA]
+# Blog post with slug: /blog-post/post-name (but not /blog/)
+RewriteRule ^blog-post/([a-z0-9\-]+)/?$ blog-post.php?slug=$1 [NC,L,QSA]
 
 # ===== FILTERED PAGES =====
 # Tours by category: /tours/category/category-name
@@ -61,10 +54,34 @@ RewriteRule ^blog/category/([a-z0-9\-]+)/?$ blog.php?category=$1 [NC,L,QSA]
 # Blog search: /blog/search/query
 RewriteRule ^blog/search/([^/]+)/?$ blog.php?search=$1 [NC,L,QSA]
 
-# ===== USER ACTIONS =====
+# ===== MAIN PAGES =====
+# Home page
+RewriteRule ^home/?$ index.php [NC,L]
+
+# Tours listing
+RewriteRule ^tours/?$ tours.php [NC,L,QSA]
+
+# Destinations listing  
+RewriteRule ^destinations/?$ destinations.php [NC,L,QSA]
+
+# Blog listing
+RewriteRule ^blog/?$ blog.php [NC,L,QSA]
+
+# Contact page
+RewriteRule ^contact/?$ contact.php [NC,L]
+
 # Booking page
-RewriteRule ^book/([0-9]+)/?$ booking.php?tour_id=$1 [NC,L,QSA]
 RewriteRule ^booking/?$ booking.php [NC,L,QSA]
+
+# Cart page
+RewriteRule ^cart/?$ cart.php [NC,L,QSA]
+
+# Book with tour ID: /book/123
+RewriteRule ^book/([0-9]+)/?$ booking.php?tour_id=$1 [NC,L,QSA]
+
+# Invoice pages
+RewriteRule ^invoice/([A-Za-z0-9\-]+)/?$ invoice.php?number=$1 [NC,L,QSA]
+RewriteRule ^pay-invoice/([A-Za-z0-9\-]+)/?$ pay-invoice.php?number=$1 [NC,L,QSA]
 
 # User authentication
 RewriteRule ^login/?$ login.php [NC,L]
@@ -72,32 +89,21 @@ RewriteRule ^register/?$ register.php [NC,L]
 RewriteRule ^logout/?$ logout.php [NC,L]
 RewriteRule ^profile/?$ profile.php [NC,L]
 
-# ===== ADMIN PANEL =====
-# Admin dashboard
-RewriteRule ^admin/?$ admin/index.php [NC,L]
+# About page
+RewriteRule ^about/?$ about.php [NC,L]
 
-# Admin pages: /admin/page-name
-RewriteRule ^admin/([a-z0-9\-]+)/?$ admin/$1.php [NC,L,QSA]
+# Privacy Policy page
+RewriteRule ^privacy-policy/?$ privacy-policy.php [NC,L]
 
-# Admin actions: /admin/action/id
-RewriteRule ^admin/([a-z0-9\-]+)/([0-9]+)/?$ admin/$1.php?id=$2 [NC,L,QSA]
+# Terms and Conditions page
+RewriteRule ^terms-conditions/?$ terms-conditions.php [NC,L]
 
-# ===== API ENDPOINTS =====
-# API routes
-RewriteRule ^api/([a-z0-9\-]+)/?$ api/$1.php [NC,L,QSA]
+# Gallery
+RewriteRule ^gallery/?$ gallery.php [NC,L]
 
-# ===== TOUR SLUG FALLBACK =====
-# Direct tour slug (fallback for tour details)
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !^/(admin|api|assets|config|includes|vendor|auth|user)/
-RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$
-RewriteRule ^([a-z0-9\-]+)/?$ tour-details.php?slug=$1 [NC,L,QSA]
-
-# ===== REMOVE .PHP EXTENSION (must be near end) =====
-# Remove .php extension for direct file access
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# ===== FALLBACK RULES =====
+# Remove .php extension for direct file access (if file exists with .php)
+RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^([^\.]+)$ $1.php [NC,L]
 
 # ===== SECURITY RULES =====

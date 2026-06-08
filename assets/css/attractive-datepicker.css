@@ -63,7 +63,7 @@
     left: 0;
     width: 0;
     height: 2px;
-    background: #1bbc9b;
+    background: #667eea;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 1px;
 }
@@ -268,7 +268,7 @@
 
 /* Calendar Header */
 .flatpickr-months {
-    background: #1bbc9b !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     border-radius: 20px 20px 0 0;
     padding: 15px 20px;
     position: relative;
@@ -354,26 +354,26 @@
 }
 
 .flatpickr-day:hover {
-    background: #1bbc9b !important;
+    background: #667eea !important;
     color: white !important;
     transform: scale(1.1);
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .flatpickr-day.today {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: white !important;
     font-weight: 700;
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .flatpickr-day.today:hover {
-    background: linear-gradient(135deg, #20c997 0%, #28a745 100%) !important;
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
     transform: scale(1.15);
 }
 
 .flatpickr-day.selected {
-    background: #1bbc9b !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: white !important;
     font-weight: 700;
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
@@ -393,7 +393,7 @@
 
 .flatpickr-day.startRange,
 .flatpickr-day.endRange {
-    background: #1bbc9b !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: white !important;
     border-radius: 50% !important;
     transform: scale(1.05);

@@ -93,8 +93,8 @@
                     </div>
                     <div class="col-md-6 text-md-end">
                         <ul class="list-inline main-footer__bottom-menu mb-0">
-                            <li class="list-inline-item"><a href="#">Privacy Policy</a></li>
-                            <li class="list-inline-item"><a href="#">Terms of Service</a></li>
+                            <li class="list-inline-item"><a href="<?php echo navUrl('privacy-policy'); ?>">Privacy Policy</a></li>
+                            <li class="list-inline-item"><a href="<?php echo navUrl('terms-conditions'); ?>">Terms of Service</a></li>
                         </ul>
                     </div>
                 </div>
@@ -231,7 +231,7 @@
 </a>
 
 <!-- COMPRESSED SCRIPTS - All JavaScript combined into one file -->
-<script src="<?php echo BASE_URL; ?>assets/compressed/all-scripts.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/compressed/all-scripts.min.js?v=<?php echo getCacheVersion('assets/compressed/all-scripts.min.js'); ?>"></script>
 
 <!-- Flatpickr JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

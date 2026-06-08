@@ -1,0 +1,956 @@
+/* ==========================================================================
+   COMPREHENSIVE SPACING FIXES - All Pages & Sections
+   Fixes margin, padding, and spacing issues across desktop and mobile
+   ========================================================================== */
+
+/* ==========================================================================
+   BASE SPACING ADJUSTMENTS
+   ========================================================================== */
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.container-fluid {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.row {
+    margin-left: -15px;
+    margin-right: -15px;
+    margin-bottom: 0;
+}
+
+[class*="col-"] {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* ==========================================================================
+   SECTION SPACING - CONSISTENT PADDING THROUGHOUT
+   ========================================================================== */
+
+section {
+    margin: 0;
+    padding: 0;
+}
+
+/* Standard section padding */
+.section-space,
+.section,
+section[class*="section"],
+div[class*="section"] {
+    padding: 60px 0;
+    margin: 0 !important;
+}
+
+/* Home: tours + transport — no extra vertical padding */
+.destinations-cab-section,
+#destinations-cab-section {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Tablet sections */
+@media (min-width: 768px) and (max-width: 991px) {
+    .section-space,
+    .section,
+    section[class*="section"],
+    div[class*="section"] {
+        padding: 50px 0;
+    }
+}
+
+/* Mobile sections */
+@media (max-width: 767px) {
+    .section-space,
+    .section,
+    section[class*="section"],
+    div[class*="section"] {
+        padding: 40px 0;
+    }
+
+    .destinations-cab-section,
+    #destinations-cab-section {
+        padding: 0 !important;
+    }
+}
+
+/* ==========================================================================
+   HERO & PAGE HEADER SECTIONS
+   ========================================================================== */
+
+.hero-section,
+.page-header,
+.tour-hero,
+.blog-hero,
+.destination-hero,
+.contact-hero {
+    padding: 80px 0 60px;
+    margin: 0;
+    margin-bottom: 0;
+}
+
+.hero-section h1,
+.page-header h1,
+.tour-hero h1,
+.blog-hero h1 {
+    margin-bottom: 20px;
+    margin-top: 0;
+}
+
+.hero-section p,
+.page-header p,
+.tour-hero p,
+.blog-hero p {
+    margin-bottom: 15px;
+    margin-top: 0;
+}
+
+/* Mobile hero sections */
+@media (max-width: 767px) {
+    .hero-section,
+    .page-header,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        padding: 50px 0 35px;
+    }
+    
+    .hero-section h1,
+    .page-header h1,
+    .tour-hero h1,
+    .blog-hero h1 {
+        font-size: 1.75rem;
+        margin-bottom: 15px;
+    }
+    
+    .hero-section p,
+    .page-header p,
+    .tour-hero p,
+    .blog-hero p {
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+}
+
+/* ==========================================================================
+   SEARCH SECTION SPACING
+   ========================================================================== */
+
+.search-section {
+    padding: 60px 0;
+    margin-bottom: 40px;
+}
+
+.search-container {
+    padding: 30px;
+    margin: 0;
+}
+
+.search-form {
+    margin: 0;
+    padding: 0;
+}
+
+.search-form .form-group {
+    margin-bottom: 15px;
+    padding: 0;
+}
+
+.search-form .form-group:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 767px) {
+    .search-section {
+        padding: 40px 0;
+        margin-bottom: 30px;
+    }
+    
+    .search-container {
+        padding: 20px;
+    }
+    
+    .search-form .form-group {
+        margin-bottom: 12px;
+    }
+}
+
+/* ==========================================================================
+   FEATURED TOURS / CARDS SECTION
+   ========================================================================== */
+
+.featured-tours-section,
+.popular-tours-section,
+.destinations-section,
+.blog-section,
+.tours-grid-section {
+    padding: 60px 0;
+    margin: 0;
+}
+
+.featured-tours-section h2,
+.popular-tours-section h2,
+.destinations-section h2,
+.blog-section h2,
+.tours-grid-section h2 {
+    margin-bottom: 40px;
+    margin-top: 0;
+    padding: 0;
+}
+
+/* Card spacing */
+.card {
+    margin-bottom: 30px;
+    margin-top: 0;
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.row > [class*="col-"] {
+    margin-bottom: 30px;
+}
+
+/* Tablet card spacing */
+@media (min-width: 768px) and (max-width: 991px) {
+    .card {
+        margin-bottom: 25px;
+    }
+    
+    .row > [class*="col-"] {
+        margin-bottom: 25px;
+    }
+}
+
+/* Mobile card spacing */
+@media (max-width: 767px) {
+    .featured-tours-section,
+    .popular-tours-section,
+    .destinations-section,
+    .blog-section,
+    .tours-grid-section {
+        padding: 40px 0;
+    }
+    
+    .featured-tours-section h2,
+    .popular-tours-section h2,
+    .destinations-section h2,
+    .blog-section h2,
+    .tours-grid-section h2 {
+        margin-bottom: 25px;
+        font-size: 1.5rem;
+    }
+    
+    .card {
+        margin-bottom: 20px;
+    }
+    
+    .card-body {
+        padding: 15px;
+    }
+    
+    .row > [class*="col-"] {
+        margin-bottom: 20px;
+    }
+}
+
+/* ==========================================================================
+   LISTING PAGE SECTIONS (Tours, Blog, Destinations)
+   ========================================================================== */
+
+.listing-container,
+.tours-list-container,
+.blog-list-container {
+    padding: 0;
+    margin: 0;
+}
+
+.tour-item,
+.blog-item,
+.destination-item {
+    margin-bottom: 30px;
+    padding: 0;
+}
+
+.tour-grid,
+.blog-grid,
+.destination-grid {
+    display: grid;
+    gap: 30px;
+    margin: 0;
+    padding: 0;
+}
+
+@media (max-width: 767px) {
+    .tour-item,
+    .blog-item,
+    .destination-item {
+        margin-bottom: 20px;
+    }
+    
+    .tour-grid,
+    .blog-grid,
+    .destination-grid {
+        gap: 20px;
+    }
+}
+
+/* ==========================================================================
+   SIDEBAR SPACING
+   ========================================================================== */
+
+.sidebar {
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.sidebar .widget {
+    margin-bottom: 30px;
+    padding: 20px;
+}
+
+.sidebar .widget:last-child {
+    margin-bottom: 0;
+}
+
+.sidebar .widget-title {
+    margin-bottom: 20px;
+    margin-top: 0;
+    padding: 0;
+}
+
+@media (max-width: 767px) {
+    .sidebar .widget {
+        margin-bottom: 20px;
+        padding: 15px;
+    }
+    
+    .sidebar .widget-title {
+        margin-bottom: 15px;
+    }
+}
+
+/* ==========================================================================
+   FORM SPACING
+   ========================================================================== */
+
+form {
+    margin: 0;
+    padding: 0;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+label {
+    margin-bottom: 8px;
+    margin-top: 0;
+    display: block;
+}
+
+.form-control,
+.form-select,
+textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="date"] {
+    margin: 0;
+    padding: 10px 12px;
+}
+
+@media (max-width: 767px) {
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    label {
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+    }
+}
+
+/* ==========================================================================
+   BUTTON SPACING
+   ========================================================================== */
+
+.travhub-btn,
+.btn,
+button,
+input[type="submit"],
+input[type="button"] {
+    margin: 0;
+    padding: 12px 30px;
+}
+
+.btn-group {
+    margin: 0;
+    gap: 10px;
+}
+
+.btn-group.vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+@media (max-width: 767px) {
+    .travhub-btn,
+    .btn,
+    button,
+    input[type="submit"],
+    input[type="button"] {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+}
+
+/* ==========================================================================
+   TEXT & TYPOGRAPHY SPACING
+   ========================================================================== */
+
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+p {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+p:last-child {
+    margin-bottom: 0;
+}
+
+ul, ol {
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-left: 20px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   DETAIL PAGES (Tour Details, Blog Post, Destination Details)
+   ========================================================================== */
+
+.detail-header {
+    padding: 40px 0;
+    margin-bottom: 40px;
+}
+
+.detail-content {
+    padding: 40px 0;
+}
+
+.detail-sidebar {
+    padding: 40px 0;
+}
+
+.detail-section {
+    margin-bottom: 40px;
+    padding: 0;
+}
+
+.detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.detail-section h3 {
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+
+.detail-section p {
+    margin-bottom: 12px;
+    line-height: 1.8;
+}
+
+@media (max-width: 767px) {
+    .detail-header {
+        padding: 25px 0;
+        margin-bottom: 25px;
+    }
+    
+    .detail-content,
+    .detail-sidebar {
+        padding: 25px 0;
+    }
+    
+    .detail-section {
+        margin-bottom: 25px;
+    }
+    
+    .detail-section h3 {
+        margin-top: 20px;
+        margin-bottom: 12px;
+        font-size: 1.2rem;
+    }
+}
+
+/* ==========================================================================
+   FOOTER SPACING
+   ========================================================================== */
+
+.main-footer {
+    padding: 60px 0 20px;
+    margin: 0;
+}
+
+.footer-widget {
+    margin-bottom: 30px;
+    padding: 0;
+}
+
+.footer-widget:last-child {
+    margin-bottom: 0;
+}
+
+.footer-widget-title {
+    margin-bottom: 20px;
+    margin-top: 0;
+}
+
+.footer-widget ul {
+    padding-left: 0;
+    margin: 0;
+}
+
+.footer-widget li {
+    margin-bottom: 10px;
+}
+
+.footer-copyright {
+    padding: 20px 0;
+    margin: 20px 0 0 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+@media (max-width: 767px) {
+    .main-footer {
+        padding: 40px 0 15px;
+    }
+    
+    .footer-widget {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    .footer-widget-title {
+        margin-bottom: 15px;
+    }
+    
+    .footer-copyright {
+        padding: 15px 0;
+        margin: 15px 0 0 0;
+    }
+}
+
+/* ==========================================================================
+   MODAL & POPUP SPACING
+   ========================================================================== */
+
+.modal {
+    padding: 0;
+}
+
+.modal-content {
+    padding: 0;
+    margin: 0;
+}
+
+.modal-header {
+    padding: 20px;
+    margin: 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modal-body {
+    padding: 20px;
+    margin: 0;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    margin: 0;
+    border-top: 1px solid #e9ecef;
+    gap: 10px;
+}
+
+@media (max-width: 767px) {
+    .modal-header {
+        padding: 15px;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .modal-footer {
+        padding: 12px 15px;
+    }
+}
+
+/* ==========================================================================
+   ALERT & NOTIFICATION SPACING
+   ========================================================================== */
+
+.alert {
+    margin-bottom: 20px;
+    margin-top: 0;
+    padding: 15px 20px;
+}
+
+.alert:last-child {
+    margin-bottom: 0;
+}
+
+.alert-heading {
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+
+/* ==========================================================================
+   TABLE SPACING
+   ========================================================================== */
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead {
+    padding: 0;
+}
+
+.table th,
+.table td {
+    padding: 12px;
+    vertical-align: middle;
+}
+
+@media (max-width: 767px) {
+    .table th,
+    .table td {
+        padding: 10px 8px;
+        font-size: 0.9rem;
+    }
+}
+
+/* ==========================================================================
+   BREADCRUMB SPACING
+   ========================================================================== */
+
+.breadcrumb {
+    margin-bottom: 30px;
+    margin-top: 0;
+    padding: 0;
+}
+
+.breadcrumb-item {
+    padding: 0;
+}
+
+/* ==========================================================================
+   NAVIGATION SPACING
+   ========================================================================== */
+
+.main-header {
+    margin: 0;
+    padding: 0;
+}
+
+.main-nav {
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    margin: 0;
+    padding: 0 15px;
+}
+
+/* ==========================================================================
+   RATING & REVIEW SPACING
+   ========================================================================== */
+
+.review-item {
+    margin-bottom: 20px;
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.review-item:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.review-title {
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+
+.review-rating {
+    margin-bottom: 8px;
+}
+
+.review-text {
+    margin: 0;
+}
+
+@media (max-width: 767px) {
+    .review-item {
+        padding: 12px;
+        margin-bottom: 15px;
+    }
+}
+
+/* ==========================================================================
+   PRICE & BOOKING SECTION SPACING
+   ========================================================================== */
+
+.price-section {
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+.price-info {
+    margin-bottom: 15px;
+    padding: 0;
+}
+
+.price-info:last-child {
+    margin-bottom: 0;
+}
+
+.booking-form {
+    padding: 20px;
+    margin: 0;
+}
+
+.booking-form .form-group {
+    margin-bottom: 15px;
+}
+
+/* ==========================================================================
+   TAB & ACCORDION SPACING
+   ========================================================================== */
+
+.nav-tabs {
+    margin-bottom: 20px;
+    padding: 0;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.nav-tabs .nav-link {
+    padding: 10px 20px;
+    margin: 0;
+    margin-right: 5px;
+}
+
+.tab-content {
+    padding: 20px 0;
+    margin: 0;
+}
+
+.accordion-item {
+    margin-bottom: 10px;
+}
+
+.accordion-item:last-child {
+    margin-bottom: 0;
+}
+
+.accordion-header {
+    padding: 0;
+    margin: 0;
+}
+
+.accordion-button {
+    padding: 15px 20px;
+}
+
+.accordion-body {
+    padding: 15px 20px;
+}
+
+@media (max-width: 767px) {
+    .nav-tabs .nav-link {
+        padding: 8px 15px;
+        font-size: 0.9rem;
+        margin-right: 3px;
+    }
+    
+    .accordion-button,
+    .accordion-body {
+        padding: 12px 15px;
+    }
+}
+
+/* ==========================================================================
+   IMAGE & MEDIA SPACING
+   ========================================================================== */
+
+img {
+    margin: 0;
+    padding: 0;
+}
+
+.img-wrapper,
+.image-wrapper {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.gallery {
+    display: grid;
+    gap: 15px;
+    margin: 0;
+    padding: 0;
+}
+
+.gallery-item {
+    margin: 0;
+    padding: 0;
+}
+
+@media (max-width: 767px) {
+    .gallery {
+        gap: 10px;
+    }
+}
+
+/* ==========================================================================
+   SPECIFIC PAGE FIXES
+   ========================================================================== */
+
+/* Home Page */
+.featured-tours {
+    margin-bottom: 40px;
+}
+
+.popular-destinations {
+    margin-bottom: 40px;
+}
+
+/* Tours Page */
+.tours-header {
+    margin-bottom: 40px;
+}
+
+.tours-sidebar {
+    margin-bottom: 30px;
+}
+
+/* Blog Page */
+.blog-header {
+    margin-bottom: 40px;
+}
+
+.blog-item {
+    margin-bottom: 30px;
+}
+
+/* Contact Page */
+.contact-form {
+    padding: 30px;
+    margin: 0;
+}
+
+.contact-info {
+    padding: 30px;
+    margin: 0;
+}
+
+@media (max-width: 767px) {
+    .contact-form,
+    .contact-info {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+}
+
+/* ==========================================================================
+   UTILITY SPACING CLASSES
+   ========================================================================== */
+
+.mt-0 { margin-top: 0 !important; }
+.mt-1 { margin-top: 5px !important; }
+.mt-2 { margin-top: 10px !important; }
+.mt-3 { margin-top: 15px !important; }
+.mt-4 { margin-top: 20px !important; }
+.mt-5 { margin-top: 30px !important; }
+
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 5px !important; }
+.mb-2 { margin-bottom: 10px !important; }
+.mb-3 { margin-bottom: 15px !important; }
+.mb-4 { margin-bottom: 20px !important; }
+.mb-5 { margin-bottom: 30px !important; }
+
+.my-0 { margin-top: 0 !important; margin-bottom: 0 !important; }
+.my-1 { margin-top: 5px !important; margin-bottom: 5px !important; }
+.my-2 { margin-top: 10px !important; margin-bottom: 10px !important; }
+.my-3 { margin-top: 15px !important; margin-bottom: 15px !important; }
+.my-4 { margin-top: 20px !important; margin-bottom: 20px !important; }
+.my-5 { margin-top: 30px !important; margin-bottom: 30px !important; }
+
+.mx-0 { margin-left: 0 !important; margin-right: 0 !important; }
+.mx-1 { margin-left: 5px !important; margin-right: 5px !important; }
+.mx-2 { margin-left: 10px !important; margin-right: 10px !important; }
+.mx-3 { margin-left: 15px !important; margin-right: 15px !important; }
+.mx-4 { margin-left: 20px !important; margin-right: 20px !important; }
+.mx-5 { margin-left: 30px !important; margin-right: 30px !important; }
+
+.pt-0 { padding-top: 0 !important; }
+.pt-1 { padding-top: 5px !important; }
+.pt-2 { padding-top: 10px !important; }
+.pt-3 { padding-top: 15px !important; }
+.pt-4 { padding-top: 20px !important; }
+.pt-5 { padding-top: 30px !important; }
+
+.pb-0 { padding-bottom: 0 !important; }
+.pb-1 { padding-bottom: 5px !important; }
+.pb-2 { padding-bottom: 10px !important; }
+.pb-3 { padding-bottom: 15px !important; }
+.pb-4 { padding-bottom: 20px !important; }
+.pb-5 { padding-bottom: 30px !important; }
+
+.py-0 { padding-top: 0 !important; padding-bottom: 0 !important; }
+.py-1 { padding-top: 5px !important; padding-bottom: 5px !important; }
+.py-2 { padding-top: 10px !important; padding-bottom: 10px !important; }
+.py-3 { padding-top: 15px !important; padding-bottom: 15px !important; }
+.py-4 { padding-top: 20px !important; padding-bottom: 20px !important; }
+.py-5 { padding-top: 30px !important; padding-bottom: 30px !important; }
+
+.px-0 { padding-left: 0 !important; padding-right: 0 !important; }
+.px-1 { padding-left: 5px !important; padding-right: 5px !important; }
+.px-2 { padding-left: 10px !important; padding-right: 10px !important; }
+.px-3 { padding-left: 15px !important; padding-right: 15px !important; }
+.px-4 { padding-left: 20px !important; padding-right: 20px !important; }
+.px-5 { padding-left: 30px !important; padding-right: 30px !important; }

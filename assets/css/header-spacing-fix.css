@@ -1,0 +1,220 @@
+/* ==========================================================================
+   HEADER SPACING FIX (GLOBAL)
+   Keeps header/nav top-bottom spacing consistent across all pages, even when
+   pages inject extra CSS (e.g. Bootstrap on login/register).
+   ========================================================================== */
+
+:root {
+  /* Fixed heights to prevent banner/hero getting covered by fixed header */
+  --site-topbar-height: 44px;
+  --site-header-height-desktop: 72px;
+  --site-header-height-mobile: 60px;
+
+  /* Spacing controls */
+  --site-nav-gap-desktop: 28px;
+  --site-nav-gap-mobile: 16px;
+
+  /* Unified banner (page header / hero) sizing */
+  --site-banner-min-height-desktop: 220px;
+  --site-banner-min-height-mobile: 170px;
+  --site-banner-pad-y-desktop: 40px;
+  --site-banner-pad-y-mobile: 32px;
+}
+
+/* --------------------------------------------------------------------------
+   FIXED HEADER STACKING + PAGE OFFSET
+   -------------------------------------------------------------------------- */
+
+/* Keep topbar height consistent (desktop) */
+.topbar-one {
+  height: var(--site-topbar-height) !important;
+}
+
+.topbar-one__inner,
+.topbar-one__info {
+  height: var(--site-topbar-height) !important;
+}
+
+/* Main header fixed below topbar with a predictable height */
+.main-header {
+  top: var(--site-topbar-height) !important;
+  height: var(--site-header-height-desktop) !important;
+  min-height: var(--site-header-height-desktop) !important;
+  padding: 0 !important; /* avoid double-padding from other CSS files */
+}
+
+.main-header__inner {
+  height: 100% !important;
+  min-height: 100% !important;
+  padding: 0 !important; /* avoid double-padding from other CSS files */
+}
+
+/* Ensure the page content starts below fixed topbar + header */
+.page-wrapper {
+  padding-top: calc(var(--site-topbar-height) + var(--site-header-height-desktop)) !important;
+}
+
+@media (max-width: 991px) {
+  /* Hide topbar on mobile and adjust offsets */
+  .topbar-one {
+    display: none !important;
+    height: 0 !important;
+  }
+
+  .main-header {
+    top: 0 !important;
+    height: var(--site-header-height-mobile) !important;
+    min-height: var(--site-header-height-mobile) !important;
+  }
+
+  .page-wrapper {
+    padding-top: var(--site-header-height-mobile) !important;
+  }
+}
+
+/* Normalize margins that can vary due to page-level CSS frameworks */
+.main-header,
+.sticky-header--cloned {
+  margin: 0 !important;
+}
+
+.main-header__inner {
+  margin: 0 !important;
+}
+
+/* Ensure menu list doesn’t inherit default ul margins from other frameworks */
+.main-menu .main-menu__list {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Consistent spacing between top-level nav items */
+@media (min-width: 992px) {
+  .main-menu .main-menu__list {
+    gap: var(--site-nav-gap-desktop) !important;
+  }
+}
+
+@media (max-width: 991px) {
+  .main-menu .main-menu__list {
+    gap: var(--site-nav-gap-mobile) !important;
+  }
+}
+
+/* Override theme's margin-left spacing so `gap` is the single source of truth */
+.main-menu .main-menu__list > li + li {
+  margin-left: 0 !important;
+}
+
+/* Ensure items/links are vertically centered with no extra padding */
+.main-menu .main-menu__list > li {
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.main-menu .main-menu__list > li > a {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Keep logo + nav vertically centered inside the fixed header height */
+.main-header__logo {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 20px !important;
+}
+
+.main-header__logo img {
+  max-height: 46px !important;
+  width: auto !important;
+}
+
+/* --------------------------------------------------------------------------
+   UNIFIED BANNER HEIGHT + CENTERED CONTENT (ALL PAGES)
+   -------------------------------------------------------------------------- */
+
+.page-header,
+.hero-section,
+.tour-hero,
+.blog-hero,
+.destination-hero,
+.contact-hero {
+  min-height: var(--site-banner-min-height-desktop) !important;
+  height: auto !important;
+  padding-top: var(--site-banner-pad-y-desktop) !important;
+  padding-bottom: var(--site-banner-pad-y-desktop) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.page-header > .container,
+.hero-section > .container,
+.tour-hero > .container,
+.blog-hero > .container,
+.destination-hero > .container,
+.contact-hero > .container {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 10px !important;
+}
+
+.page-header__inner,
+.hero-section__inner,
+.tour-hero__inner {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 10px !important;
+  margin: 0 !important;
+}
+
+/* Prevent default margins pushing content off-center */
+.page-header h1,
+.hero-section h1,
+.tour-hero h1,
+.blog-hero h1,
+.destination-hero h1,
+.contact-hero h1 {
+  margin: 0 !important;
+}
+
+.page-header p,
+.hero-section p,
+.tour-hero p,
+.blog-hero p,
+.destination-hero p,
+.contact-hero p {
+  margin: 0 !important;
+}
+
+@media (max-width: 991px) {
+  .page-header,
+  .hero-section,
+  .tour-hero,
+  .blog-hero,
+  .destination-hero,
+  .contact-hero {
+    min-height: var(--site-banner-min-height-mobile) !important;
+    padding-top: var(--site-banner-pad-y-mobile) !important;
+    padding-bottom: var(--site-banner-pad-y-mobile) !important;
+  }
+}
+
+

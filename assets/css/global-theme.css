@@ -1,0 +1,643 @@
+/* ==========================================================================
+   GLOBAL THEME - Consistent Design Across All Pages
+   Applied to all pages for unified look and feel
+   ========================================================================== */
+
+/* ==========================================================================
+   HERO & PAGE HEADER STYLING
+   ========================================================================== */
+
+.page-header,
+.hero-section,
+.tour-hero,
+.blog-hero,
+.destination-hero,
+.contact-hero {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    padding: 80px 0 60px;
+    position: relative;
+    overflow: hidden;
+    color: white;
+}
+
+.page-header::before,
+.hero-section::before,
+.tour-hero::before,
+.blog-hero::before,
+.destination-hero::before,
+.contact-hero::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    animation: float 10s ease-in-out infinite;
+}
+
+.page-header::after,
+.hero-section::after,
+.tour-hero::after,
+.blog-hero::after,
+.destination-hero::after,
+.contact-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -100px;
+    left: -100px;
+    width: 400px;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    animation: float 12s ease-in-out infinite reverse;
+}
+
+.page-header h1,
+.hero-section h1,
+.tour-hero h1,
+.blog-hero h1,
+.destination-hero h1,
+.contact-hero h1 {
+    position: relative;
+    z-index: 2;
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    color: white;
+}
+
+.page-header h2,
+.hero-section h2,
+.tour-hero h2,
+.blog-hero h2,
+.destination-hero h2,
+.contact-hero h2 {
+    position: relative;
+    z-index: 2;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    color: white;
+}
+
+.page-header__title {
+    color: white !important;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+    position: relative;
+}
+
+.page-header p,
+.hero-section p,
+.tour-hero p,
+.blog-hero p,
+.destination-hero p,
+.contact-hero p {
+    position: relative;
+    z-index: 2;
+    font-size: 1.2rem;
+    margin-bottom: 0;
+    opacity: 0.95;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+}
+
+.travhub-breadcrumb {
+    position: relative;
+    z-index: 2;
+}
+
+.travhub-breadcrumb li {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.travhub-breadcrumb a {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.travhub-breadcrumb a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   SECTION STYLING - CONSISTENT THROUGHOUT PAGES
+   ========================================================================== */
+
+.listing-section,
+.tours-section,
+.blog-section,
+.destinations-section,
+.contact-section {
+    background: #f8f9fa;
+    padding: 80px 0;
+    position: relative;
+}
+
+.listing-section::before,
+.tours-section::before,
+.blog-section::before,
+.destinations-section::before,
+.contact-section::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 250px;
+    height: 250px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 50%;
+    animation: float 8s ease-in-out infinite;
+}
+
+.listing-section::after,
+.tours-section::after,
+.blog-section::after,
+.destinations-section::after,
+.contact-section::after {
+    content: '';
+    position: absolute;
+    bottom: -100px;
+    left: -100px;
+    width: 350px;
+    height: 350px;
+    background: rgba(118, 75, 162, 0.03);
+    border-radius: 50%;
+    animation: float 12s ease-in-out infinite reverse;
+}
+
+/* ==========================================================================
+   SECTION TITLE STYLING
+   ========================================================================== */
+
+.section-title {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 60px;
+}
+
+.section-title h2 {
+    font-size: 2.8rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.section-title p {
+    font-size: 1.1rem;
+    color: #6c757d;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.section-title::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 20px auto 0;
+    border-radius: 2px;
+}
+
+.badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(118, 75, 162, 0.3);
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+/* ==========================================================================
+   CARD STYLING - TOURS, BLOG, DESTINATIONS
+   ========================================================================== */
+
+.tour-card,
+.blog-card,
+.destination-card,
+.listing-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.tour-card:hover,
+.blog-card:hover,
+.destination-card:hover,
+.listing-card:hover {
+    transform: translateY(-12px) scale(1.02);
+    box-shadow: 0 25px 60px rgba(118, 75, 162, 0.25);
+}
+
+/* Image wrapper styling */
+.tour-card .tour-image-wrapper,
+.blog-card .blog-image-wrapper,
+.destination-card .destination-image-wrapper,
+.listing-card .card-img-top {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    overflow: hidden;
+    background: #e9ecef;
+}
+
+.tour-card img,
+.blog-card img,
+.destination-card img,
+.listing-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.tour-card:hover img,
+.blog-card:hover img,
+.destination-card:hover img,
+.listing-card:hover img {
+    transform: scale(1.08);
+}
+
+/* Card content styling */
+.tour-details,
+.blog-content,
+.destination-details,
+.card-body {
+    padding: 25px;
+    position: relative;
+    z-index: 2;
+}
+
+/* Card title styling */
+.tour-title,
+.blog-title,
+.destination-title,
+.card-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 15px 0;
+    color: #1a202c;
+    line-height: 1.4;
+    transition: color 0.3s ease;
+}
+
+.tour-title a,
+.blog-title a,
+.destination-title a,
+.card-title a {
+    color: #1a202c;
+    text-decoration: none;
+}
+
+.tour-title a:hover,
+.blog-title a:hover,
+.destination-title a:hover,
+.card-title a:hover {
+    color: #667eea;
+}
+
+/* ==========================================================================
+   BUTTON STYLING - CONSISTENT THROUGHOUT
+   ========================================================================== */
+
+.travhub-btn,
+.btn-primary,
+.tour-btn,
+.view-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+}
+
+.travhub-btn:hover,
+.btn-primary:hover,
+.tour-btn:hover,
+.view-btn:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(118, 75, 162, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.travhub-btn:active,
+.btn-primary:active,
+.tour-btn:active,
+.view-btn:active {
+    transform: translateY(0);
+}
+
+/* ==========================================================================
+   SIDEBAR & FILTER STYLING
+   ========================================================================== */
+
+.sidebar {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 100px;
+}
+
+.widget-title,
+.filter-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.widget-item,
+.filter-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.widget-item:last-child,
+.filter-item:last-child {
+    border-bottom: none;
+}
+
+.widget-link,
+.filter-link {
+    color: #6c757d;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.widget-link:hover,
+.filter-link:hover {
+    color: #667eea;
+    padding-left: 5px;
+}
+
+/* ==========================================================================
+   PAGINATION STYLING
+   ========================================================================== */
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+}
+
+.pagination .page-link {
+    padding: 10px 14px;
+    border: 2px solid #667eea;
+    color: #667eea;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.pagination .page-link:hover,
+.pagination .page-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+}
+
+/* ==========================================================================
+   FORM STYLING - CONSISTENT THROUGHOUT
+   ========================================================================== */
+
+.form-control,
+.form-select {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 12px 15px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* ==========================================================================
+   RESPONSIVE STYLING
+   ========================================================================== */
+
+@media (max-width: 1199px) {
+    .page-header h1,
+    .hero-section h1,
+    .section-title h2 {
+        font-size: 2.3rem;
+    }
+    
+    .page-header p,
+    .hero-section p {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 991px) {
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        padding: 60px 0 45px;
+    }
+    
+    .page-header h1,
+    .hero-section h1,
+    .section-title h2 {
+        font-size: 2rem;
+    }
+    
+    .tour-card,
+    .blog-card,
+    .destination-card {
+        margin-bottom: 30px;
+    }
+    
+    .sidebar {
+        margin-bottom: 30px;
+        position: relative;
+        top: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        padding: 50px 0 35px;
+    }
+    
+    .page-header h1,
+    .hero-section h1 {
+        font-size: 1.8rem;
+    }
+    
+    .section-title h2 {
+        font-size: 1.6rem;
+    }
+    
+    .section-title p {
+        font-size: 0.95rem;
+    }
+    
+    .listing-section,
+    .tours-section,
+    .blog-section,
+    .destinations-section,
+    .contact-section {
+        padding: 50px 0;
+    }
+    
+    .tour-card,
+    .blog-card,
+    .destination-card {
+        margin-bottom: 20px;
+    }
+    
+    .tour-details,
+    .blog-content,
+    .destination-details,
+    .card-body {
+        padding: 20px;
+    }
+    
+    .tour-title,
+    .blog-title,
+    .destination-title {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        padding: 40px 0 30px;
+    }
+    
+    .page-header h1,
+    .hero-section h1 {
+        font-size: 1.5rem;
+    }
+    
+    .section-title h2 {
+        font-size: 1.4rem;
+    }
+    
+    .tour-card,
+    .blog-card,
+    .destination-card {
+        margin-bottom: 15px;
+    }
+    
+    .tour-details,
+    .blog-content,
+    .destination-details {
+        padding: 15px;
+    }
+    
+    .travhub-btn,
+    .btn-primary {
+        padding: 10px 20px;
+        font-size: 0.85rem;
+    }
+}
+
+/* ==========================================================================
+   ANIMATION KEYFRAMES
+   ========================================================================== */
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px);
+    }
+    33% {
+        transform: translateY(-10px) translateX(5px);
+    }
+    66% {
+        transform: translateY(10px) translateX(-5px);
+    }
+}
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+.gradient-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.scroll-reveal {
+    opacity: 1;
+    animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -11,16 +11,25 @@
   if ($(".travhub-multi-datepicker").length) {
     $(".travhub-multi-datepicker").each(function () {
       let self = $(this);
+      let tomorrow = moment().add(1, "day").startOf("day");
       self.daterangepicker({
-        autoUpdateInput: false
+        autoUpdateInput: false,
+        singleDatePicker: true,
+        minDate: tomorrow,
+        startDate: tomorrow
       });
       self.on("apply.daterangepicker", function (ev, picker) {
-        $(this).val(
-          picker.startDate.format("D MMM YY") +
-          " - " +
-          picker.endDate.format("D MMM YY")
-        );
+        $(this).val(picker.startDate.format("D MMM YY"));
       });
+
+      if (!self.val()) {
+        let picker = self.data("daterangepicker");
+        if (picker) {
+          picker.setStartDate(tomorrow);
+          picker.setEndDate(tomorrow);
+        }
+        self.val(tomorrow.format("D MMM YY"));
+      }
     });
   }
 

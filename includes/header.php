@@ -136,6 +136,16 @@
 <!-- Preloader Icon -->
  
  <div class="page-wrapper">
+  <?php if (function_exists('isDbConnected') && !isDbConnected()): ?>
+    <div style="background:#fff3cd;color:#664d03;padding:10px 15px;border-bottom:1px solid #ffeeba;font-family:Arial,sans-serif;font-size:14px;">
+      <strong>Database not connected.</strong>
+      <?php if (function_exists('getDbConnectionError')): $dbErr = getDbConnectionError(); ?>
+        <?php if ($dbErr): ?>
+          <span><?php echo htmlspecialchars($dbErr); ?></span>
+        <?php endif; ?>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 	<div class="topbar-one">
 	    <div class="container">
 	        <div class="topbar-one__inner">
@@ -169,7 +179,10 @@
 	        <div class="main-header__inner">
             <div class="main-header__logo">
                 <a href="<?php echo navUrl('home'); ?>">
-                    <img src="<?php echo BASE_URL; ?>assets/images/logo.png" alt="<?php echo function_exists('getSetting') ? getSetting('site_name') ?: 'TravHub' : 'TravHub'; ?>" width="80">
+                    <span style="display:inline-flex;align-items:center;gap:10px;">
+                        <img src="<?php echo BASE_URL; ?>assets/images/logonew.png" alt="<?php echo function_exists('getSetting') ? getSetting('site_name') ?: 'TravHub' : 'TravHub'; ?>" width="80">
+                        <span style="font-weight:800;letter-spacing:.2px;color:#0f172a;line-height:1;white-space:nowrap;">The World Journey</span>
+                    </span>
 	                </a>
 	            </div><!-- /.main-header__logo -->
 <nav class="main-header__nav main-menu">
@@ -210,8 +223,19 @@
 	                    <span></span>
 	                </div><!-- /.mobile-nav__toggler -->
 				
-	                <div class="main-header__btn">
-	                    
+	                <div class="main-header__btn" style="margin-left: 20px;">
+	                    <?php
+                        $cartCount = (isset($_SESSION['tour_cart']) && is_array($_SESSION['tour_cart'])) ? count($_SESSION['tour_cart']) : 0;
+                        ?>
+                        <a href="<?php echo navUrl('cart'); ?>" class="travhub-btn" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:14px;line-height:1;">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>Cart</span>
+                            <?php if ($cartCount > 0): ?>
+                                <span style="background:#ff6a00;color:#fff;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:800;line-height:1;">
+                                    <?php echo (int)$cartCount; ?>
+                                </span>
+                            <?php endif; ?>
+                        </a>
 	                </div>
 	            </div><!-- /.main-header__right -->
 	        </div><!-- /.main-header__inner -->

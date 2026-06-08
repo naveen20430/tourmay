@@ -1,0 +1,502 @@
+/* ==========================================================================
+   SEARCH SECTION RESPONSIVE FIXES
+   Fixed dropdown visibility, mobile responsiveness, and label issues
+   ========================================================================== */
+
+/* Search Section Container */
+.search-section {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    padding-top: 110px;
+    padding-bottom: 30px;
+    min-height: 160px;
+    position: relative;
+    overflow: visible;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.search-section .decorative-element {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    animation: float 10s ease-in-out infinite;
+}
+
+.search-section .decorative-element-1 {
+    top: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+}
+
+.search-section .decorative-element-2 {
+    bottom: -100px;
+    left: -100px;
+    width: 300px;
+    height: 300px;
+    animation: float 12s ease-in-out infinite reverse;
+}
+
+.search-section .container {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+}
+
+/* Search Container - Responsive */
+.search-container {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 1300px;
+    width: 100%;
+    height: auto;
+    min-height: auto;
+    position: relative;
+    z-index: 5;
+    overflow: visible;
+}
+
+/* Search Form - Responsive Grid */
+.search-form {
+    display: grid !important;
+    gap: 15px !important;
+    grid-auto-rows: minmax(43px, auto);
+    align-items: stretch !important;
+    flex-wrap: nowrap !important;
+}
+
+.search-form--activity {
+    grid-template-columns: repeat(4, minmax(150px, 1fr)) 140px !important;
+}
+
+.search-form--transfer {
+    grid-template-columns: 120px repeat(3, minmax(140px, 1fr)) 130px 140px !important;
+}
+
+.search-form--activity .activity-pickup-group {
+    height: auto !important;
+}
+
+/* Form Group Styling */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Labels - Hidden on focus/filled */
+.form-group label {
+    position: static;
+    transform: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 8px;
+    pointer-events: none;
+    z-index: auto;
+    transition: opacity 0.2s ease;
+}
+
+.form-group label svg {
+    width: 16px;
+    height: 16px;
+    color: #7b5cbf;
+    flex-shrink: 0;
+}
+
+.form-group label span {
+    opacity: 1;
+    position: static;
+}
+
+/* Select and Input Styling */
+.form-group select,
+.form-group input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #374151;
+    background: white;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    height: auto;
+    min-height: 44px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.form-group select {
+    appearance: auto;
+    -webkit-appearance: menulist;
+    position: relative;
+    z-index: 12;
+    pointer-events: auto;
+    padding-right: 32px;
+}
+
+.form-group input {
+    cursor: text;
+}
+
+.form-group input[type="date"] {
+    cursor: pointer;
+}
+
+/* Focus States */
+.form-group select:focus,
+.form-group input:focus {
+    outline: none;
+    border-color: #7b5cbf;
+    box-shadow: 0 0 0 3px rgba(123, 92, 191, 0.1);
+}
+
+/* Hover States */
+.form-group select:hover,
+.form-group input:hover {
+    border-color: #9f7aea;
+}
+
+/* Search Button */
+.search-btn {
+    background: linear-gradient(135deg, #7b5cbf 0%, #8b5cf6 100%);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 130px;
+    height: 44px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.search-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.search-btn:hover {
+    background: linear-gradient(135deg, #6d4fb5 0%, #7c3aed 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(123, 92, 191, 0.4);
+}
+
+.search-btn:active {
+    transform: translateY(0);
+}
+
+.search-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(123, 92, 191, 0.3);
+}
+
+/* ==========================================================================
+   TABLET RESPONSIVE (768px - 991px)
+   ========================================================================== */
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .search-section {
+        padding: 25px 0;
+    }
+
+    .search-container {
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    .search-form {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .form-group label {
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+
+    .form-group select,
+    .form-group input {
+        min-height: 40px;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .form-group select {
+        padding-right: 36px;
+    }
+
+    .search-btn {
+        padding: 10px 20px;
+        font-size: 12px;
+        min-width: 110px;
+        height: 40px;
+    }
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE (< 768px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+    .search-section {
+        padding: 20px 0;
+    }
+
+    .search-container {
+        padding: 15px;
+        border-radius: 10px;
+    }
+
+    /* Stack vertically on mobile */
+    .search-form {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    /* Form Groups */
+    .form-group {
+        width: 100%;
+    }
+
+    .form-group label {
+        font-size: 12px;
+        margin-bottom: 6px;
+        gap: 6px;
+    }
+
+    .form-group label svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Inputs and Selects */
+    .form-group select,
+    .form-group input {
+        min-height: 44px;
+        padding: 12px 14px;
+        font-size: 14px;
+        border-radius: 8px;
+    }
+
+    .form-group select {
+        padding-right: 40px;
+        background-position: right 12px center;
+        background-size: 14px;
+    }
+
+    /* Search Button - Full width on mobile */
+    .search-btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 13px;
+        min-width: auto;
+        height: 44px;
+        border-radius: 8px;
+    }
+}
+
+/* ==========================================================================
+   EXTRA SMALL (< 576px)
+   ========================================================================== */
+
+@media (max-width: 575px) {
+    .search-section {
+        padding: 15px 0;
+    }
+
+    .search-container {
+        padding: 12px;
+    }
+
+    .search-form {
+        gap: 10px;
+    }
+
+    .form-group label {
+        font-size: 11px;
+        margin-bottom: 5px;
+    }
+
+    .form-group select,
+    .form-group input {
+        min-height: 40px;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .search-btn {
+        height: 40px;
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+
+    .search-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+/* ==========================================================================
+   LANDSCAPE MODE (Mobile in landscape)
+   ========================================================================== */
+
+@media (max-height: 600px) and (orientation: landscape) {
+    .search-section {
+        padding: 10px 0;
+    }
+
+    .search-container {
+        padding: 10px;
+    }
+
+    .search-form {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+    }
+
+    .form-group label {
+        margin-bottom: 4px;
+        font-size: 11px;
+    }
+
+    .form-group select,
+    .form-group input {
+        min-height: 36px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .search-btn {
+        height: 36px;
+        min-width: 100px;
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+}
+
+/* ==========================================================================
+   DROPDOWN ICON FIX - High DPI & Clarity
+   ========================================================================== */
+
+@media (-webkit-min-device-pixel-ratio: 1.5),
+(min-resolution: 144dpi) {
+    .form-group select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4L6 8L10 4' stroke='%237b5cbf' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-size: 16px;
+    }
+}
+
+/* ==========================================================================
+   DROPDOWN OPTION STYLING
+   ========================================================================== */
+
+.form-group select option {
+    padding: 10px;
+    background: white;
+    color: #374151;
+    font-size: 14px;
+}
+
+.form-group select option:checked {
+    background: linear-gradient(135deg, #7b5cbf 0%, #8b5cf6 100%);
+    color: white;
+}
+
+/* ==========================================================================
+   PLACEHOLDER & TEXT COLORS
+   ========================================================================== */
+
+.form-group select::placeholder,
+.form-group input::placeholder {
+    color: #9ca3af;
+    opacity: 1;
+}
+
+.form-group select::-webkit-input-placeholder,
+.form-group input::-webkit-input-placeholder {
+    color: #9ca3af;
+}
+
+.form-group select:-moz-placeholder,
+.form-group input:-moz-placeholder {
+    color: #9ca3af;
+    opacity: 1;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY
+   ========================================================================== */
+
+.form-group select:disabled,
+.form-group input:disabled {
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.form-group select:disabled:hover,
+.form-group input:disabled:hover {
+    border-color: #d1d5db;
+}
+
+/* ==========================================================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ========================================================================== */
+
+@media (pointer: coarse) {
+
+    .form-group select,
+    .form-group input {
+        min-height: 48px;
+        padding: 14px 16px;
+    }
+
+    .form-group select {
+        padding-right: 42px;
+    }
+
+    .search-btn {
+        min-height: 48px;
+        padding: 14px 28px;
+    }
+
+    .form-group label {
+        margin-bottom: 10px;
+    }
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+
+@media print {
+    .search-section .decorative-element {
+        display: none;
+    }
+
+    .search-form {
+        display: none;
+    }
+}

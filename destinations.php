@@ -124,8 +124,8 @@ include 'includes/header.php';
                         <div class="col-lg-4 col-md-6 mb-5 scroll-reveal" style="transition-delay: <?php echo array_search($destination, $destinations) * 0.15; ?>s;">
                             <div class="card h-100" style="border: none; border-radius: 25px; overflow: hidden; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); position: relative; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);">
                                 <!-- Light hover overlay -->
-                                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(40, 167, 69, 0.08) 0%, rgba(32, 201, 151, 0.08) 100%); opacity: 0; transition: all 0.3s ease; z-index: 1; border-radius: 25px; display: flex; align-items: center; justify-content: center;">
-                                    <div style="text-align: center; color: #28a745; transform: translateY(20px); transition: all 0.3s ease;">
+                                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%); opacity: 0; transition: all 0.3s ease; z-index: 1; border-radius: 25px; display: flex; align-items: center; justify-content: center;">
+                                    <div style="text-align: center; color: #667eea; transform: translateY(20px); transition: all 0.3s ease;">
                                         <i class="fas fa-plane" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
                                         <p style="font-weight: 600; margin: 0;">Explore Destination</p>
                                     </div>
@@ -141,7 +141,7 @@ include 'includes/header.php';
                                     
                                     <?php if ($destination['popular']): ?>
                                         <div class="position-absolute top-0 start-0 m-3" style="z-index: 2;">
-                                            <span class="badge" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 6px 12px; border-radius: 15px; font-weight: 500; box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);">🔥 Popular</span>
+                                            <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 6px 12px; border-radius: 15px; font-weight: 500; box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);">✨ Popular</span>
                                         </div>
                                     <?php endif; ?>
                                     

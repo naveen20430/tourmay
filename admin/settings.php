@@ -78,7 +78,15 @@ $default_settings = [
     'enable_booking' => '1',
     'enable_blog' => '1',
     'enable_newsletter' => '1',
-    'maintenance_mode' => '0'
+    'maintenance_mode' => '0',
+    'razorpay_key_id' => '',
+    'razorpay_key_secret' => '',
+    'cash_payment_note' => 'Pay in cash at our office or to the tour guide before departure.',
+    'twilio_account_sid' => '',
+    'twilio_auth_token' => '',
+    'twilio_whatsapp_from' => 'whatsapp:+14155238886',
+    'twilio_whatsapp_content_sid' => 'HXb5b62575e6e4ff6129ad7c8efe1f983e',
+    'twilio_whatsapp_sandbox_join' => ''
 ];
 
 // Merge with current settings
@@ -423,6 +431,107 @@ include 'includes/header.php';
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Payment Settings -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-credit-card mr-2"></i>Payment Settings
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="razorpay_key_id">Razorpay Key ID</label>
+                                    <input type="text" class="form-control" id="razorpay_key_id"
+                                           name="settings[razorpay_key_id]"
+                                           value="<?php echo htmlspecialchars($settings_array['razorpay_key_id']); ?>"
+                                           placeholder="rzp_test_xxxxxxxx">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="razorpay_key_secret">Razorpay Key Secret</label>
+                                    <input type="password" class="form-control" id="razorpay_key_secret"
+                                           name="settings[razorpay_key_secret]"
+                                           value="<?php echo htmlspecialchars($settings_array['razorpay_key_secret']); ?>"
+                                           placeholder="Enter Razorpay secret key">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cash_payment_note">Cash Payment Note (shown on invoice)</label>
+                            <textarea class="form-control" id="cash_payment_note" rows="3"
+                                      name="settings[cash_payment_note]"><?php echo htmlspecialchars($settings_array['cash_payment_note']); ?></textarea>
+                        </div>
+                        <p class="text-muted mb-0">
+                            Add your Razorpay test or live keys here to enable online checkout. Cash/manual payment works without Razorpay keys.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- WhatsApp OTP / Twilio -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fab fa-whatsapp mr-2"></i>WhatsApp OTP Login (Twilio)
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="twilio_account_sid">Twilio Account SID</label>
+                                    <input type="text" class="form-control" id="twilio_account_sid"
+                                           name="settings[twilio_account_sid]"
+                                           value="<?php echo htmlspecialchars($settings_array['twilio_account_sid']); ?>"
+                                           placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="twilio_auth_token">Twilio Auth Token</label>
+                                    <input type="password" class="form-control" id="twilio_auth_token"
+                                           name="settings[twilio_auth_token]"
+                                           value="<?php echo htmlspecialchars($settings_array['twilio_auth_token']); ?>"
+                                           placeholder="Enter Twilio auth token">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="twilio_whatsapp_from">WhatsApp From Number</label>
+                                    <input type="text" class="form-control" id="twilio_whatsapp_from"
+                                           name="settings[twilio_whatsapp_from]"
+                                           value="<?php echo htmlspecialchars($settings_array['twilio_whatsapp_from']); ?>"
+                                           placeholder="whatsapp:+14155238886">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="twilio_whatsapp_content_sid">WhatsApp Content Template SID</label>
+                                    <input type="text" class="form-control" id="twilio_whatsapp_content_sid"
+                                           name="settings[twilio_whatsapp_content_sid]"
+                                           value="<?php echo htmlspecialchars($settings_array['twilio_whatsapp_content_sid']); ?>"
+                                           placeholder="HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="twilio_whatsapp_sandbox_join">Twilio Sandbox Join Code</label>
+                            <input type="text" class="form-control" id="twilio_whatsapp_sandbox_join"
+                                   name="settings[twilio_whatsapp_sandbox_join]"
+                                   value="<?php echo htmlspecialchars($settings_array['twilio_whatsapp_sandbox_join']); ?>"
+                                   placeholder="e.g. happy-tiger">
+                            <small class="text-muted">Required for Twilio sandbox (+14155238886). Each new user must WhatsApp <code>join your-code</code> to the sandbox number before OTP works.</small>
+                        </div>
+                        <p class="text-muted mb-0">
+                            Used for WhatsApp OTP on login/register/profile. For production, use an approved Twilio WhatsApp Business sender so OTP works on any number without sandbox join.
+                        </p>
                     </div>
                 </div>
 

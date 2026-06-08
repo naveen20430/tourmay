@@ -1,4 +1,64 @@
-﻿<style>
+<?php
+require_once 'config/config.php';
+require_once 'includes/cab_options.php';
+
+// Get tour slug
+$slug = $_GET['slug'] ?? '';
+
+if (!$slug) {
+    header('Location: tours.php');
+    exit;
+}
+
+// Get tour details
+$tour = $db->fetch("
+    SELECT t.*, d.name as destination_name, d.country, d.description as destination_description
+    FROM tours t 
+    LEFT JOIN destinations d ON t.destination_id = d.id
+    WHERE t.slug = ? AND t.status = 'active'
+", [$slug]);
+
+if (!$tour) {
+    header('Location: tours.php');
+    exit;
+}
+
+// Parse JSON fields
+$inclusions = json_decode($tour['inclusions'], true) ?: [];
+$exclusions = json_decode($tour['exclusions'], true) ?: [];
+$itinerary = json_decode($tour['itinerary'], true) ?: [];
+
+// Get related tours
+$related_tours = $db->fetchAll("
+    SELECT t.*, d.name as destination_name
+    FROM tours t 
+    LEFT JOIN destinations d ON t.destination_id = d.id
+    WHERE t.destination_id = ? AND t.id != ? AND t.status = 'active'
+    LIMIT 3
+", [$tour['destination_id'], $tour['id']]);
+
+// Initialize cab options with error handling
+$availableCabs = [];
+$cab_functionality_enabled = false;
+
+try {
+    if (file_exists('includes/cab_options.php')) {
+        // Test if cab_types table exists
+        $db->fetch("SELECT COUNT(*) as count FROM cab_types LIMIT 1");
+        $cabOptions = new CabOptions($db);
+        $availableCabs = $cabOptions->getCabOptionsForDropdown();
+        $cab_functionality_enabled = true;
+    }
+} catch (Exception $e) {
+    // Cab functionality not available, continue without it
+    $availableCabs = [];
+    $cab_functionality_enabled = false;
+}
+
+// Set page variables
+$page_title = htmlspecialchars($tour['title']) . ' - ' . getSetting('site_name');
+$current_page = 'tours';
+$extra_css = '<style>
 
 /* Enhanced Price Box Design */
 .price-box {
@@ -97,67 +157,228 @@
     align-items: center;
     font-weight: 500;
     opacity: 0.95;
+    text-transform: capitalize;
 }
 
 .price-box .tour-info-item .value {
     font-weight: 700;
     font-size: 1.05rem;
+    text-transform: capitalize;
 }
 
 /* Form Section */
 .price-box .booking-form {
-    padding: 0 30px 30px 30px;
+    padding: 28px 30px 30px 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.price-box .form-label {
-    color: white;
-    font-weight: 600;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
+.price-box .booking-form form {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    width: 100%;
 }
 
-.price-box .form-label i {
-    color: #ffd700;
+.price-box .booking-form .form-control,
+.price-box .booking-form .form-select,
+.price-box .booking-form .date-input-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* CUSTOM LABEL FOR PRICE BOX (NON-FLOATING) */
+.price-box .booking-form-label {
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 700 !important;
+    margin-bottom: 12px !important;
+    margin-top: 0 !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    opacity: 1;
+    display: block !important;
+    line-height: 1.5 !important;
+    width: 100%;
+    font-family: inherit;
+    position: static !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    padding: 0 !important;
+}
+
+.price-box .booking-form-label i {
+    color: #ffd700 !important;
+    font-size: 1rem !important;
+    margin-right: 8px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.price-box .booking-form .mb-3 {
+    margin-bottom: 24px !important;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.price-box .booking-form .mb-3:last-child {
+    margin-bottom: 0 !important;
 }
 
 .price-box .form-control,
 .price-box .form-select {
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    padding: 12px 15px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-weight: 500;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 14px 16px !important;
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    font-family: inherit !important;
     transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    width: 100% !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    line-height: 1.5 !important;
+    cursor: pointer;
+    display: block;
+    position: relative;
+    vertical-align: middle;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.price-box .form-select {
+    color: #1f2937 !important;
+    background-color: #ffffff !important;
+    height: auto;
+    min-height: 48px;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    font-family: inherit !important;
+}
+
+.price-box .form-select:not(:focus) {
+    color: #1f2937;
+}
+
+.price-box .form-select option {
+    color: #1f2937 !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    font-family: inherit !important;
+    padding: 10px !important;
+    background: white !important;
+    text-transform: none !important;
+}
+
+.price-box .form-select option:checked {
+    color: #1f2937 !important;
+    font-weight: 500 !important;
+    background: #f8f9fa;
+}
+
+.price-box .form-control:hover,
+.price-box .form-select:hover {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
 }
 
 .price-box .form-control::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(31, 41, 55, 0.5);
+    text-transform: none !important;
 }
 
 .price-box .form-control:focus,
 .price-box .form-select:focus {
-    border-color: #ffd700;
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+    border: none;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
     outline: none;
-    color: white;
+    color: #111827;
+    transform: translateY(-1px);
 }
 
-.price-box .form-select option {
-    background: #764ba2;
-    color: white;
+.price-box .form-select {
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgdmlld0JveD0iMCAwIDEyIDEyIj48cGF0aCBmaWxsPSIjMzMzIiBkPSJNNiA5TDEgNGgxMHoiLz48L3N2Zz4=");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+    line-height: 1.5;
+    vertical-align: middle;
+    text-align: left;
+    text-align-last: left;
+}
+
+.price-box .form-select::-ms-expand {
+    display: none;
+}
+
+/* Date Input with Calendar Icon */
+.price-box .date-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.price-box .date-input-wrapper .date-icon {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #667eea;
+    pointer-events: none;
+    font-size: 1.1rem;
+    z-index: 1;
+    line-height: 1;
+}
+
+.price-box .form-control[type="date"] {
+    padding-right: 45px;
+    cursor: pointer;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.price-box .form-control[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* Ensure select dropdown arrow is visible */
+.price-box .form-select {
+    cursor: pointer;
+}
+
+.price-box .form-select:hover {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
 .price-box .form-text {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8rem;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+    text-transform: none !important;
+}
+
+.price-box .form-text i {
+    color: rgba(255, 255, 255, 0.7);
     font-size: 0.75rem;
-    margin-top: 5px;
-    display: block;
 }
 
 /* Book Button */
@@ -165,19 +386,27 @@
     background: linear-gradient(135deg, #1bbc9b 0%, #17a689 100%);
     color: white;
     border: none;
-    border-radius: 15px;
-    padding: 15px 30px;
+    border-radius: 12px;
+    padding: 16px 30px;
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     width: 100%;
     transition: all 0.3s ease;
-    box-shadow: 0 10px 30px rgba(27, 188, 155, 0.4);
+    box-shadow: 0 8px 25px rgba(27, 188, 155, 0.4);
     position: relative;
     overflow: hidden;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
 }
 
 .price-box .btn-book::before {
-    content: '';
+    content: \'\';
     position: absolute;
     top: 0;
     left: -100%;
@@ -207,69 +436,101 @@
 /* Security Badge */
 .price-box .security-badge {
     text-align: center;
-    padding: 15px;
+    padding: 12px 15px;
     background: rgba(255, 255, 255, 0.05);
-    margin: 20px 30px 0 30px;
+    margin: 20px 0 0 0;
     border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.price-box .security-badge small {
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: none !important;
 }
 
 .price-box .security-badge i {
     color: #ffd700;
-    margin-right: 8px;
+    font-size: 0.9rem;
 }
 
 /* Divider */
 .price-box .divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    margin: 25px 30px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    margin: 0;
+    border: none;
 }
 
 /* Contact Section */
 .price-box .contact-section {
-    padding: 0 30px 30px 30px;
+    padding: 25px 30px 30px 30px;
+    background: rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 0;
 }
 
 .price-box .contact-section h6 {
     font-weight: 700;
-    margin-bottom: 20px;
-    font-size: 1.1rem;
+    margin-bottom: 18px;
+    font-size: 1.05rem;
     display: flex;
     align-items: center;
     gap: 10px;
+    color: rgba(255, 255, 255, 0.95);
+    text-transform: none !important;
 }
 
 .price-box .contact-section h6 i {
     color: #ffd700;
+    font-size: 1.1rem;
 }
 
 .price-box .contact-item {
     display: flex;
     align-items: center;
-    padding: 12px 15px;
-    margin-bottom: 10px;
-    background: rgba(255, 255, 255, 0.1);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 12px;
     transition: all 0.3s ease;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.price-box .contact-item:last-child {
+    margin-bottom: 0;
 }
 
 .price-box .contact-item:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.18);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .price-box .contact-item i {
     color: #ffd700;
     margin-right: 12px;
     font-size: 1.1rem;
-    width: 20px;
+    width: 22px;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .price-box .contact-item a {
-    color: white;
+    color: rgba(255, 255, 255, 0.95);
     text-decoration: none;
     font-weight: 500;
+    font-size: 0.95rem;
+    flex: 1;
+    text-transform: none !important;
 }
 
 /* Responsive Design */
@@ -280,7 +541,68 @@
         margin-top: 40px;
     }
 }
+@media (max-width: 768px) {
+    .price-box .booking-form {
+        padding: 20px !important;
+    }
+    
+    .price-box .booking-form-label {
+        margin-bottom: 8px !important;
+        font-size: 0.8rem !important;
+        position: relative !important;
+        top: 0 !important;
+        left: 0 !important;
+        transform: none !important;
+        padding: 0 !important;
+    }
+    
+    .price-box .booking-form .mb-3 {
+        margin-bottom: 20px !important;
+    }
+    
+    .price-box .form-control,
+    .price-box .form-select {
+        padding: 12px 14px !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* Ensure date input icon stays properly positioned */
+    .price-box .date-input-wrapper {
+        position: relative;
+    }
+    
+    .price-box .date-input-wrapper .date-icon {
+        right: 14px !important;
+        font-size: 1rem !important;
+    }
+    
+    .price-box .form-control[type="date"] {
+        padding-right: 40px !important;
+    }
+}
 
+@media (max-width: 480px) {
+    .price-box .booking-form {
+        padding: 16px !important;
+    }
+    
+    .price-box .booking-form-label {
+        margin-bottom: 6px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .price-box .form-control,
+    .price-box .form-select {
+        padding: 10px 12px !important;
+        font-size: 0.85rem !important;
+        border-radius: 10px !important;
+    }
+    
+    .price-box .btn-book {
+        padding: 14px 20px !important;
+        font-size: 0.95rem !important;
+    }
+}
 @media (max-width: 768px) {
     .price-box .price-amount {
         font-size: 2.5rem;
@@ -314,293 +636,348 @@
 .price-box .tour-info-item:nth-child(2) { animation-delay: 0.2s; }
 .price-box .tour-info-item:nth-child(3) { animation-delay: 0.3s; }
 .price-box .tour-info-item:nth-child(4) { animation-delay: 0.4s; }
-    .tour-hero {
-        height: 400px;
-        background-size: cover;
-        background-position: center;
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
-    .tour-hero::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.4);
-    }
-    .tour-hero-content {
-        position: relative;
-        z-index: 2;
-        color: white;
-    }
-    .price-box {
-        background: #1bbc9b;
-        color: white;
-        padding: 30px;
-        border-radius: 0px;
-        position: sticky;
-        top: 100px;
-    }
-    .itinerary-day {
-        border-left: 3px solid #667eea;
-        padding-left: 20px;
-        margin-bottom: 30px;
-        position: relative;
-    }
-    .itinerary-day::before {
-        content: "";
-        position: absolute;
-        left: -8px;
-        top: 0;
-        width: 13px;
-        height: 13px;
-        background: #667eea;
-        border-radius: 50%;
-    }
-    .feature-list {
-        list-style: none;
-        padding: 0;
-    }
-    .feature-list li {
-        padding: 8px 0;
-        border-bottom: 1px solid #eee;
-    }
-    .feature-list li:last-child {
-        border-bottom: none;
-    }
-    .feature-list li i {
-        color: #28a745;
-        margin-right: 10px;
-    }
-</style>
-<?php
-require_once 'config/config.php';
-require_once 'includes/cab_options.php';
 
-// Get tour slug
-$slug = $_GET['slug'] ?? '';
-
-if (!$slug) {
-    header('Location: tours.php');
-    exit;
+/* Itinerary Styles */
+.itinerary-day {
+    border-left: 3px solid #667eea;
+    padding-left: 20px;
+    margin-bottom: 30px;
+    position: relative;
+    background: #f8f9fa;
+    padding: 20px 20px 20px 25px;
+    border-radius: 0 10px 10px 0;
+    transition: all 0.3s ease;
 }
 
-// Get tour details
-$tour = $db->fetch("
-    SELECT t.*, d.name as destination_name, d.country, d.description as destination_description
-    FROM tours t 
-    LEFT JOIN destinations d ON t.destination_id = d.id
-    WHERE t.slug = ? AND t.status = 'active'
-", [$slug]);
-
-if (!$tour) {
-    header('Location: tours.php');
-    exit;
+.itinerary-day:hover {
+    background: white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    transform: translateX(5px);
 }
 
-// Parse JSON fields
-$inclusions = json_decode($tour['inclusions'], true) ?: [];
-$exclusions = json_decode($tour['exclusions'], true) ?: [];
-$itinerary = json_decode($tour['itinerary'], true) ?: [];
+.itinerary-day::before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 25px;
+    width: 13px;
+    height: 13px;
+    background: #667eea;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+}
 
-// Get related tours
-$related_tours = $db->fetchAll("
-    SELECT t.*, d.name as destination_name
-    FROM tours t 
-    LEFT JOIN destinations d ON t.destination_id = d.id
-    WHERE t.destination_id = ? AND t.id != ? AND t.status = 'active'
-    LIMIT 3
-", [$tour['destination_id'], $tour['id']]);
+/* Feature List Updates */
+.feature-list {
+    list-style: none;
+    padding: 0;
+}
+/* ... rest of previous feature-list styles ... */
+.feature-list li {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    color: #495057; /* Ensure dark text for list items */
+}
 
-// Initialize cab options with error handling
-$availableCabs = [];
-$cab_functionality_enabled = false;
+.feature-list li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
 
-try {
-    if (file_exists('includes/cab_options.php')) {
-        // Test if cab_types table exists
-        $db->fetch("SELECT COUNT(*) as count FROM cab_types LIMIT 1");
-        $cabOptions = new CabOptions($db);
-        $availableCabs = $cabOptions->getCabOptionsForDropdown();
-        $cab_functionality_enabled = true;
+.feature-list li i {
+    color: #28a745;
+    margin-right: 12px;
+    background: rgba(40, 167, 69, 0.1);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.feature-list li i.fa-times {
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .tour-details-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
     }
-} catch (Exception $e) {
-    // Cab functionality not available, continue without it
-    $availableCabs = [];
-    $cab_functionality_enabled = false;
+
+    .tour-details-grid > .col-md-8 {
+        flex: 0 0 66.66666667% !important;
+        width: 66.66666667% !important;
+        max-width: 66.66666667% !important;
+    }
+
+    .tour-details-grid > .col-md-4 {
+        flex: 0 0 33.33333333% !important;
+        width: 33.33333333% !important;
+        max-width: 33.33333333% !important;
+    }
+
+    .related-tours-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+    }
+
+    .related-tours-grid > .col-md-4 {
+        flex: 0 0 33.33333333% !important;
+        width: 33.33333333% !important;
+        max-width: 33.33333333% !important;
+    }
 }
 
-// Set page variables
-$page_title = htmlspecialchars($tour['title']) . ' - ' . getSetting('site_name');
-$current_page = 'tours';
-$extra_css = '';
+@media (min-width: 992px) {
+    .tour-details-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+    }
+
+    .tour-details-grid > .col-lg-8 {
+        flex: 0 0 66.66666667% !important;
+        width: 66.66666667% !important;
+        max-width: 66.66666667% !important;
+    }
+
+    .tour-details-grid > .col-lg-4 {
+        flex: 0 0 33.33333333% !important;
+        width: 33.33333333% !important;
+        max-width: 33.33333333% !important;
+    }
+}
+
+</style>';
+
+$extra_css .= '<style>
+.tour-top-tabs{position:sticky;top:84px;z-index:50;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.08);overflow:hidden;margin:0 0 22px 0}
+.tour-top-tabs__inner{display:flex;align-items:stretch}
+.tour-top-tabs__link{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 12px;color:#334155;font-weight:700;text-decoration:none;border-right:1px solid rgba(148,163,184,.35);background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);transition:all .2s ease}
+.tour-top-tabs__link:last-child{border-right:0}
+.tour-top-tabs__link i{color:#0f172a;opacity:.8}
+.tour-top-tabs__link:hover{background:#f8fafc}
+.tour-top-tabs__link.is-active{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
+.tour-top-tabs__link.is-active i{color:#fff;opacity:1}
+.tour-top-tabs__link--cta{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border-right:0}
+.tour-top-tabs__link--cta i{color:#fff;opacity:1}
+.tour-top-tabs__link--cta:hover{background:linear-gradient(135deg,#5a67d8 0%,#6b46c1 100%);color:#fff}
+button.tour-top-tabs__link{border:0}
+@media (max-width: 768px){
+  .tour-top-tabs{top:74px}
+  .tour-top-tabs__inner{overflow:auto}
+  .tour-top-tabs__link{min-width:140px;flex:0 0 auto}
+}
+</style>';
+
+$extra_css .= '<style>
+.tour-hero{position:relative}
+.tour-hero--slider{min-height:320px}
+.tour-hero--slider .container{position:relative;z-index:3}
+.tour-hero__bg{position:absolute;inset:0;z-index:1;overflow:hidden}
+.tour-hero__bg-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transform:scale(1.03);transition:opacity 900ms ease, transform 6s ease}
+.tour-hero__bg-slide.is-active{opacity:1;transform:scale(1.0)}
+.tour-hero__overlay{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.65) 100%)}
+.tour-hero--slider .hero-section__inner{position:relative;z-index:3}
+.tour-hero--slider .hero-section__inner h1{margin:0 0 12px 0;text-shadow:0 10px 30px rgba(0,0,0,.45)}
+.tour-hero--slider .travhub-breadcrumb{margin:0}
+@media (max-width: 768px){
+  .tour-hero--slider{min-height:260px}
+}
+</style>';
+
+$extra_js = '<script>
+(function(){
+  function getHeaderOffset(){
+    var stickyHeader = document.querySelector(\'.main-header.sticky-header\');
+    var headerH = stickyHeader ? stickyHeader.getBoundingClientRect().height : 0;
+    return Math.max(90, Math.round(headerH) + 20);
+  }
+
+  function setActiveTab(tabs, id){
+    tabs.forEach(function(a){
+      var target = a.getAttribute(\'href\') || \'\';
+      var isActive = target === \'#\' + id;
+      if (isActive) a.classList.add(\'is-active\');
+      else a.classList.remove(\'is-active\');
+    });
+  }
+
+  function init(){
+    var tabRoot = document.getElementById(\'tourTopTabs\');
+    if (!tabRoot) return;
+    var tabs = Array.prototype.slice.call(tabRoot.querySelectorAll(\'.tour-top-tabs__link\'));
+    if (!tabs.length) return;
+
+    tabs.forEach(function(a){
+      a.addEventListener(\'click\', function(e){
+        var href = a.getAttribute(\'href\') || \'\';
+        if (!href || href.charAt(0) !== \'#\') return;
+        var target = document.querySelector(href);
+        if (!target) return;
+        e.preventDefault();
+        var top = target.getBoundingClientRect().top + window.pageYOffset - getHeaderOffset();
+        window.scrollTo({ top: top, behavior: \'smooth\' });
+      });
+    });
+
+    var sectionIds = tabs.map(function(a){
+      var href = a.getAttribute(\'href\') || \'\';
+      return href.charAt(0) === \'#\' ? href.slice(1) : null;
+    }).filter(Boolean);
+
+    var sections = sectionIds.map(function(id){ return document.getElementById(id); }).filter(Boolean);
+    if (!sections.length) return;
+
+    function onScroll(){
+      var y = window.pageYOffset + getHeaderOffset() + 5;
+      var activeId = sectionIds[0];
+      for (var i=0;i<sections.length;i++){
+        var s = sections[i];
+        if (!s) continue;
+        if (s.offsetTop <= y) activeId = s.id;
+      }
+      setActiveTab(tabs, activeId);
+    }
+
+    window.addEventListener(\'scroll\', onScroll, { passive: true });
+    onScroll();
+  }
+
+  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', init);
+  else init();
+})();
+</script>';
+
+$extra_js .= '<script>
+(function(){
+  function initHeroSlider(){
+    var slides = Array.prototype.slice.call(document.querySelectorAll(\'.tour-hero__bg-slide\'));
+    if (!slides.length) return;
+    var idx = 0;
+    slides.forEach(function(s){ s.classList.remove(\'is-active\'); });
+    slides[0].classList.add(\'is-active\');
+    if (slides.length === 1) return;
+    window.setInterval(function(){
+      slides[idx].classList.remove(\'is-active\');
+      idx = (idx + 1) % slides.length;
+      slides[idx].classList.add(\'is-active\');
+    }, 4500);
+  }
+  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', initHeroSlider);
+  else initHeroSlider();
+})();
+</script>';
 
 // Include header
 include 'includes/header.php';
 ?>
 
-    <!-- Tour Hero -->
-    <section class="tour-hero" style="background-image: url('<?php echo $tour['featured_image'] ?: 'assets/images/tours/default-tour.jpg'; ?>')">
-        <div class="container">
-            <div class="tour-hero-content">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="<?php echo navUrl('home'); ?>" class="text-white">Home</a></li>
-                        <li class="breadcrumb-item"><a href="<?php echo navUrl('tours'); ?>" class="text-white">Tours</a></li>
-                        <li class="breadcrumb-item active text-white"><?php echo htmlspecialchars($tour['title']); ?></li>
-                    </ol>
-                </nav>
-                <h1 class="display-4 fw-bold"><?php echo htmlspecialchars($tour['title']); ?></h1>
-                <p class="lead">
-                    <i class="fas fa-map-marker-alt me-2"></i>
-                    <?php echo htmlspecialchars($tour['destination_name'] . ', ' . $tour['country']); ?>
-                </p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Photo Collage Gallery -->
-    <?php 
-    $gallery_images = json_decode($tour['gallery'], true) ?: [];
-    if (!empty($gallery_images) || !empty($tour['featured_image'])): 
-    ?>
-    <section class="photo-collage-section" style="padding: 80px 0; background: #ffffff;">
-        <div class="container">
-            <div class="text-center mb-5">
-                <span class="badge" style="background: #1bbc9b; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; margin-bottom: 15px;">
-                    📸 Photo Gallery
-                </span>
-                <h2 class="mb-3" style="font-size: 2.5rem; font-weight: 700; color: #2c3e50;">Explore <?php echo htmlspecialchars($tour['title']); ?></h2>
-                <p style="color: #6c757d; font-size: 1.1rem; max-width: 600px; margin: 0 auto;">Experience the beauty and adventure through our carefully captured moments</p>
-            </div>
-            
-            <div class="photo-collage-container" style="position: relative; max-width: 1200px; margin: 0 auto;">
-                <div class="photo-collage-grid" id="photoCollage" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; min-height: 500px;">
-                    <?php 
-                    // Combine featured image with gallery images
-                    $all_images = [];
-                    if (!empty($tour['featured_image'])) {
-                        $all_images[] = $tour['featured_image'];
-                    }
-                    $all_images = array_merge($all_images, $gallery_images);
-                    
-                    $image_count = count($all_images);
-                    
-                    // Define the layout pattern similar to your reference image
-                    if ($image_count > 0): 
-                        // First image - large hero image (takes 2 columns, 2 rows)
-                        $first_image = $all_images[0];
-                    ?>
-                    <div class="collage-item hero-item" style="grid-column: 1 / 3; grid-row: 1 / 3; position: relative; overflow: hidden; border-radius: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.2); min-height: 400px;" 
-                         onclick="openPhotoModal('<?php echo BASE_URL . $first_image; ?>', '<?php echo htmlspecialchars($tour['title']); ?> - Featured Image')">
-                        <img src="<?php echo BASE_URL . $first_image; ?>" 
-                             alt="<?php echo htmlspecialchars($tour['title']); ?> - Featured Image" 
-                             style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" 
-                             loading="lazy">
-                        <div class="collage-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,0,0,0.3), transparent); opacity: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-expand-alt" style="color: white; font-size: 32px; transform: scale(0.8); transition: transform 0.3s ease;"></i>
-                        </div>
-                        <div class="image-overlay-content" style="position: absolute; bottom: 20px; left: 20px; color: white; z-index: 2;">
-                            <div class="featured-badge" style="background: rgba(255, 255, 255, 0.9); color: #333; padding: 8px 16px; border-radius: 25px; font-size: 0.85rem; font-weight: 600; backdrop-filter: blur(10px); display: inline-block; margin-bottom: 10px;">
-                                ⭐ Featured
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <?php 
-                    // Right column - smaller images
-                    $remaining_images = array_slice($all_images, 1, 3); // Take next 3 images
-                    $positions = [
-                        ['grid-column: 3 / 5; grid-row: 1; min-height: 190px;'],
-                        ['grid-column: 3 / 4; grid-row: 2; min-height: 190px;'],
-                        ['grid-column: 4 / 5; grid-row: 2; min-height: 190px;']
-                    ];
-                    
-                    foreach ($remaining_images as $index => $image): 
-                        if ($index >= 3) break;
-                        $style = $positions[$index];
-                        $image_labels = ['Destinations', 'Activity & Sightseeing', 'Stays'];
-                        $label = isset($image_labels[$index]) ? $image_labels[$index] : 'Gallery';
-                    ?>
-                    <div class="collage-item small-item" style="<?php echo $style; ?> position: relative; overflow: hidden; border-radius: 15px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 25px rgba(0,0,0,0.15);" 
-                         onclick="openPhotoModal('<?php echo BASE_URL . $image; ?>', '<?php echo htmlspecialchars($tour['title']); ?> - <?php echo $label; ?>')">
-                        <img src="<?php echo BASE_URL . $image; ?>" 
-                             alt="<?php echo htmlspecialchars($tour['title']); ?> - <?php echo $label; ?>" 
-                             style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" 
-                             loading="lazy">
-                        <div class="collage-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,0,0,0.4), transparent); opacity: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-search-plus" style="color: white; font-size: 20px; transform: scale(0.8); transition: transform 0.3s ease;"></i>
-                        </div>
-                        <div class="image-label" style="position: absolute; bottom: 15px; left: 15px; color: white; font-weight: 600; font-size: 0.9rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 2;">
-                            <?php echo $label; ?>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                    
-                    <?php if ($image_count > 4): ?>
-                    <!-- View All Images Button -->
-                    <div class="view-all-btn" style="position: absolute; bottom: 20px; right: 20px; background: rgba(255, 255, 255, 0.95); color: #333; padding: 12px 20px; border-radius: 25px; font-size: 0.9rem; font-weight: 600; backdrop-filter: blur(10px); cursor: pointer; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid transparent; z-index: 5;" 
-                         onclick="openAllImagesModal()" 
-                         onmouseover="this.style.background='#667eea'; this.style.color='white'; this.style.transform='translateY(-2px)'" 
-                         onmouseout="this.style.background='rgba(255, 255, 255, 0.95)'; this.style.color='#333'; this.style.transform='translateY(0)'">
-                        <i class="fas fa-images" style="margin-right: 8px;"></i> View All <?php echo $image_count; ?> Images
-                    </div>
-                    <?php endif; ?>
-                    
-                    <?php else: ?>
-                    <!-- Single image fallback -->
-                    <div class="collage-item single-item" style="grid-column: 1 / 5; grid-row: 1; position: relative; overflow: hidden; border-radius: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.2); min-height: 400px;" 
-                         onclick="openPhotoModal('<?php echo BASE_URL . $tour['featured_image']; ?>', '<?php echo htmlspecialchars($tour['title']); ?>')">
-                        <img src="<?php echo BASE_URL . $tour['featured_image']; ?>" 
-                             alt="<?php echo htmlspecialchars($tour['title']); ?>" 
-                             style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" 
-                             loading="lazy">
-                        <div class="collage-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,0,0,0.3), transparent); opacity: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-expand-alt" style="color: white; font-size: 32px; transform: scale(0.8); transition: transform 0.3s ease;"></i>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-            
-            <?php if (empty($all_images)): ?>
-            <div class="no-gallery" style="text-align: center; padding: 80px 20px; background: #f8f9fa; border-radius: 20px;">
-                <i class="fas fa-camera" style="font-size: 48px; color: #bdc3c7; margin-bottom: 20px;"></i>
-                <h4 style="color: #6c757d; margin-bottom: 10px;">Gallery Coming Soon</h4>
-                <p style="color: #95a5a6; margin: 0;">We're preparing beautiful photos of this amazing destination</p>
-            </div>
-            <?php endif; ?>
-        </div>
-    </section>
-
-    <!-- Photo Modal -->
-    <div id="photoModal" class="photo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 9999; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
-        <div class="modal-content" style="position: relative; max-width: 90%; max-height: 90%; display: flex; align-items: center; justify-content: center;">
-            <img id="modalImage" src="" alt="" style="max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
-            <div class="modal-caption" style="position: absolute; bottom: -60px; left: 0; right: 0; text-align: center; color: white; font-size: 16px; font-weight: 500;" id="modalCaption"></div>
-            <button class="modal-close" onclick="closePhotoModal()" style="position: absolute; top: -50px; right: 0; background: none; border: none; color: white; font-size: 32px; cursor: pointer; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">
-                <i class="fas fa-times"></i>
-            </button>
-            <button class="modal-nav modal-prev" onclick="navigatePhoto(-1)" style="position: absolute; left: -60px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1); border: none; color: white; font-size: 24px; cursor: pointer; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.3s ease; backdrop-filter: blur(10px);" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button class="modal-nav modal-next" onclick="navigatePhoto(1)" style="position: absolute; right: -60px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1); border: none; color: white; font-size: 24px; cursor: pointer; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.3s ease; backdrop-filter: blur(10px);" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                <i class="fas fa-chevron-right"></i>
-            </button>
+<!-- Tour Hero Section -->
+<?php
+$hero_gallery_images = json_decode($tour['gallery'], true) ?: [];
+$hero_images = [];
+if (!empty($tour['featured_image'])) {
+    $hero_images[] = $tour['featured_image'];
+}
+foreach ($hero_gallery_images as $img) {
+    if ($img) {
+        $hero_images[] = $img;
+    }
+}
+$hero_images = array_values(array_unique(array_filter($hero_images)));
+if (empty($hero_images)) {
+    $hero_images = ['assets/images/tours/default-tour.jpg'];
+}
+$hero_images = array_slice($hero_images, 0, 6);
+?>
+<section class="tour-hero tour-hero--slider">
+    <div class="tour-hero__bg" aria-hidden="true">
+        <?php foreach ($hero_images as $img): ?>
+            <div class="tour-hero__bg-slide" style="background-image:url('<?php echo BASE_URL . htmlspecialchars($img); ?>')"></div>
+        <?php endforeach; ?>
+    </div>
+    <div class="tour-hero__overlay" aria-hidden="true"></div>
+    <div class="container">
+        <div class="hero-section__inner">
+            <h1 class="text-white"><?php echo htmlspecialchars($tour['title']); ?></h1>
+            <ul class="travhub-breadcrumb list-unstyled">
+                <li><a href="<?php echo navUrl('home'); ?>">Home</a></li>
+                <li><a href="<?php echo navUrl('tours'); ?>">Tours</a></li>
+                <li><?php echo htmlspecialchars($tour['title']); ?></li>
+            </ul>
         </div>
     </div>
-    <?php endif; ?>
+</section>
 
     <!-- Tour Details -->
     <section class="section-space">
         <div class="container">
-            <div class="row">
-                <div class="col-lg-8">
+            <div class="row tour-details-grid">
+                <div class="col-lg-12 col-md-12">
                     <!-- Tour Overview -->
                     <div class="tour-content">
+                        <div class="tour-top-tabs" id="tourTopTabs">
+                            <div class="tour-top-tabs__inner">
+                                <a class="tour-top-tabs__link is-active" href="#tour-overview">
+                                    <i class="fas fa-align-left"></i>
+                                    <span>Description</span>
+                                </a>
+                                <?php if (!empty($tour['destination_description'])): ?>
+                                    <a class="tour-top-tabs__link" href="#tour-useful-info">
+                                        <i class="fas fa-info-circle"></i>
+                                        <span>Useful Info</span>
+                                    </a>
+                                <?php endif; ?>
+                                <a class="tour-top-tabs__link" href="#tour-inclusions">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Inclusion</span>
+                                </a>
+                                <?php if ($itinerary): ?>
+                                    <a class="tour-top-tabs__link" href="#tour-itinerary">
+                                        <i class="fas fa-route"></i>
+                                        <span>Itinerary</span>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if ($related_tours): ?>
+                                    <a class="tour-top-tabs__link" href="#tour-related">
+                                        <i class="fas fa-th-large"></i>
+                                        <span>More</span>
+                                    </a>
+                                <?php endif; ?>
+                                <a class="tour-top-tabs__link tour-top-tabs__link--cta" href="<?php echo bookingUrl((int)$tour['id']); ?>">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    <span>Book Now</span>
+                                </a>
+                                <?php
+                                $defaultPeople = max((int)$tour['min_people'], min(2, (int)$tour['max_people']));
+                                $tomorrow = date('Y-m-d', strtotime('+1 day'));
+                                ?>
+                                <form method="POST" action="<?php echo navUrl('cart'); ?>" style="margin:0;flex:1;display:flex;">
+                                    <input type="hidden" name="action" value="add">
+                                    <input type="hidden" name="tour_id" value="<?php echo (int)$tour['id']; ?>">
+                                    <input type="hidden" name="tour_date" value="<?php echo htmlspecialchars($tomorrow); ?>">
+                                    <input type="hidden" name="people" value="<?php echo (int)$defaultPeople; ?>">
+                                    <input type="hidden" name="return_url" value="<?php echo htmlspecialchars((string)($_SERVER['REQUEST_URI'] ?? '')); ?>">
+                                    <button type="submit" class="tour-top-tabs__link tour-top-tabs__link--cta tour-top-tabs__btn" style="flex:1;">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        <span>Add to Cart</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
                         <div class="mb-4">
                             <div class="d-flex flex-wrap gap-3 mb-3">
                                 <span class="badge bg-primary px-3 py-2">
@@ -622,14 +999,24 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <div class="mb-5">
+                        <div class="mb-5" id="tour-overview">
                             <h3 class="mb-3">Tour Overview</h3>
                             <p class="lead text-muted"><?php echo htmlspecialchars($tour['short_description']); ?></p>
                             <p><?php echo nl2br(htmlspecialchars($tour['description'])); ?></p>
                         </div>
 
                         <!-- Inclusions & Exclusions -->
-                        <div class="row mb-5">
+                        <?php if (!empty($tour['destination_description'])): ?>
+                            <div class="mb-5" id="tour-useful-info">
+                                <h3 class="mb-3">Useful Info</h3>
+                                <p class="text-muted" style="margin-bottom:10px;">
+                                    <?php echo htmlspecialchars($tour['destination_name']); ?><?php echo !empty($tour['country']) ? ', ' . htmlspecialchars($tour['country']) : ''; ?>
+                                </p>
+                                <p><?php echo nl2br(htmlspecialchars((string)$tour['destination_description'])); ?></p>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="row mb-5" id="tour-inclusions">
                             <div class="col-md-6">
                                 <h4 class="mb-3 text-success">What's Included</h4>
                                 <ul class="feature-list">
@@ -650,7 +1037,7 @@ include 'includes/header.php';
 
                         <!-- Itinerary -->
                         <?php if ($itinerary): ?>
-                            <div class="mb-5">
+                            <div class="mb-5" id="tour-itinerary">
                                 <h3 class="mb-4">Tour Itinerary</h3>
                                 <?php foreach ($itinerary as $day): ?>
                                     <div class="itinerary-day">
@@ -661,11 +1048,143 @@ include 'includes/header.php';
                             </div>
                         <?php endif; ?>
 
+                        <!-- Photo Collage Gallery -->
+                        <?php 
+                        $gallery_images = json_decode($tour['gallery'], true) ?: [];
+                        if (!empty($gallery_images) || !empty($tour['featured_image'])): 
+                        ?>
+                        <section class="photo-collage-section" style="padding: 80px 0; background: #ffffff;">
+                            <div class="container">
+                                <div class="text-center mb-5">
+                                    <span class="badge" style="background: #1bbc9b; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; margin-bottom: 15px;">
+                                        📸 Photo Gallery
+                                    </span>
+                                    <h2 class="mb-3" style="font-size: 2.5rem; font-weight: 700; color: #2c3e50;">Explore <?php echo htmlspecialchars($tour['title']); ?></h2>
+                                    <p style="color: #6c757d; font-size: 1.1rem; max-width: 600px; margin: 0 auto;">Experience the beauty and adventure through our carefully captured moments</p>
+                                </div>
+                                
+                                <div class="photo-collage-container" style="position: relative; max-width: 1200px; margin: 0 auto;">
+                                    <div class="photo-collage-grid" id="photoCollage" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; min-height: 500px;">
+                                        <?php 
+                                        // Combine featured image with gallery images
+                                        $all_images = [];
+                                        if (!empty($tour['featured_image'])) {
+                                            $all_images[] = $tour['featured_image'];
+                                        }
+                                        $all_images = array_merge($all_images, $gallery_images);
+                                        
+                                        $image_count = count($all_images);
+                                        
+                                        // Define the layout pattern similar to your reference image
+                                        if ($image_count > 0): 
+                                            // First image - large hero image (takes 2 columns, 2 rows)
+                                            $first_image = $all_images[0];
+                                        ?>
+                                        <div class="collage-item hero-item" style="grid-column: 1 / 3; grid-row: 1 / 3; position: relative; overflow: hidden; border-radius: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.2); min-height: 400px;" 
+                                             onclick="openPhotoModal('<?php echo BASE_URL . $first_image; ?>', '<?php echo htmlspecialchars($tour['title']); ?> - Featured Image')">
+                                            <img src="<?php echo BASE_URL . $first_image; ?>" 
+                                                 alt="<?php echo htmlspecialchars($tour['title']); ?> - Featured Image" 
+                                                 style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" 
+                                                 loading="lazy">
+                                            <div class="collage-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,0,0,0.3), transparent); opacity: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-expand-alt" style="color: white; font-size: 32px; transform: scale(0.8); transition: transform 0.3s ease;"></i>
+                                            </div>
+                                            <div class="image-overlay-content" style="position: absolute; bottom: 20px; left: 20px; color: white; z-index: 2;">
+                                                <div class="featured-badge" style="background: rgba(255, 255, 255, 0.9); color: #333; padding: 8px 16px; border-radius: 25px; font-size: 0.85rem; font-weight: 600; backdrop-filter: blur(10px); display: inline-block; margin-bottom: 10px;">
+                                                    ⭐ Featured
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <?php 
+                                        // Right column - smaller images
+                                        $remaining_images = array_slice($all_images, 1, 3); // Take next 3 images
+                                        $positions = [
+                                            ['grid-column: 3 / 5; grid-row: 1; min-height: 190px;'],
+                                            ['grid-column: 3 / 4; grid-row: 2; min-height: 190px;'],
+                                            ['grid-column: 4 / 5; grid-row: 2; min-height: 190px;']
+                                        ];
+                                        
+                                        foreach ($remaining_images as $index => $image): 
+                                            if ($index >= 3) break;
+                                            $style = $positions[$index];
+                                            $image_labels = ['Destinations', 'Activity & Sightseeing', 'Stays'];
+                                            $label = isset($image_labels[$index]) ? $image_labels[$index] : 'Gallery';
+                                        ?>
+                                        <div class="collage-item small-item" style="<?php echo $style; ?> position: relative; overflow: hidden; border-radius: 15px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 25px rgba(0,0,0,0.15);" 
+                                             onclick="openPhotoModal('<?php echo BASE_URL . $image; ?>', '<?php echo htmlspecialchars($tour['title']); ?> - <?php echo $label; ?>')">
+                                            <img src="<?php echo BASE_URL . $image; ?>" 
+                                                 alt="<?php echo htmlspecialchars($tour['title']); ?> - <?php echo $label; ?>" 
+                                                 style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" 
+                                                 loading="lazy">
+                                            <div class="collage-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,0,0,0.4), transparent); opacity: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-search-plus" style="color: white; font-size: 20px; transform: scale(0.8); transition: transform 0.3s ease;"></i>
+                                            </div>
+                                            <div class="image-label" style="position: absolute; bottom: 15px; left: 15px; color: white; font-weight: 600; font-size: 0.9rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 2;">
+                                                <?php echo $label; ?>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                        
+                                        <?php if ($image_count > 4): ?>
+                                        <!-- View All Images Button -->
+                                        <div class="view-all-btn" style="position: absolute; bottom: 20px; right: 20px; background: rgba(255, 255, 255, 0.95); color: #333; padding: 12px 20px; border-radius: 25px; font-size: 0.9rem; font-weight: 600; backdrop-filter: blur(10px); cursor: pointer; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid transparent; z-index: 5;" 
+                                             onclick="openAllImagesModal()" 
+                                             onmouseover="this.style.background='#667eea'; this.style.color='white'; this.style.transform='translateY(-2px)'" 
+                                             onmouseout="this.style.background='rgba(255, 255, 255, 0.95)'; this.style.color='#333'; this.style.transform='translateY(0)'">
+                                            <i class="fas fa-images" style="margin-right: 8px;"></i> View All <?php echo $image_count; ?> Images
+                                        </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php else: ?>
+                                        <!-- Single image fallback -->
+                                        <div class="collage-item single-item" style="grid-column: 1 / 5; grid-row: 1; position: relative; overflow: hidden; border-radius: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.2); min-height: 400px;" 
+                                             onclick="openPhotoModal('<?php echo BASE_URL . $tour['featured_image']; ?>', '<?php echo htmlspecialchars($tour['title']); ?>')">
+                                            <img src="<?php echo BASE_URL . $tour['featured_image']; ?>" 
+                                                 alt="<?php echo htmlspecialchars($tour['title']); ?>" 
+                                                 style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" 
+                                                 loading="lazy">
+                                            <div class="collage-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(0,0,0,0.3), transparent); opacity: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-expand-alt" style="color: white; font-size: 32px; transform: scale(0.8); transition: transform 0.3s ease;"></i>
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                
+                                <?php if (empty($all_images)): ?>
+                                <div class="no-gallery" style="text-align: center; padding: 80px 20px; background: #f8f9fa; border-radius: 20px;">
+                                    <i class="fas fa-camera" style="font-size: 48px; color: #bdc3c7; margin-bottom: 20px;"></i>
+                                    <h4 style="color: #6c757d; margin-bottom: 10px;">Gallery Coming Soon</h4>
+                                    <p style="color: #95a5a6; margin: 0;">We're preparing beautiful photos of this amazing destination</p>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </section>
+
+                        <!-- Photo Modal -->
+                        <div id="photoModal" class="photo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 9999; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+                            <div class="modal-content" style="position: relative; max-width: 90%; max-height: 90%; display: flex; align-items: center; justify-content: center;">
+                                <img id="modalImage" src="" alt="" style="max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
+                                <div class="modal-caption" style="position: absolute; bottom: -60px; left: 0; right: 0; text-align: center; color: white; font-size: 16px; font-weight: 500;" id="modalCaption"></div>
+                                <button class="modal-close" onclick="closePhotoModal()" style="position: absolute; top: -50px; right: 0; background: none; border: none; color: white; font-size: 32px; cursor: pointer; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button class="modal-nav modal-prev" onclick="navigatePhoto(-1)" style="position: absolute; left: -60px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1); border: none; color: white; font-size: 24px; cursor: pointer; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.3s ease; backdrop-filter: blur(10px);" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button class="modal-nav modal-next" onclick="navigatePhoto(1)" style="position: absolute; right: -60px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.1); border: none; color: white; font-size: 24px; cursor: pointer; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.3s ease; backdrop-filter: blur(10px);" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
                         <!-- Related Tours -->
                         <?php if ($related_tours): ?>
-                            <div class="mb-5">
+                            <div class="mb-5" id="tour-related">
                                 <h3 class="mb-4">Related Tours</h3>
-                                <div class="row">
+                                <div class="row related-tours-grid">
                                     <?php foreach ($related_tours as $related): ?>
                                         <div class="col-md-4 mb-3">
                                             <div class="card">
@@ -690,136 +1209,6 @@ include 'includes/header.php';
                         <?php endif; ?>
                     </div>
                 </div>
-
-                <!-- Booking Sidebar -->
-               <!-- Booking Sidebar -->
-<div class="col-lg-4">
-    <div class="price-box">
-        <!-- Price Header -->
-        <div class="price-header">
-            <?php if ($tour['discount_price']): ?>
-                <div>
-                    <span class="price-original">₹<?php echo number_format($tour['price'], 0); ?></span>
-                    <div class="price-amount">₹<?php echo number_format($tour['discount_price'], 0); ?></div>
-                </div>
-                <div class="price-discount">
-                    <i class="fas fa-tag"></i> Save ₹<?php echo number_format($tour['price'] - $tour['discount_price'], 0); ?>
-                </div>
-            <?php else: ?>
-                <div class="price-amount">₹<?php echo number_format($tour['price'], 0); ?></div>
-            <?php endif; ?>
-            <div class="price-label">Per Person</div>
-        </div>
-
-        <!-- Tour Info -->
-        <div class="price-body">
-            <div class="tour-info-item">
-                <span class="label">
-                    <i class="fas fa-calendar-alt"></i> Duration
-                </span>
-                <span class="value"><?php echo $tour['duration_days']; ?> Days</span>
-            </div>
-            <div class="tour-info-item">
-                <span class="label">
-                    <i class="fas fa-users"></i> Max People
-                </span>
-                <span class="value"><?php echo $tour['max_people']; ?></span>
-            </div>
-            <div class="tour-info-item">
-                <span class="label">
-                    <i class="fas fa-mountain"></i> Difficulty
-                </span>
-                <span class="value"><?php echo ucfirst($tour['difficulty_level']); ?></span>
-            </div>
-            <div class="tour-info-item">
-                <span class="label">
-                    <i class="fas fa-map-marker-alt"></i> Location
-                </span>
-                <span class="value"><?php echo htmlspecialchars($tour['destination_name']); ?></span>
-            </div>
-        </div>
-
-        <!-- Booking Form -->
-        <div class="booking-form">
-            <form action="<?php echo bookingUrl(); ?>" method="POST" id="quickBookingForm">
-                <input type="hidden" name="tour_id" value="<?php echo $tour['id']; ?>">
-                
-                <div class="mb-3">
-                    <label class="form-label">
-                        <i class="fas fa-calendar-check"></i> Tour Date
-                    </label>
-                    <input type="date" class="form-control" name="tour_date" required 
-                           min="<?php echo date('Y-m-d'); ?>">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">
-                        <i class="fas fa-user-friends"></i> Number of People
-                    </label>
-                    <select class="form-control form-select" name="people" required id="peopleSelect">
-                        <?php for ($i = $tour['min_people']; $i <= $tour['max_people']; $i++): ?>
-                            <option value="<?php echo $i; ?>"><?php echo $i; ?> Person<?php echo $i > 1 ? 's' : ''; ?></option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
-                
-                <?php if ($cab_functionality_enabled && !empty($availableCabs)): ?>
-                <div class="mb-3">
-                    <label class="form-label">
-                        <i class="fas fa-car"></i> Cab Type
-                    </label>
-                    <select class="form-control form-select" name="cab_type" required id="cabSelect">
-                        <option value="">Select cab type...</option>
-                        <?php foreach ($availableCabs as $cab): ?>
-                            <option value="<?php echo $cab['value']; ?>" 
-                                    data-price="<?php echo $cab['price']; ?>"
-                                    data-max-passengers="<?php echo $cab['max_passengers']; ?>">
-                                <?php echo htmlspecialchars($cab['text']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="form-text">
-                        <i class="fas fa-info-circle"></i> Cab provided for entire tour duration
-                    </small>
-                </div>
-                <?php endif; ?>
-                
-                <button type="submit" class="btn-book">
-                    <i class="fas fa-calendar-plus"></i> Book This Tour
-                </button>
-            </form>
-
-            <div class="security-badge">
-                <small>
-                    <i class="fas fa-shield-alt"></i>
-                    Secure booking guaranteed
-                </small>
-            </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- Contact Section -->
-        <div class="contact-section">
-            <h6>
-                <i class="fas fa-headset"></i> Need Help?
-            </h6>
-            <div class="contact-item">
-                <i class="fas fa-phone"></i>
-                <a href="tel:<?php echo getSetting('site_phone'); ?>">
-                    <?php echo getSetting('site_phone'); ?>
-                </a>
-            </div>
-            <div class="contact-item">
-                <i class="fas fa-envelope"></i>
-                <a href="mailto:<?php echo getSetting('site_email'); ?>">
-                    <?php echo getSetting('site_email'); ?>
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-            </div>
         </div>
     </section>
 

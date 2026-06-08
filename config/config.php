@@ -1,20 +1,28 @@
 <?php
 session_start();
 
-// Define constants - Dynamic Base URL
-// Auto-detect the base URL based on current server and directory
+// Define constants - Dynamic Base URL (stable even when loaded from /api scripts)
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
 $host = $_SERVER['HTTP_HOST'];
-$scriptPath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-$basePath = rtrim($scriptPath, '/');
-
-// Remove common subdirectories from the path to get the project root
-$pathParts = explode('/', trim($basePath, '/'));
 $projectRoot = '';
-foreach ($pathParts as $part) {
-    if ($part && !in_array($part, ['admin', 'includes', 'config'])) {
-        $projectRoot .= '/' . $part;
+
+$appRoot = realpath(dirname(__DIR__));
+$docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+if ($appRoot && $docRoot && str_starts_with($appRoot, $docRoot)) {
+    $projectRoot = str_replace('\\', '/', substr($appRoot, strlen($docRoot)));
+    $projectRoot = rtrim($projectRoot, '/');
+} else {
+    $scriptPath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    $pathParts = explode('/', trim(rtrim($scriptPath, '/'), '/'));
+    foreach ($pathParts as $part) {
+        if ($part && !in_array($part, ['admin', 'includes', 'config', 'api', 'ajax'], true)) {
+            $projectRoot .= '/' . $part;
+        }
     }
+}
+
+if ($projectRoot === '/api' || str_ends_with($projectRoot, '/api')) {
+    $projectRoot = '';
 }
 
 define('BASE_URL', $protocol . $host . $projectRoot . '/');
@@ -199,5 +207,21 @@ function getCacheVersion($filePath) {
 function cssWithCache($filePath) {
     $version = getCacheVersion($filePath);
     return '<link rel="stylesheet" href="' . BASE_URL . $filePath . '?v=' . $version . '" />';
+}
+
+/**
+ * Generate script tag with cache busting
+ */
+function jsWithCache($filePath) {
+    $version = getCacheVersion($filePath);
+    return '<script src="' . BASE_URL . $filePath . '?v=' . $version . '"></script>';
+}
+
+function loginUrl($returnTo = null) {
+    $url = BASE_URL . 'login.php';
+    if ($returnTo !== null && $returnTo !== '') {
+        $url .= '?redirect=' . urlencode($returnTo);
+    }
+    return $url;
 }
 ?>

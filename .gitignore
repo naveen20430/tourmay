@@ -1,6 +1,22 @@
-# Common ignore patterns
-*.log
-*.tmp
+# OS / editor
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
 
+# Logs and temp files
+*.log
+*.tmp
+tmp_*.txt
+
+# Secrets (copy config/database.example.php to config/database.php)
+config/database.php
+.env
+.env.*
+
+# Generated uploads
+uploads/invoices/*.pdf
+
+# Dependencies (if added later)
+node_modules/
+vendor/

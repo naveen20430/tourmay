@@ -1,0 +1,108 @@
+/* ==========================================================================
+   GLOBAL UI OVERRIDES
+   One source of truth for button + icon colors across the whole website.
+   Loaded late (after page-specific CSS) to keep styles consistent.
+   ========================================================================== */
+
+:root {
+  --site-primary: #667eea;
+  --site-primary-2: #764ba2;
+  --site-primary-gradient: linear-gradient(135deg, var(--site-primary) 0%, var(--site-primary-2) 100%);
+  --site-icon-color: var(--site-primary);
+}
+
+/* --------------------------------------------------------------------------
+   BUTTONS
+   -------------------------------------------------------------------------- */
+
+/* Primary buttons */
+.btn-primary,
+a.btn-primary,
+button.btn-primary,
+.travhub-btn,
+.booking-submit-btn {
+  background: var(--site-primary-gradient) !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+.btn-primary:hover,
+a.btn-primary:hover,
+button.btn-primary:hover,
+.travhub-btn:hover,
+.booking-submit-btn:hover {
+  filter: brightness(0.98);
+  transform: translateY(-1px);
+}
+
+/* Outline primary buttons */
+.btn-outline-primary,
+a.btn-outline-primary,
+button.btn-outline-primary {
+  border-color: var(--site-primary) !important;
+  color: var(--site-primary) !important;
+  background: transparent !important;
+}
+
+.btn-outline-primary:hover,
+a.btn-outline-primary:hover,
+button.btn-outline-primary:hover {
+  background: rgba(102, 126, 234, 0.12) !important;
+  color: var(--site-primary) !important;
+}
+
+/* Bootstrap "text-primary" should match site primary */
+.text-primary {
+  color: var(--site-primary) !important;
+}
+
+.bg-primary {
+  background: var(--site-primary-gradient) !important;
+}
+
+/* --------------------------------------------------------------------------
+   ICONS
+   -------------------------------------------------------------------------- */
+
+/* Default icon color across pages */
+.page-wrapper :where(
+  i[class^="fa"],
+  i[class*=" fa-"],
+  i.fa,
+  i.fas,
+  i.far,
+  i.fab,
+  i.fa-solid,
+  i.fa-regular,
+  i.fa-brands,
+  i[class^="flaticon"],
+  i[class*=" flaticon"]
+) {
+  color: var(--site-icon-color);
+}
+
+/* Icons inside buttons should follow button text color (white for primary) */
+:where(.btn, .travhub-btn, .booking-submit-btn) :where(
+  i[class^="fa"],
+  i[class*=" fa-"],
+  i[class^="flaticon"],
+  i[class*=" flaticon"]
+) {
+  color: currentColor !important;
+}
+
+/* Do NOT override areas that intentionally use white/light icons */
+.topbar-one :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.main-header :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.main-footer :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.page-header :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.hero-section :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.tour-hero :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.blog-hero :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.destination-hero :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.contact-hero :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]),
+.text-white :where(i[class^="fa"], i[class*=" fa-"], i[class^="flaticon"], i[class*=" flaticon"]) {
+  color: inherit !important;
+}
+
+

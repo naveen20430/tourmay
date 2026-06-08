@@ -1,0 +1,169 @@
+/* ==========================================================================
+   BOOKING FORM THEME (GLOBAL, SCOPED)
+   Applies to: cab-route-details.php, booking.php, simple-booking.php, etc.
+   Matches the site's purple/clean global theme + 2-column layout cards.
+   ========================================================================== */
+
+:root {
+  --booking-surface: #ffffff;
+  --booking-bg: #f6f7fb;
+  --booking-border: #e9edf5;
+  --booking-text: #1f2937;
+  --booking-muted: #6b7280;
+  --booking-primary: #667eea;
+  --booking-primary-2: #764ba2;
+  --booking-radius: 16px;
+  --booking-shadow: 0 24px 70px rgba(0, 0, 0, 0.08);
+}
+
+/* Section background */
+.booking-section {
+  background: var(--booking-bg) !important;
+}
+
+/* Cards */
+.route-info-card,
+.booking-card,
+.card.booking-card,
+.card.shadow-sm {
+  border-radius: var(--booking-radius) !important;
+}
+
+.booking-section .route-info-card {
+  background: var(--booking-surface) !important;
+  border: 1px solid var(--booking-border) !important;
+  box-shadow: var(--booking-shadow) !important;
+}
+
+/* Headings */
+.booking-section .route-info-card h3 {
+  color: var(--booking-text) !important;
+  margin-bottom: 20px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em;
+}
+
+.booking-section .route-info-card h3 i {
+  color: var(--booking-primary) !important;
+  margin-right: 8px;
+}
+
+/* Labels and controls */
+.booking-section .form-label {
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: #374151 !important;
+  margin-bottom: 8px !important;
+}
+
+.booking-section .form-control,
+.booking-section .form-select {
+  border: 1.5px solid var(--booking-border) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  min-height: 48px !important;
+  box-shadow: none !important;
+  background: #fff !important;
+}
+
+.booking-section .form-control:focus,
+.booking-section .form-select:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15) !important;
+}
+
+.booking-section textarea.form-control {
+  min-height: 110px !important;
+}
+
+/* Terms checkbox row */
+.booking-section .form-check {
+  background: rgba(102, 126, 234, 0.06) !important;
+  border: 1px solid var(--booking-border) !important;
+  border-radius: 12px !important;
+}
+
+.booking-section .form-check-input:checked {
+  background: linear-gradient(135deg, var(--booking-primary) 0%, var(--booking-primary-2) 100%) !important;
+  border-color: transparent !important;
+}
+
+.booking-section .form-check-input:focus {
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.18) !important;
+}
+
+/* Trip type buttons */
+.trip-type-selector {
+  gap: 14px !important;
+}
+
+.trip-type-option {
+  border: 1.5px solid var(--booking-border) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+}
+
+.trip-type-option:hover {
+  border-color: rgba(102, 126, 234, 0.6) !important;
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.12) !important;
+}
+
+.trip-type-option.active {
+  border-color: transparent !important;
+  background: rgba(102, 126, 234, 0.08) !important;
+  box-shadow: 0 12px 30px rgba(118, 75, 162, 0.14) !important;
+}
+
+/* Cab pricing cards */
+.pricing-card {
+  border: 1.5px solid var(--booking-border) !important;
+  border-radius: 14px !important;
+}
+
+.pricing-card:hover {
+  border-color: rgba(102, 126, 234, 0.65) !important;
+  box-shadow: 0 14px 35px rgba(102, 126, 234, 0.12) !important;
+}
+
+.pricing-card.selected {
+  border-color: transparent !important;
+  background: rgba(102, 126, 234, 0.08) !important;
+  box-shadow: 0 16px 40px rgba(118, 75, 162, 0.16) !important;
+}
+
+/* Prices (override inline teal/blue) */
+.pricing-card .one-way-price,
+.pricing-card .round-trip-price {
+  color: var(--booking-primary) !important;
+}
+
+/* Submit button */
+.booking-submit-btn,
+.booking-section button[type="submit"].btn {
+  background: linear-gradient(135deg, var(--booking-primary) 0%, var(--booking-primary-2) 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
+  box-shadow: 0 14px 30px rgba(118, 75, 162, 0.25) !important;
+}
+
+.booking-submit-btn:hover,
+.booking-section button[type="submit"].btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(118, 75, 162, 0.33) !important;
+}
+
+/* Two-column layout like screenshot (cab-route-details booking section) */
+@media (min-width: 992px) {
+  .booking-section #bookingForm > .row {
+    --bs-gutter-x: 24px;
+    --bs-gutter-y: 24px;
+  }
+}
+
+

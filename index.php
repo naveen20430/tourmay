@@ -1,10 +1,10 @@
-﻿<?php
+<?php
 require_once 'config/config.php';
 require_once 'includes/tour_slider_helper.php';
+require_once 'includes/hero_helper.php';
 
 // Load function files
 require_once 'app/functions/destination_functions.php';
-require_once 'app/functions/tour_functions.php';
 
 // Set page variables
 $page_title = getSetting('site_name') . ' || Travel & Tour Booking Agency';
@@ -13,16 +13,8 @@ $current_page = 'home';
 // Enable tour slider CSS for this page (needed for carousel styling)
 enableTourSliderCSS();
 
-// Add page-specific CSS and JS
-$extra_css = '<link rel="stylesheet" href="' . BASE_URL . 'assets/css/index.css" />';
-$extra_js = '<script>window.BASE_URL = "' . BASE_URL . '";</script><script src="' . BASE_URL . 'assets/js/index.js"></script>';
-
-// Get featured tours using function
-$featured_tours = getTours([
-    'featured' => true,
-    'limit' => 6,
-    'order_by' => 't.created_at DESC'
-]);
+// Add page-specific CSS
+$extra_css = cssWithCache('assets/css/index.css');
 
 // Get popular destinations using function
 $popular_destinations = getDestinations([
@@ -35,127 +27,272 @@ $popular_destinations = getDestinations([
 $home_categories = getPopularDestinationsForHome(3);
 
 // Get countries for search dropdown
-$countries = getDestinationCountries();
+$countries = $db->fetchAll("
+    SELECT DISTINCT d.country
+    FROM destinations d
+    INNER JOIN tours t ON t.destination_id = d.id AND t.status = 'active'
+    WHERE d.status = 'active'
+      AND d.country IS NOT NULL
+      AND d.country != ''
+    ORDER BY d.country ASC
+");
 
 // Get all destinations for search dropdown
-$all_destinations = getDestinations([
-    'order_by' => 'd.name ASC'
-]);
+$all_destinations = $db->fetchAll("
+    SELECT d.*, COUNT(t.id) as tour_count
+    FROM destinations d
+    INNER JOIN tours t ON t.destination_id = d.id AND t.status = 'active'
+    WHERE d.status = 'active'
+    GROUP BY d.id
+    HAVING COUNT(t.id) > 0
+    ORDER BY d.name ASC
+");
+
+// Hero background for search section
+$hero_image = getHeroContent();
+$hero_bg_url = BASE_URL . ($hero_image['image_path'] ?? 'assets/images/hero/default-hero.jpg');
+
+// Cab routes for Transfer (cab) search
+$cab_routes = $db->fetchAll("
+    SELECT id, from_location, to_location
+    FROM cab_routes
+    WHERE status = 'active'
+    ORDER BY display_order ASC, from_location ASC
+");
+$cab_pickup_locations = [];
+$cab_dropoff_locations = [];
+foreach ($cab_routes as $route) {
+    $cab_pickup_locations[$route['from_location']] = true;
+    $cab_dropoff_locations[$route['to_location']] = true;
+}
+$cab_pickup_locations = array_keys($cab_pickup_locations);
+$cab_dropoff_locations = array_keys($cab_dropoff_locations);
+sort($cab_pickup_locations);
+sort($cab_dropoff_locations);
+
+$extra_js = '<script>window.BASE_URL = "' . BASE_URL . '";</script>'
+    . '<script>window.CAB_ROUTES = ' . json_encode(array_values($cab_routes), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';</script>'
+    . jsWithCache('assets/js/index.js');
 
 // Include header
 include 'includes/header.php';
 ?>
 
-<!-- Destinations Section - Before Hero -->
-<?php if (!empty($home_categories)): ?>
-<section class="categories-section">
-    <div class="container">
-        <div class="row">
-            <?php foreach ($home_categories as $index => $destination): 
-                $destination_image = getDestinationImageUrl($destination);
-                $count = $destination['tour_count'] ?? 0;
-            ?>
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="category-card">
-                    <!-- Destination Image -->
-                    <div class="destination-image" style="background-image: url('<?php echo htmlspecialchars($destination_image); ?>');"></div>
-                    
-                    <!-- Dark Overlay -->
-                    <div class="dark-overlay"></div>
-                    
-                    <!-- Destination Content -->
-                    <div class="destination-content">
-                        <h3><?php echo htmlspecialchars($destination['name']); ?></h3>
-                        
-                        <?php if (!empty($destination['short_description'])): ?>
-                        <p><?php echo htmlspecialchars(substr($destination['short_description'], 0, 80)); ?>...</p>
-                        <?php endif; ?>
-                        
-                        <!-- Listing Badge -->
-                        <div style="text-align: center; margin-top: 15px;">
-                            <span class="listing-badge">
-                                <?php echo $count; ?> Listing<?php echo $count != 1 ? 's' : ''; ?>
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <!-- Hover Overlay -->
-                    <div class="hover-overlay">
-                        <a href="<?php echo BASE_URL; ?>tours.php?destination=<?php echo htmlspecialchars($destination['slug']); ?>">
-                            Explore Destination <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
-<?php endif; ?>
-
-<!-- Search Section -->
-<section class="search-section">
-    <!-- Background decorative elements -->
+<!-- Hero Search Section: Transfer (Cab) + Activity (Tour) -->
+<section class="search-section hero-search-section" style="background-image: url('<?php echo htmlspecialchars($hero_bg_url); ?>');">
+    <div class="hero-search-overlay"></div>
     <div class="decorative-element decorative-element-1"></div>
     <div class="decorative-element decorative-element-2"></div>
-    
+
     <div class="container">
-        <div class="search-form-wrapper">
-            <form id="tourSearchForm" onsubmit="return false;">
-                <div class="row g-3">
-                    <div class="col-lg-3 col-md-6">
-                        <div class="search-field">
-                            <label for="country">
-                                <i class="flaticon-earth"></i>Country
-                            </label>
-                            <select name="country" class="form-select" id="country">
-                                <option value="">Select Country</option>
-                                <?php foreach ($countries as $country): ?>
-                                <option value="<?php echo htmlspecialchars($country['country']); ?>"><?php echo htmlspecialchars($country['country']); ?></option>
+        <div class="hero-search-header text-center">
+            <h2 class="hero-search-title">Luxury Options</h2>
+            <p class="hero-search-subtitle">Search for best available hotel options, events, tours, activities and create various easy to book holiday packages.</p>
+        </div>
+
+        <div class="search-category-tabs" role="tablist" aria-label="Search type">
+            <button type="button" class="search-category-tab active" data-search-tab="transfer" role="tab" aria-selected="true" aria-controls="transferSearchPanel">
+                <i class="fas fa-car"></i>
+                <span>Travel</span>
+            </button>
+            <button type="button" class="search-category-tab" data-search-tab="activity" role="tab" aria-selected="false" aria-controls="activitySearchPanel">
+                <i class="fas fa-camera"></i>
+                <span>Activity</span>
+            </button>
+        </div>
+
+        <div class="search-container">
+            <!-- Transfer / Cab search -->
+            <div id="transferSearchPanel" class="search-panel active" role="tabpanel" data-search-type="transfer">
+                <form class="search-form search-form--transfer" id="cabSearchForm" onsubmit="return false;">
+                    <div class="form-group form-group-trip-type">
+                        <select name="trip_type" id="cab_trip_type" aria-label="Trip type">
+                            <option value="one_way">One Way</option>
+                            <option value="round_trip">Round Trip</option>
+                        </select>
+                    </div>
+                    <div class="form-group form-group-select">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <select name="pickup" id="cab_pickup" data-placeholder="Pick-Up">
+                                <option value="">Pick-Up</option>
+                                <?php foreach ($cab_pickup_locations as $loc): ?>
+                                <option value="<?php echo htmlspecialchars($loc); ?>"><?php echo htmlspecialchars($loc); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-6">
-                        <div class="search-field">
-                            <label for="destination">
-                                <i class="flaticon-pin-1"></i>Destination
-                            </label>
-                            <select name="destination" class="form-select" id="destination">
+                    <div class="form-group form-group-select">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <select name="dropoff" id="cab_dropoff" data-placeholder="Drop-Off">
+                                <option value="">Drop-Off</option>
+                                <?php foreach ($cab_dropoff_locations as $loc): ?>
+                                <option value="<?php echo htmlspecialchars($loc); ?>"><?php echo htmlspecialchars($loc); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group form-group-input">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <input class="travhub-multi-datepicker" id="cab_travel_date" type="text" name="travel_date" placeholder="Date" data-label="Date">
+                        </div>
+                    </div>
+                    <div class="form-group form-group-select">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <select name="guests" id="cab_guests">
+                                <?php for ($g = 1; $g <= 8; $g++): ?>
+                                <option value="<?php echo $g; ?>"<?php echo $g === 2 ? ' selected' : ''; ?>><?php echo $g; ?> Adult<?php echo $g > 1 ? 's' : ''; ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="button" class="search-btn search-btn--red" onclick="showPhoneModal('transfer')">
+                        <span>Search</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Activity / Tour search -->
+            <div id="activitySearchPanel" class="search-panel search-panel--activity" role="tabpanel" data-search-type="activity" hidden>
+                <form class="search-form search-form--activity" id="tourSearchForm" onsubmit="return false;">
+                    <div class="form-group form-group-select">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            </svg>
+                            <select name="country" id="activity_country" aria-label="Country">
+                                <option value="">Select Country</option>
+                                <?php foreach ($countries as $country): 
+                                    $cname = $country['country'];
+                                    $isIndia = (strcasecmp($cname, 'India') === 0);
+                                ?>
+                                <option value="<?php echo htmlspecialchars($cname); ?>"<?php echo $isIndia ? ' selected' : ''; ?>><?php echo htmlspecialchars($cname); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group form-group-select">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <select name="destination" id="activity_destination" aria-label="Destination">
                                 <option value="">Select Destination</option>
                                 <?php foreach ($all_destinations as $dest): ?>
-                                <option value="<?php echo htmlspecialchars($dest['slug']); ?>"><?php echo htmlspecialchars($dest['name']); ?></option>
+                                <option value="<?php echo htmlspecialchars($dest['slug']); ?>"
+                                    data-country="<?php echo htmlspecialchars($dest['country'] ?? ''); ?>"
+                                    data-name="<?php echo htmlspecialchars($dest['name']); ?>">
+                                    <?php echo htmlspecialchars($dest['name']); ?>
+                                </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
-                    <div class="col-lg-2 col-md-6">
-                        <div class="search-field">
-                            <label for="travel_date">
-                                <i class="flaticon-calendar"></i>Travel Date
-                            </label>
-                            <input class="travhub-multi-datepicker form-control" id="travel_date" type="text" name="travel_date" placeholder="Select Date">
+                    <div class="form-group form-group-select activity-pickup-group" id="activityPickupGroup">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <select name="pickup_place" id="activity_pickup_place" aria-label="Pickup Place" required>
+                                <option value="" disabled selected hidden>Pickup Place</option>
+                                <option value="Hotel">Hotel</option>
+                                <option value="Lift Parking">Lift Parking</option>
+                                <option value="Otherlocation">Otherlocation</option>
+                            </select>
+                        </div>
+                        <div class="activity-pickup-detail" id="activityPickupDetailWrap" hidden>
+                            <input type="text"
+                                name="pickup_detail"
+                                id="activity_pickup_detail"
+                                class="activity-pickup-detail-input"
+                                placeholder=""
+                                autocomplete="off"
+                                maxlength="200">
                         </div>
                     </div>
-                    <div class="col-lg-2 col-md-6">
-                        <div class="search-field">
-                            <label for="return_date">
-                                <i class="flaticon-calendar"></i>Return Date
-                            </label>
-                            <input class="travhub-multi-datepicker form-control" id="return_date" type="text" name="return_date" placeholder="Select Date">
+                    <div class="form-group form-group-input">
+                        <div class="input-wrapper">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <input class="travhub-multi-datepicker" id="activity_travel_date" type="text" name="travel_date" placeholder="Date" data-label="Date" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-lg-2 col-md-12">
-                        <div class="search-field">
-                            <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; opacity: 0;">Button</label>
-                            <button class="travhub-btn w-100" type="button" onclick="showPhoneModal()">
-                                <span>Search</span>
-                                <i class="flaticon-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
+                    <button type="button" class="search-btn search-btn--red" onclick="showPhoneModal('activity')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <span>Search</span>
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    function syncActivityPickupDetail() {
+                        var sel = document.getElementById('activity_pickup_place');
+                        var wrap = document.getElementById('activityPickupDetailWrap');
+                        var inp = document.getElementById('activity_pickup_detail');
+                        var grp = document.getElementById('activityPickupGroup');
+                        if (!sel || !wrap || !inp) return;
+                        var v = sel.value;
+                        var show = v === 'Hotel' || v === 'Otherlocation';
+                        if (show) {
+                            wrap.removeAttribute('hidden');
+                            wrap.classList.add('activity-pickup-detail--open');
+                            inp.placeholder = v === 'Hotel' ? 'Enter hotel name' : 'Enter location details';
+                            inp.setAttribute('aria-label', inp.placeholder);
+                            inp.setAttribute('required', 'required');
+                            if (grp) grp.classList.add('activity-pickup-group--expanded');
+                        } else {
+                            wrap.setAttribute('hidden', '');
+                            wrap.classList.remove('activity-pickup-detail--open');
+                            inp.value = '';
+                            inp.removeAttribute('required');
+                            inp.placeholder = '';
+                            if (grp) grp.classList.remove('activity-pickup-group--expanded');
+                        }
+                    }
+                    window.syncActivityPickupDetail = syncActivityPickupDetail;
+                    function bindPickupDetail() {
+                        var sel = document.getElementById('activity_pickup_place');
+                        if (!sel || sel.dataset.pickupDetailBound === '1') return;
+                        sel.dataset.pickupDetailBound = '1';
+                        sel.addEventListener('change', syncActivityPickupDetail);
+                        sel.addEventListener('input', syncActivityPickupDetail);
+                        syncActivityPickupDetail();
+                    }
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', bindPickupDetail);
+                    } else {
+                        bindPickupDetail();
+                    }
+                })();
+                </script>
+            </div>
         </div>
     </div>
 </section>
@@ -187,8 +324,8 @@ include 'includes/header.php';
                     <button type="button" onclick="closePhoneModal()" class="modal-btn modal-btn-cancel">
                         Cancel
                     </button>
-                    <button type="submit" class="modal-btn modal-btn-submit">
-                        <i class="flaticon-search"></i> Search Tours
+                    <button type="submit" class="modal-btn modal-btn-submit" id="modalSubmitBtn">
+                        <i class="flaticon-search"></i> <span id="modalSubmitText">Search</span>
                     </button>
                 </div>
             </form>
@@ -204,47 +341,45 @@ include 'includes/header.php';
     <div class="floating-element floating-element-2"></div>
     
     <div class="container">
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="text-center scroll-reveal">
-                    <div style="margin-bottom: 30px;">
-                        <span class="badge bg-primary">✈️ Premium Travel Experience</span>
-                    </div>
-                    
-                    <h2 class="gradient-text">Welcome to <?php echo getSetting('site_name'); ?></h2>
-                    
-                    <p class="lead">Your Adventure Starts Here</p>
-                    
-                    <p style="font-size: 1.1rem; color: #495057; max-width: 600px; margin: 0 auto 40px; line-height: 1.6;">Experience the world like never before with our carefully curated travel packages. From exotic destinations to cultural experiences, we make your travel dreams come true.</p>
-                    
-                    <div class="mt-4" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                        <a href="<?php echo adminUrl('login'); ?>" class="travhub-btn" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important; box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4) !important;">
-                            <span>🔐 Admin Panel</span>
-                        </a>
-                        <a href="<?php echo navUrl('tours'); ?>" class="travhub-btn">
-                            <span>🌟 Explore Tours</span>
-                        </a>
-                    </div>
-                    
-                    <!-- Stats section -->
-                    <div class="row mt-5">
-                        <div class="col-md-4 mb-3">
-                            <div class="glass-effect">
-                                <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 5px;">500+</h3>
-                                <p style="margin: 0; color: #6c757d;">Happy Travelers</p>
-                            </div>
+        <div class="about-content-wrapper">
+            <div class="text-center scroll-reveal">
+                <div style="margin-bottom: 30px;">
+                    <span class="badge bg-primary">✈️ Premium Travel Experience</span>
+                </div>
+                
+                <h2 class="gradient-text">Welcome to <?php echo getSetting('site_name'); ?></h2>
+                
+                <p class="lead">Your Adventure Starts Here</p>
+                
+                <p style="font-size: 1.1rem; color: #495057; max-width: 600px; margin: 0 auto 40px; line-height: 1.6;">Experience the world like never before with our carefully curated travel packages. From exotic destinations to cultural experiences, we make your travel dreams come true.</p>
+                
+                <div class="mt-4" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <a href="<?php echo adminUrl('login'); ?>" class="travhub-btn" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important; box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4) !important;">
+                        <span>🔐 Admin Panel</span>
+                    </a>
+                    <a href="<?php echo navUrl('tours'); ?>" class="travhub-btn">
+                        <span>🌟 Explore Tours</span>
+                    </a>
+                </div>
+                
+                <!-- Stats section with Grid -->
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="glass-effect">
+                            <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 5px;">500+</h3>
+                            <p style="margin: 0; color: #6c757d;">Happy Travelers</p>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="glass-effect">
-                                <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 5px;">50+</h3>
-                                <p style="margin: 0; color: #6c757d;">Destinations</p>
-                            </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="glass-effect">
+                            <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 5px;">50+</h3>
+                            <p style="margin: 0; color: #6c757d;">Destinations</p>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="glass-effect">
-                                <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 5px;">24/7</h3>
-                                <p style="margin: 0; color: #6c757d;">Support</p>
-                            </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="glass-effect">
+                            <h3 class="gradient-text" style="font-size: 2rem; margin-bottom: 5px;">24/7</h3>
+                            <p style="margin: 0; color: #6c757d;">Support</p>
                         </div>
                     </div>
                 </div>
@@ -253,20 +388,14 @@ include 'includes/header.php';
     </div>
 </section>
 
-<!-- Tour Carousel Section - 3 slides at a time -->
-<?php displayTourCarousel(9); ?>
-
 <!-- Popular Destinations -->
-<?php if (!empty($popular_destinations)): ?>
-<section class="destinations-one section-space">
-    <!-- Background decorative elements -->
-    <div class="decorative-element decorative-element-1"></div>
-    <div class="decorative-element decorative-element-2"></div>
-    
+<!-- Destinations Section - Grid Layout -->
+<?php if (!empty($home_categories)): ?>
+<section class="popular-destinations-section section-space">
     <div class="container">
         <div class="section-title text-center scroll-reveal" style="margin-bottom: 60px; position: relative; z-index: 2;">
             <div style="margin-bottom: 15px;">
-                <span class="badge" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; box-shadow: 0 4px 15px rgba(118, 75, 162, 0.3);">
                     🌍 Explore The World
                 </span>
             </div>
@@ -274,61 +403,60 @@ include 'includes/header.php';
             <p style="font-size: 1.1rem; color: #6c757d; max-width: 500px; margin: 0 auto; line-height: 1.6;">
                 Discover the most sought-after travel destinations around the globe
             </p>
-            <div style="width: 80px; height: 4px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin: 20px auto 0; border-radius: 2px;"></div>
+            <div style="width: 80px; height: 4px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 20px auto 0; border-radius: 2px;"></div>
         </div>
         
-        <div class="row mt-5">
-            <?php foreach ($popular_destinations as $index => $destination): 
+        <!-- Grid Layout for Destinations -->
+        <div class="destinations-grid">
+            <?php foreach ($home_categories as $index => $destination): 
                 $destination_image = getDestinationImageUrl($destination);
+                $count = $destination['tour_count'] ?? 0;
             ?>
-                <div class="col-lg-3 col-md-6 mb-5 scroll-reveal" style="transition-delay: <?php echo $index * 0.15; ?>s; position: relative; z-index: 2;">
-                    <div class="card h-100 destination-card">
-                        <!-- Hover overlay -->
-                        <div class="hover-overlay">
-                            <div style="text-align: center; color: white; transform: translateY(20px); transition: all 0.3s ease;">
-                                <i class="fas fa-plane" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                                <p style="font-weight: 600; margin: 0;">Explore Destination</p>
-                            </div>
+            <div class="destination-grid-item">
+                <div class="destination-card">
+                    <!-- Destination Image -->
+                    <div class="destination-card-image">
+                        <img src="<?php echo htmlspecialchars($destination_image); ?>" alt="<?php echo htmlspecialchars($destination['name']); ?>">
+                        <div class="destination-overlay"></div>
+                    </div>
+                    
+                    <!-- Destination Info -->
+                    <div class="destination-card-content">
+                        <div class="destination-header">
+                            <h3 class="destination-name"><?php echo htmlspecialchars($destination['name']); ?></h3>
+                            <span class="destination-count"><?php echo $count; ?> Tour<?php echo $count != 1 ? 's' : ''; ?></span>
                         </div>
                         
-                        <div class="position-relative" style="overflow: hidden;">
-                            <img src="<?php echo $destination_image; ?>" 
-                                 class="card-img-top" style="height: 250px; object-fit: cover; transition: transform 0.4s ease;" 
-                                 alt="<?php echo htmlspecialchars($destination['name']); ?>"
-                                 onerror="this.src='<?php echo BASE_URL; ?>assets/images/destinations/default.jpg'">
-                            
-                            <!-- Gradient overlay -->
-                            <div style="position: absolute; bottom: 0; start: 0; end: 0; padding: 25px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); z-index: 2;">
-                                <div style="display: flex; justify-content: space-between; align-items: end;">
-                                    <div>
-                                        <h6 class="text-white mb-1" style="font-weight: 700; font-size: 1.2rem; text-shadow: 0 2px 10px rgba(0,0,0,0.5);"><?php echo htmlspecialchars($destination['name']); ?></h6>
-                                        <small class="text-light" style="font-size: 0.9rem; opacity: 0.9;">🌍 <?php echo htmlspecialchars($destination['country']); ?></small>
-                                    </div>
-                                    <div>
-                                        <span class="badge" style="background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.75rem;">
-                                            📍 Popular
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <?php if (!empty($destination['short_description'])): ?>
+                        <p class="destination-description"><?php echo htmlspecialchars(substr($destination['short_description'], 0, 100)); ?>...</p>
+                        <?php endif; ?>
                         
-                        <div class="card-body" style="padding: 25px; position: relative; z-index: 2;">
-                            <p class="card-text" style="color: #6c757d; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px; height: 60px; overflow: hidden;">
-                                <?php echo substr(htmlspecialchars($destination['short_description']), 0, 85); ?>...
-                            </p>
-                            
-                            <a href="<?php echo toursUrl(['destination' => $destination['slug']]); ?>" class="btn w-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 0; padding: 12px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
-                                🗺️ Explore Tours
-                            </a>
-                        </div>
+                        <a href="<?php echo BASE_URL; ?>tours.php?destination=<?php echo htmlspecialchars($destination['slug']); ?>" class="destination-btn">
+                            Explore Destination <i class="fas fa-arrow-right"></i>
+                        </a>
                     </div>
                 </div>
+            </div>
             <?php endforeach; ?>
         </div>
     </div>
 </section>
 <?php endif; ?>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <?php initTourSliderJS(); ?>
 

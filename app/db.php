@@ -9,6 +9,7 @@ require_once __DIR__ . '/../config/database.php';
 class DB {
     private static $instance = null;
     private $connection = null;
+    private $connectionError = '';
 
     /**
      * Private constructor to prevent direct instantiation
@@ -34,6 +35,9 @@ class DB {
         if ($this->connection === null) {
             $db = new Database();
             $this->connection = $db->getConnection();
+            if ($this->connection === null) {
+                $this->connectionError = (string)$db->getConnectionError();
+            }
         }
     }
 
@@ -41,6 +45,9 @@ class DB {
      * Get PDO connection
      */
     public function getConnection() {
+        if ($this->connection === null) {
+            throw new Exception($this->connectionError ?: 'Database connection not available.');
+        }
         return $this->connection;
     }
 

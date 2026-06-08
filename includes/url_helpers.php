@@ -184,6 +184,8 @@ function navUrl($page) {
             return BASE_URL . "blog";
         case 'contact':
             return BASE_URL . "contact";
+        case 'cart':
+            return BASE_URL . "cart";
         case 'about':
             return BASE_URL . "about";
         case 'gallery':
@@ -194,6 +196,12 @@ function navUrl($page) {
             return BASE_URL . "register";
         case 'profile':
             return BASE_URL . "profile";
+        case 'privacy':
+        case 'privacy-policy':
+            return BASE_URL . "privacy-policy";
+        case 'terms':
+        case 'terms-conditions':
+            return BASE_URL . "terms-conditions";
         default:
             return BASE_URL . urlencode($page);
     }

@@ -1,6 +1,9 @@
-﻿<?php
+<?php
 require_once 'config/config.php';
-require_once 'includes/header.php';
+
+// Set page variables
+$page_title = 'Cab Route Details - ' . getSetting('site_name');
+$current_page = 'cab';
 
 // Get route ID from URL
 $route_id = $_GET['route_id'] ?? null;
@@ -110,116 +113,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$extra_css = '<style>
+.page-header{padding:44px 0 32px !important}
+.header-section__inner p{margin-bottom:12px !important}
+.route-info-bar{padding:14px 0 !important;margin-bottom:22px !important}
+.booking-section{padding:0 0 26px 0 !important}
+.booking-section .route-info-card{padding:16px !important}
+.booking-section .route-info-card h3{margin-bottom:12px !important;font-size:1.15rem !important}
+.booking-section .mb-3{margin-bottom:10px !important}
+.trip-type-selector{gap:10px !important;margin-bottom:8px !important}
+.trip-type-option{padding:10px 12px !important}
+.pricing-card{padding:12px !important;margin-bottom:10px !important}
+.pricing-card h5{font-size:1rem !important;margin-bottom:6px !important}
+.booking-submit-btn{margin-top:10px !important;padding:10px 12px !important}
+@media (max-width: 991px){
+  .route-info-bar{padding:10px 0 !important;margin-bottom:16px !important}
+  .booking-section .route-info-card{padding:12px !important}
+}
+</style>';
 ?>
 
-<style>
-    .route-hero {
-        background: #1bbc9b;
-        color: white;
-        padding: 60px 0;
-        margin-bottom: 40px;
-    }
-    .route-info-card {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        padding: 30px;
-        margin-bottom: 30px;
-    }
-    .pricing-card {
-        border: 2px solid #e0e0e0;
-        border-radius: 15px;
-        padding: 20px;
-        margin-bottom: 20px;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-    }
-    .pricing-card:hover {
-        border-color: #667eea;
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
-        transform: translateY(-2px);
-    }
-    .pricing-card.selected {
-        border-color: #667eea;
-        background: #f0f4ff;
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-    }
-    .pricing-card input[type="radio"] {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-    }
-    .trip-type-selector {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 25px;
-    }
-    .trip-type-option {
-        flex: 1;
-        border: 2px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    .trip-type-option:hover {
-        border-color: #667eea;
-    }
-    .trip-type-option.active {
-        border-color: #667eea;
-        background: #f0f4ff;
-    }
-    .trip-type-option input[type="radio"] {
-        display: none;
-    }
-    .badge-location {
-        background: rgba(255,255,255,0.2);
-        padding: 8px 15px;
-        border-radius: 20px;
-        display: inline-block;
-        margin: 0 5px;
-    }
-    .booking-section {
-        background: #f8f9fa;
-        padding: 40px 0;
-    }
-    .form-check {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 12px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 0;
-    }
-    .form-check-input {
-        margin-top: 4px;
-        flex-shrink: 0;
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-    }
-    .form-check-label {
-        flex: 1;
-        line-height: 1.5;
-        cursor: pointer;
-        font-size: 0.95rem;
-        color: #495057;
-    }
-    .form-check-input:checked {
-        background-color: #1bbc9b;
-        border-color: #1bbc9b;
-    }
-    .form-check-input:focus {
-        border-color: #1bbc9b;
-        box-shadow: 0 0 0 0.2rem rgba(27, 188, 155, 0.25);
-    }
-</style>
+<?php
+// Include header after processing to avoid CSS/markup conflicts
+include 'includes/header.php';
+?>
 
 <?php if ($success): ?>
     <div class="container my-5">
@@ -238,36 +156,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 <?php else: ?>
 
-<!-- Route Hero Section -->
-<div class="route-hero">
+<!-- Page Header -->
+<section class="page-header">
     <div class="container">
-        <div class="row align-items-center">
+        <div class="header-section__inner">
+            <h1 class="text-white"><?php echo htmlspecialchars($route['route_name']); ?></h1>
+            <p class="text-white mb-4"><?php echo htmlspecialchars($route['description']); ?></p>
+            <ul class="travhub-breadcrumb list-unstyled">
+                <li><a href="<?php echo navUrl('home'); ?>">Home</a></li>
+                <li><a href="<?php echo navUrl('index'); ?>#cab-booking">Cabs</a></li>
+                <li>Booking</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Route Info Bar -->
+<div class="route-info-bar bg-white shadow-sm py-4 mb-5">
+    <div class="container">
+        <div class="row align-items-center justify-content-center">
             <div class="col-md-8">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <span class="badge-location"><?php echo htmlspecialchars($route['from_location']); ?></span>
-                    <i class="fas fa-arrow-right"></i>
-                    <span class="badge-location"><?php echo htmlspecialchars($route['to_location']); ?></span>
+                <div class="d-flex justify-content-center align-items-center flex-wrap gap-4">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-primary rounded-pill px-3 py-2 me-2"><?php echo htmlspecialchars($route['from_location']); ?></span>
+                        <i class="fas fa-arrow-right text-muted mx-2"></i>
+                        <span class="badge bg-primary rounded-pill px-3 py-2 ms-2"><?php echo htmlspecialchars($route['to_location']); ?></span>
+                    </div>
+                    <?php if ($route['distance_km'] > 0): ?>
+                        <div class="text-muted"><i class="fas fa-road me-1"></i> <?php echo $route['distance_km']; ?> km</div>
+                    <?php endif; ?>
+                    <?php if (!empty($route['estimated_duration'])): ?>
+                        <div class="text-muted"><i class="fas fa-clock me-1"></i> <?php echo htmlspecialchars($route['estimated_duration']); ?></div>
+                    <?php endif; ?>
                 </div>
-                <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 15px;">
-                    <?php echo htmlspecialchars($route['route_name']); ?>
-                </h1>
-                <?php if (!empty($route['description'])): ?>
-                    <p style="font-size: 1.1rem; opacity: 0.9;">
-                        <?php echo htmlspecialchars($route['description']); ?>
-                    </p>
-                <?php endif; ?>
-            </div>
-            <div class="col-md-4 text-md-end">
-                <?php if ($route['distance_km'] > 0): ?>
-                    <div style="font-size: 1.2rem; margin-bottom: 10px;">
-                        <i class="fas fa-road"></i> <?php echo $route['distance_km']; ?> km
-                    </div>
-                <?php endif; ?>
-                <?php if (!empty($route['estimated_duration'])): ?>
-                    <div style="font-size: 1.2rem;">
-                        <i class="fas fa-clock"></i> <?php echo htmlspecialchars($route['estimated_duration']); ?>
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -289,9 +210,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="POST" id="bookingForm">
             <div class="row">
                 <!-- Left Column - Booking Form -->
-                <div class="col-lg-7">
+                <div class="col-lg-6">
                     <div class="route-info-card">
-                        <h3 style="color: #333; margin-bottom: 25px;">
+                        <h3>
                             <i class="fas fa-user"></i> Your Details
                         </h3>
 
@@ -350,9 +271,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <!-- Right Column - Cab Selection -->
-                <div class="col-lg-5">
+                <div class="col-lg-6">
                     <div class="route-info-card">
-                        <h3 style="color: #333; margin-bottom: 25px;">
+                        <h3>
                             <i class="fas fa-car"></i> Select Cab & Trip Type
                         </h3>
 
@@ -433,10 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php endforeach; ?>
                         </div>
 
-                        <button type="submit" class="btn w-100 mt-3" 
-                                style="background: #1bbc9b; 
-                                       color: white; border: none; border-radius: 10px; padding: 12px; 
-                                       font-weight: 600; font-size: 1.1rem;">
+                        <button type="submit" class="btn w-100 mt-3 booking-submit-btn">
                             <i class="fas fa-check-circle"></i> Confirm Booking
                         </button>
                     </div>

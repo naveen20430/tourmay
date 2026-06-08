@@ -1,6 +1,12 @@
-﻿<?php
+<?php
 require_once 'config/config.php';
-require_once 'includes/header.php';
+
+// Set page variables
+$page_title = 'User Dashboard - ' . getSetting('site_name');
+$current_page = 'dashboard';
+
+// Include header
+include 'includes/header.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {

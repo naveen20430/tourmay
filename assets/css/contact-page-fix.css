@@ -1,0 +1,374 @@
+/* ==========================================================================
+   CONTACT PAGE LAYOUT FIX - Grid Layout for All Sections
+   ========================================================================== */
+
+/* Contact Information Section - Grid Layout */
+.contact-info .row {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin: 0;
+}
+
+.contact-info .col-lg-4,
+.contact-info .col-md-6 {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.contact-info__item {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 20px !important;
+    transition: all 0.3s ease;
+}
+
+.contact-info__item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(118, 75, 162, 0.2) !important;
+}
+
+.contact-info__icon {
+    margin-bottom: 20px !important;
+}
+
+.contact-info__icon i {
+    font-size: 2.5rem !important;
+    color: #667eea !important;
+}
+
+.contact-info__title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #1a202c;
+}
+
+.contact-info__text {
+    font-size: 0.95rem;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+/* Drop Us a Line Section - Proper Layout */
+.contact-form .section-title {
+    margin-bottom: 30px !important;
+}
+
+.contact-form .section-title__title {
+    font-size: 2rem !important;
+    margin-bottom: 15px !important;
+}
+
+.contact-form .section-title__text {
+    font-size: 1rem !important;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.contact-form__inner {
+    padding: 40px !important;
+}
+
+.contact-form__form .row {
+    margin-bottom: 0;
+}
+
+.contact-form__form .form-label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+}
+
+.contact-form__form .form-control,
+.contact-form__form .form-select {
+    padding: 12px 15px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.contact-form__form .form-control:focus,
+.contact-form__form .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* When We're Available Section - Proper Layout */
+.business-hours__inner {
+    padding: 40px !important;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.business-hours .section-title {
+    margin-bottom: 30px !important;
+}
+
+.business-hours .section-title__title {
+    font-size: 1.8rem !important;
+    margin-bottom: 10px !important;
+}
+
+.business-hours__list {
+    margin-top: 25px;
+}
+
+.business-hours__list .row {
+    padding: 15px 0;
+    margin: 0;
+}
+
+.business-hours__list .row:last-child {
+    border-bottom: none !important;
+}
+
+.business-hours__list strong {
+    font-size: 1rem;
+    color: #1a202c;
+}
+
+.business-hours__list span {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* ==========================================================================
+   BANNER VERTICAL CENTER FIX - All Pages
+   ========================================================================== */
+
+.page-header,
+.hero-section,
+.tour-hero,
+.blog-hero,
+.destination-hero,
+.contact-hero {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 250px !important;
+}
+
+.page-header .container,
+.hero-section .container,
+.tour-hero .container,
+.blog-hero .container,
+.destination-hero .container,
+.contact-hero .container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.page-header .row,
+.hero-section .row,
+.tour-hero .row,
+.blog-hero .row,
+.destination-hero .row,
+.contact-hero .row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-header__inner,
+.hero-section__inner,
+.tour-hero__inner,
+.blog-hero__inner,
+.destination-hero__inner,
+.contact-hero__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ==========================================================================
+   RESPONSIVE BREAKPOINTS
+   ========================================================================== */
+
+/* Tablets (768px to 991px) */
+@media (min-width: 768px) and (max-width: 991px) {
+    .contact-info .row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .contact-info__item {
+        padding: 25px 15px !important;
+    }
+
+    .contact-form__inner {
+        padding: 30px !important;
+    }
+
+    .business-hours__inner {
+        padding: 30px !important;
+    }
+
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        min-height: 220px !important;
+    }
+}
+
+/* Small Tablets and Large Phones (576px to 767px) */
+@media (min-width: 576px) and (max-width: 767px) {
+    .contact-info .row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .contact-info__item {
+        padding: 25px 20px !important;
+    }
+
+    .contact-form__inner {
+        padding: 25px !important;
+    }
+
+    .business-hours__inner {
+        padding: 25px !important;
+    }
+
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        min-height: 200px !important;
+    }
+}
+
+/* Mobile Devices (less than 576px) */
+@media (max-width: 575px) {
+    .contact-info .row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .contact-info__item {
+        padding: 20px 15px !important;
+    }
+
+    .contact-info__icon i {
+        font-size: 2rem !important;
+    }
+
+    .contact-info__title {
+        font-size: 1.1rem;
+    }
+
+    .contact-info__text {
+        font-size: 0.9rem;
+    }
+
+    .contact-form__inner {
+        padding: 20px !important;
+    }
+
+    .contact-form .section-title__title {
+        font-size: 1.5rem !important;
+    }
+
+    .contact-form .section-title__text {
+        font-size: 0.9rem !important;
+    }
+
+    .business-hours__inner {
+        padding: 20px !important;
+    }
+
+    .business-hours .section-title__title {
+        font-size: 1.4rem !important;
+    }
+
+    .business-hours__list .row {
+        padding: 12px 0;
+    }
+
+    .business-hours__list strong,
+    .business-hours__list span {
+        font-size: 0.9rem;
+    }
+
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        min-height: 180px !important;
+    }
+}
+
+/* Extra Small Devices (less than 400px) */
+@media (max-width: 399px) {
+    .contact-info__item {
+        padding: 18px 12px !important;
+    }
+
+    .contact-form__inner {
+        padding: 18px !important;
+    }
+
+    .business-hours__inner {
+        padding: 18px !important;
+    }
+
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        min-height: 160px !important;
+    }
+}
+
+/* ==========================================================================
+   SECTION SPACING
+   ========================================================================== */
+
+.contact-info,
+.contact-form,
+.business-hours {
+    padding: 50px 0 !important;
+}
+
+@media (max-width: 991px) {
+
+    .contact-info,
+    .contact-form,
+    .business-hours {
+        padding: 40px 0 !important;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .contact-info,
+    .contact-form,
+    .business-hours {
+        padding: 35px 0 !important;
+    }
+}
+
+@media (max-width: 576px) {
+
+    .contact-info,
+    .contact-form,
+    .business-hours {
+        padding: 30px 0 !important;
+    }
+}

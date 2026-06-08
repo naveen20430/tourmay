@@ -113,6 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set minimum date
         if (input.hasAttribute('data-min-date')) {
             baseConfig.minDate = input.getAttribute('data-min-date');
+        } else if (input.getAttribute('min')) {
+            baseConfig.minDate = input.getAttribute('min');
         } else if (input.hasAttribute('data-today-min')) {
             baseConfig.minDate = "today";
         }
@@ -264,11 +266,10 @@ document.addEventListener('DOMContentLoaded', function() {
         checkInOut.forEach(function(input) {
             if (!input.classList.contains('flatpickr-input')) {
                 flatpickr(input, {
-                    mode: "range",
                     dateFormat: "Y-m-d",
                     altInput: true,
                     altFormat: "F j, Y",
-                    minDate: "today",
+                    minDate: new Date().fp_incr(1),
                     showMonths: window.innerWidth > 768 ? 2 : 1,
                     static: false,
                     monthSelectorType: "dropdown",
@@ -286,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     dateFormat: "Y-m-d",
                     altInput: true,
                     altFormat: "F j, Y",
-                    minDate: "today",
+                    minDate: new Date().fp_incr(1),
                     disable: [
                         function(date) {
                             // Disable dates that are fully booked (you can customize this)

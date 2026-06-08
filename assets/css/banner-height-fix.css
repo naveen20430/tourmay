@@ -1,0 +1,190 @@
+/* ==========================================================================
+   BANNER & BREADCRUMB ENHANCEMENTS - UNIFIED HEADER HEIGHT
+   ========================================================================== */
+
+/* 1. Consistent Compact Header Layout */
+.page-header,
+.hero-section,
+.tour-hero,
+.blog-hero,
+.destination-hero,
+.contact-hero {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    /* Determine height based on content + nav clearance */
+    min-height: 160px !important;
+    height: auto !important;
+    /* Top padding clears the Fixed Navbar (approx 80-100px) */
+    padding-top: 100px !important;
+    padding-bottom: 30px !important;
+    position: relative;
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    overflow: hidden;
+    margin-bottom: 0 !important;
+}
+
+.page-header .container,
+.hero-section .container,
+.tour-hero .container,
+.blog-hero .container,
+.destination-hero .container,
+.contact-hero .container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+}
+
+/* Ensure content is STACKED and CENTERED */
+.page-header__inner,
+.hero-section__inner,
+.tour-hero__inner,
+.header-section__inner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100%;
+    gap: 8px;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 2. Title Styling */
+.page-header h1,
+.hero-section h1,
+.tour-hero h1,
+.blog-hero h1,
+.destination-hero h1,
+.contact-hero h1 {
+    font-size: 2.2rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    text-align: center !important;
+    color: white !important;
+    line-height: 1.1 !important;
+    display: block !important;
+}
+
+/* 3. Stylish Breadcrumbs */
+.travhub-breadcrumb {
+    margin: 5px 0 0 0 !important;
+    padding: 6px 20px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.travhub-breadcrumb:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+}
+
+.travhub-breadcrumb li {
+    display: inline-block;
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    margin: 0 5px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+
+/* Breadcrumb Separator */
+.travhub-breadcrumb li+li::before {
+    content: '/';
+    margin-right: 12px;
+    margin-left: 8px;
+    opacity: 0.6;
+    color: white;
+    font-weight: 300;
+}
+
+.travhub-breadcrumb a {
+    color: white !important;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
+}
+
+.travhub-breadcrumb a:hover {
+    opacity: 1;
+    border-bottom-color: rgba(255, 255, 255, 0.8);
+}
+
+.travhub-breadcrumb .active {
+    color: rgba(255, 255, 255, 0.8) !important;
+    pointer-events: none;
+}
+
+/* 4. Responsive Adjustments */
+@media (max-width: 991px) {
+
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        min-height: 140px !important;
+        padding-top: 80px !important;
+    }
+
+    .page-header h1,
+    .hero-section h1,
+    .tour-hero h1,
+    .blog-hero h1,
+    .destination-hero h1,
+    .contact-hero h1 {
+        font-size: 1.8rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .page-header,
+    .hero-section,
+    .tour-hero,
+    .blog-hero,
+    .destination-hero,
+    .contact-hero {
+        min-height: 120px !important;
+        padding-top: 70px !important;
+        padding-bottom: 20px !important;
+    }
+
+    .page-header h1,
+    .hero-section h1,
+    .tour-hero h1,
+    .blog-hero h1,
+    .destination-hero h1,
+    .contact-hero h1 {
+        font-size: 1.6rem !important;
+    }
+
+    .travhub-breadcrumb {
+        padding: 4px 12px !important;
+        margin-top: 4px !important;
+    }
+
+    .travhub-breadcrumb li {
+        font-size: 0.75rem;
+    }
+}
