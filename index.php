@@ -70,8 +70,84 @@ $cab_dropoff_locations = array_keys($cab_dropoff_locations);
 sort($cab_pickup_locations);
 sort($cab_dropoff_locations);
 
+// Activity tab: destinations, tours, countries, pickup places (from DB)
+$activity_countries = $db->fetchAll("
+    SELECT DISTINCT d.country
+    FROM destinations d
+    INNER JOIN tours t ON t.destination_id = d.id AND t.status = 'active'
+    WHERE d.status = 'active'
+      AND d.country IS NOT NULL
+      AND d.country != ''
+    ORDER BY d.country ASC
+");
+
+$activity_destinations = $db->fetchAll("
+    SELECT d.id, d.name, d.slug, d.country, d.city, d.popular, d.featured_image,
+           COUNT(t.id) AS tour_count
+    FROM destinations d
+    INNER JOIN tours t ON t.destination_id = d.id AND t.status = 'active'
+    WHERE d.status = 'active'
+    GROUP BY d.id
+    ORDER BY d.popular DESC, d.name ASC
+");
+
+$activity_tours = $db->fetchAll("
+    SELECT t.id, t.title, t.slug, d.slug AS destination_slug, d.name AS destination_name, d.country
+    FROM tours t
+    INNER JOIN destinations d ON d.id = t.destination_id AND d.status = 'active'
+    WHERE t.status = 'active'
+    ORDER BY t.title ASC
+");
+
+$activity_pickup_places = array_values(array_unique(array_filter(array_merge(
+    $cab_pickup_locations,
+    array_map(static fn($d) => trim((string) ($d['city'] ?? '')), $activity_destinations),
+    ['Hotel', 'Lift Parking', 'Other Location']
+))));
+sort($activity_pickup_places);
+
+function activityDestinationImageUrl(array $dest) {
+    $img = trim((string) ($dest['featured_image'] ?? ''));
+    if ($img !== '') {
+        return BASE_URL . ltrim($img, '/');
+    }
+    return BASE_URL . 'assets/images/logonew.png';
+}
+
+$activity_search_payload = [
+    'countries' => array_column($activity_countries, 'country'),
+    'destinations' => array_map(static function ($d) {
+        return [
+            'id' => (int) $d['id'],
+            'name' => $d['name'],
+            'slug' => $d['slug'],
+            'country' => $d['country'] ?? '',
+            'city' => $d['city'] ?? '',
+            'popular' => (int) ($d['popular'] ?? 0),
+            'image' => activityDestinationImageUrl($d),
+            'url' => destinationUrl($d['slug']),
+            'tours_url' => toursUrl(['destination' => $d['slug']]),
+            'tour_count' => (int) ($d['tour_count'] ?? 0),
+        ];
+    }, $activity_destinations),
+    'tours' => array_map(static function ($t) {
+        return [
+            'id' => (int) $t['id'],
+            'title' => $t['title'],
+            'slug' => $t['slug'],
+            'destination_slug' => $t['destination_slug'],
+            'destination_name' => $t['destination_name'],
+            'country' => $t['country'] ?? '',
+            'url' => tourUrl($t['slug']),
+            'type' => 'tour',
+        ];
+    }, $activity_tours),
+    'pickup_places' => $activity_pickup_places,
+];
+
 $extra_js = '<script>window.BASE_URL = "' . BASE_URL . '";</script>'
     . '<script>window.CAB_ROUTES = ' . json_encode(array_values($cab_routes), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';</script>'
+    . '<script>window.ACTIVITY_SEARCH_DATA = ' . json_encode($activity_search_payload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';</script>'
     . jsWithCache('assets/js/index.js');
 
 // Include header
@@ -150,19 +226,40 @@ include 'includes/header.php';
                             <input class="travhub-multi-datepicker" id="cab_travel_date" type="text" name="travel_date" placeholder="Date" data-label="Date">
                         </div>
                     </div>
-                    <div class="form-group form-group-select">
-                        <div class="input-wrapper">
-                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                            <select name="guests" id="cab_guests">
-                                <?php for ($g = 1; $g <= 8; $g++): ?>
-                                <option value="<?php echo $g; ?>"<?php echo $g === 2 ? ' selected' : ''; ?>><?php echo $g; ?> Adult<?php echo $g > 1 ? 's' : ''; ?></option>
-                                <?php endfor; ?>
-                            </select>
+                    <div class="form-group activity-field activity-guest-field">
+                        <div class="activity-guest-dropdown" id="cabGuestDropdown">
+                            <button type="button" class="activity-guest-toggle" id="cabGuestToggle" aria-expanded="false" aria-haspopup="listbox">
+                                <span id="cabGuestLabel">2 Adults</span>
+                                <svg class="activity-guest-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 8" width="12" height="8" aria-hidden="true"><path fill="currentColor" d="M1 1l5 5 5-5"/></svg>
+                            </button>
+                            <div class="activity-guest-panel" id="cabGuestPanel" hidden>
+                                <div class="activity-guest-panel-head" id="cabGuestPanelHead">2 Adults</div>
+                                <div class="activity-guest-row">
+                                    <div>
+                                        <strong>Adults</strong>
+                                        <span class="activity-guest-sub">Above 12 Years</span>
+                                    </div>
+                                    <div class="activity-guest-counter">
+                                        <button type="button" class="activity-counter-btn" data-guest-action="adults-minus" aria-label="Fewer adults">−</button>
+                                        <span id="cabAdultsCount">2</span>
+                                        <button type="button" class="activity-counter-btn" data-guest-action="adults-plus" aria-label="More adults">+</button>
+                                    </div>
+                                </div>
+                                <div class="activity-guest-row">
+                                    <div>
+                                        <strong>Children</strong>
+                                        <span class="activity-guest-sub">Below 12 Years</span>
+                                    </div>
+                                    <div class="activity-guest-counter">
+                                        <button type="button" class="activity-counter-btn" data-guest-action="children-minus" aria-label="Fewer children">−</button>
+                                        <span id="cabChildrenCount">0</span>
+                                        <button type="button" class="activity-counter-btn" data-guest-action="children-plus" aria-label="More children">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="adults" id="cab_adults" value="2">
+                            <input type="hidden" name="children" id="cab_children" value="0">
+                            <input type="hidden" name="guests" id="cab_guests" value="2">
                         </div>
                     </div>
                     <button type="button" class="search-btn search-btn--red" onclick="showPhoneModal('transfer')">
@@ -173,52 +270,33 @@ include 'includes/header.php';
 
             <!-- Activity / Tour search -->
             <div id="activitySearchPanel" class="search-panel search-panel--activity" role="tabpanel" data-search-type="activity" hidden>
-                <form class="search-form search-form--activity" id="tourSearchForm" onsubmit="return false;">
-                    <div class="form-group form-group-select">
-                        <div class="input-wrapper">
-                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            </svg>
-                            <select name="country" id="activity_country" aria-label="Country">
-                                <option value="">Select Country</option>
-                                <?php foreach ($countries as $country): 
-                                    $cname = $country['country'];
-                                    $isIndia = (strcasecmp($cname, 'India') === 0);
-                                ?>
-                                <option value="<?php echo htmlspecialchars($cname); ?>"<?php echo $isIndia ? ' selected' : ''; ?>><?php echo htmlspecialchars($cname); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group form-group-select">
-                        <div class="input-wrapper">
-                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <form class="search-form search-form--activity-v2" id="tourSearchForm" onsubmit="return false;" autocomplete="off">
+                    <div class="form-group activity-field activity-field--query">
+                        <div class="input-wrapper activity-query-wrap">
+                            <input type="text"
+                                id="activity_query"
+                                name="activity_query"
+                                placeholder="Activity /Destination/ Tour"
+                                aria-label="Activity, destination or tour"
+                                autocomplete="off">
+                            <input type="hidden" id="activity_destination" name="destination" value="">
+                            <input type="hidden" id="activity_tour_slug" name="tour" value="">
+                            <input type="hidden" id="activity_country" name="country" value="">
+                            <svg class="input-icon input-icon--right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                                 <circle cx="12" cy="10" r="3"></circle>
                             </svg>
-                            <select name="destination" id="activity_destination" aria-label="Destination">
-                                <option value="">Select Destination</option>
-                                <?php foreach ($all_destinations as $dest): ?>
-                                <option value="<?php echo htmlspecialchars($dest['slug']); ?>"
-                                    data-country="<?php echo htmlspecialchars($dest['country'] ?? ''); ?>"
-                                    data-name="<?php echo htmlspecialchars($dest['name']); ?>">
-                                    <?php echo htmlspecialchars($dest['name']); ?>
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="activity-suggestions" id="activitySuggestions" hidden></div>
                         </div>
                     </div>
-                    <div class="form-group form-group-select activity-pickup-group" id="activityPickupGroup">
+
+                    <div class="form-group activity-field activity-pickup-group" id="activityPickupGroup">
                         <div class="input-wrapper">
-                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                <circle cx="12" cy="10" r="3"></circle>
-                            </svg>
-                            <select name="pickup_place" id="activity_pickup_place" aria-label="Pickup Place" required>
+                            <select name="pickup_place" id="activity_pickup_place" aria-label="Pickup Place">
                                 <option value="" disabled selected hidden>Pickup Place</option>
-                                <option value="Hotel">Hotel</option>
-                                <option value="Lift Parking">Lift Parking</option>
-                                <option value="Otherlocation">Otherlocation</option>
+                                <?php foreach ($activity_pickup_places as $place): ?>
+                                <option value="<?php echo htmlspecialchars($place); ?>"><?php echo htmlspecialchars($place); ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="activity-pickup-detail" id="activityPickupDetailWrap" hidden>
@@ -231,9 +309,47 @@ include 'includes/header.php';
                                 maxlength="200">
                         </div>
                     </div>
-                    <div class="form-group form-group-input">
+
+                    <div class="form-group activity-field activity-guest-field">
+                        <div class="activity-guest-dropdown" id="activityGuestDropdown">
+                            <button type="button" class="activity-guest-toggle" id="activityGuestToggle" aria-expanded="false" aria-haspopup="listbox">
+                                <span id="activityGuestLabel">2 Adults</span>
+                                <svg class="activity-guest-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 8" width="12" height="8" aria-hidden="true"><path fill="currentColor" d="M1 1l5 5 5-5"/></svg>
+                            </button>
+                            <div class="activity-guest-panel" id="activityGuestPanel" hidden>
+                                <div class="activity-guest-panel-head" id="activityGuestPanelHead">2 Adults</div>
+                                <div class="activity-guest-row">
+                                    <div>
+                                        <strong>Adults</strong>
+                                        <span class="activity-guest-sub">Above 12 Years</span>
+                                    </div>
+                                    <div class="activity-guest-counter">
+                                        <button type="button" class="activity-counter-btn" data-guest-action="adults-minus" aria-label="Fewer adults">−</button>
+                                        <span id="activityAdultsCount">2</span>
+                                        <button type="button" class="activity-counter-btn" data-guest-action="adults-plus" aria-label="More adults">+</button>
+                                    </div>
+                                </div>
+                                <div class="activity-guest-row">
+                                    <div>
+                                        <strong>Children</strong>
+                                        <span class="activity-guest-sub">Below 12 Years</span>
+                                    </div>
+                                    <div class="activity-guest-counter">
+                                        <button type="button" class="activity-counter-btn" data-guest-action="children-minus" aria-label="Fewer children">−</button>
+                                        <span id="activityChildrenCount">0</span>
+                                        <button type="button" class="activity-counter-btn" data-guest-action="children-plus" aria-label="More children">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="adults" id="activity_adults" value="2">
+                            <input type="hidden" name="children" id="activity_children" value="0">
+                            <input type="hidden" name="guests" id="activity_guests" value="2">
+                        </div>
+                    </div>
+
+                    <div class="form-group activity-field">
                         <div class="input-wrapper">
-                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                 <line x1="16" y1="2" x2="16" y2="6"></line>
                                 <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -242,56 +358,41 @@ include 'includes/header.php';
                             <input class="travhub-multi-datepicker" id="activity_travel_date" type="text" name="travel_date" placeholder="Date" data-label="Date" autocomplete="off">
                         </div>
                     </div>
+
                     <button type="button" class="search-btn search-btn--red" onclick="showPhoneModal('activity')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.35-4.35"></path>
-                        </svg>
                         <span>Search</span>
                     </button>
                 </form>
-                <script>
-                (function() {
-                    function syncActivityPickupDetail() {
-                        var sel = document.getElementById('activity_pickup_place');
-                        var wrap = document.getElementById('activityPickupDetailWrap');
-                        var inp = document.getElementById('activity_pickup_detail');
-                        var grp = document.getElementById('activityPickupGroup');
-                        if (!sel || !wrap || !inp) return;
-                        var v = sel.value;
-                        var show = v === 'Hotel' || v === 'Otherlocation';
-                        if (show) {
-                            wrap.removeAttribute('hidden');
-                            wrap.classList.add('activity-pickup-detail--open');
-                            inp.placeholder = v === 'Hotel' ? 'Enter hotel name' : 'Enter location details';
-                            inp.setAttribute('aria-label', inp.placeholder);
-                            inp.setAttribute('required', 'required');
-                            if (grp) grp.classList.add('activity-pickup-group--expanded');
-                        } else {
-                            wrap.setAttribute('hidden', '');
-                            wrap.classList.remove('activity-pickup-detail--open');
-                            inp.value = '';
-                            inp.removeAttribute('required');
-                            inp.placeholder = '';
-                            if (grp) grp.classList.remove('activity-pickup-group--expanded');
-                        }
-                    }
-                    window.syncActivityPickupDetail = syncActivityPickupDetail;
-                    function bindPickupDetail() {
-                        var sel = document.getElementById('activity_pickup_place');
-                        if (!sel || sel.dataset.pickupDetailBound === '1') return;
-                        sel.dataset.pickupDetailBound = '1';
-                        sel.addEventListener('change', syncActivityPickupDetail);
-                        sel.addEventListener('input', syncActivityPickupDetail);
-                        syncActivityPickupDetail();
-                    }
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', bindPickupDetail);
-                    } else {
-                        bindPickupDetail();
-                    }
-                })();
-                </script>
+
+                <div class="activity-browser" id="activityBrowser">
+                    <div class="activity-browser-layout">
+                        <nav class="activity-sidebar" id="activitySidebar" aria-label="Destination categories">
+                            <button type="button" class="activity-sidebar-item active" data-country="">
+                                Top Destination
+                            </button>
+                            <?php foreach ($activity_countries as $row): ?>
+                            <button type="button" class="activity-sidebar-item" data-country="<?php echo htmlspecialchars($row['country']); ?>">
+                                <?php echo htmlspecialchars($row['country']); ?>
+                            </button>
+                            <?php endforeach; ?>
+                        </nav>
+                        <div class="activity-dest-grid" id="activityDestGrid" role="list">
+                            <?php foreach ($activity_destinations as $dest): ?>
+                            <a href="<?php echo htmlspecialchars(toursUrl(['destination' => $dest['slug']])); ?>"
+                               class="activity-dest-card"
+                               role="listitem"
+                               data-country="<?php echo htmlspecialchars($dest['country'] ?? ''); ?>"
+                               data-popular="<?php echo (int) ($dest['popular'] ?? 0); ?>"
+                               data-slug="<?php echo htmlspecialchars($dest['slug']); ?>">
+                                <img src="<?php echo htmlspecialchars(activityDestinationImageUrl($dest)); ?>"
+                                     alt="<?php echo htmlspecialchars($dest['name']); ?>"
+                                     loading="lazy">
+                                <span class="activity-dest-card__name"><?php echo htmlspecialchars($dest['name']); ?></span>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

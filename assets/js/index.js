@@ -49,45 +49,309 @@
     /**
      * Filter cab drop-off options based on pick-up
      */
-    /**
-     * Activity tab: filter destinations by selected country
-     */
-    function initActivityCountryFilter() {
-        const countrySelect = document.getElementById('activity_country');
-        const destSelect = document.getElementById('activity_destination');
-        if (!countrySelect || !destSelect) return;
+    const activityData = window.ACTIVITY_SEARCH_DATA || { countries: [], destinations: [], tours: [], pickup_places: [] };
 
-        const allOptions = Array.from(destSelect.querySelectorAll('option')).map(function(opt) {
-            return {
-                value: opt.value,
-                text: opt.textContent,
-                country: opt.getAttribute('data-country') || ''
-            };
-        });
+    function syncActivityPickupDetail() {
+        const sel = document.getElementById('activity_pickup_place');
+        const wrap = document.getElementById('activityPickupDetailWrap');
+        const inp = document.getElementById('activity_pickup_detail');
+        const grp = document.getElementById('activityPickupGroup');
+        if (!sel || !wrap || !inp) return;
 
-        function rebuildDestinations() {
-            const country = countrySelect.value;
-            const current = destSelect.value;
-            destSelect.innerHTML = '<option value="">Select Destination</option>';
+        const value = sel.value;
+        const needsDetail = value === 'Hotel' || value === 'Other Location' || value === 'Otherlocation';
 
-            allOptions.forEach(function(opt) {
-                if (!opt.value) return;
-                if (!country || opt.country === country) {
-                    const o = document.createElement('option');
-                    o.value = opt.value;
-                    o.textContent = opt.text;
-                    o.setAttribute('data-country', opt.country);
-                    destSelect.appendChild(o);
-                }
-            });
+        if (needsDetail) {
+            wrap.removeAttribute('hidden');
+            wrap.classList.add('activity-pickup-detail--open');
+            inp.placeholder = value === 'Hotel' ? 'Enter hotel name' : 'Enter location details';
+            inp.setAttribute('aria-label', inp.placeholder);
+            inp.setAttribute('required', 'required');
+            if (grp) grp.classList.add('activity-pickup-group--expanded');
+        } else {
+            wrap.setAttribute('hidden', '');
+            wrap.classList.remove('activity-pickup-detail--open');
+            inp.value = '';
+            inp.removeAttribute('required');
+            inp.placeholder = '';
+            if (grp) grp.classList.remove('activity-pickup-group--expanded');
+        }
+    }
 
-            if (current && Array.from(destSelect.options).some(function(o) { return o.value === current; })) {
-                destSelect.value = current;
-            }
+    function initActivityPickupDetail() {
+        const sel = document.getElementById('activity_pickup_place');
+        if (!sel || sel.dataset.pickupDetailBound === '1') return;
+        sel.dataset.pickupDetailBound = '1';
+        sel.addEventListener('change', syncActivityPickupDetail);
+        syncActivityPickupDetail();
+    }
+
+    function updateGuestLabel(prefix) {
+        const adultsEl = document.getElementById(prefix + '_adults');
+        const childrenEl = document.getElementById(prefix + '_children');
+        const guestsEl = document.getElementById(prefix + '_guests');
+        const labelEl = document.getElementById(prefix + 'GuestLabel');
+        const panelHead = document.getElementById(prefix + 'GuestPanelHead');
+        if (!adultsEl || !childrenEl) return;
+
+        const adults = parseInt(adultsEl.value, 10) || 1;
+        const children = parseInt(childrenEl.value, 10) || 0;
+        const parts = [];
+        if (adults > 0) parts.push(adults + ' Adult' + (adults > 1 ? 's' : ''));
+        if (children > 0) parts.push(children + ' Child' + (children > 1 ? 'ren' : ''));
+        const label = parts.join(', ') || '1 Adult';
+
+        if (labelEl) labelEl.textContent = label;
+        if (panelHead) panelHead.textContent = label;
+        if (guestsEl) guestsEl.value = String(adults + children);
+
+        const adultsCount = document.getElementById(prefix + 'AdultsCount');
+        const childrenCount = document.getElementById(prefix + 'ChildrenCount');
+        if (adultsCount) adultsCount.textContent = String(adults);
+        if (childrenCount) childrenCount.textContent = String(children);
+    }
+
+    function initGuestDropdown(prefix) {
+        const dropdown = document.getElementById(prefix + 'GuestDropdown');
+        const toggle = document.getElementById(prefix + 'GuestToggle');
+        const panel = document.getElementById(prefix + 'GuestPanel');
+        const adultsInput = document.getElementById(prefix + '_adults');
+        const childrenInput = document.getElementById(prefix + '_children');
+        if (!dropdown || !toggle || !panel || !adultsInput || !childrenInput) return;
+
+        function setGuests(adults, children) {
+            adultsInput.value = String(Math.max(1, Math.min(12, adults)));
+            childrenInput.value = String(Math.max(0, Math.min(8, children)));
+            updateGuestLabel(prefix);
         }
 
-        countrySelect.addEventListener('change', rebuildDestinations);
-        rebuildDestinations();
+        function setPanelOpen(isOpen) {
+            panel.toggleAttribute('hidden', !isOpen);
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            dropdown.classList.toggle('is-open', isOpen);
+        }
+
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const open = panel.hasAttribute('hidden');
+            document.querySelectorAll('.activity-guest-dropdown').forEach(function(otherDropdown) {
+                if (otherDropdown === dropdown) return;
+                otherDropdown.classList.remove('is-open');
+                const otherPanel = otherDropdown.querySelector('.activity-guest-panel');
+                const otherToggle = otherDropdown.querySelector('.activity-guest-toggle');
+                if (otherPanel) otherPanel.setAttribute('hidden', '');
+                if (otherToggle) otherToggle.setAttribute('aria-expanded', 'false');
+            });
+            setPanelOpen(open);
+        });
+
+        dropdown.querySelectorAll('[data-guest-action]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const action = btn.getAttribute('data-guest-action');
+                let adults = parseInt(adultsInput.value, 10) || 1;
+                let children = parseInt(childrenInput.value, 10) || 0;
+
+                if (action === 'adults-minus') adults--;
+                if (action === 'adults-plus') adults++;
+                if (action === 'children-minus') children--;
+                if (action === 'children-plus') children++;
+
+                setGuests(adults, children);
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) {
+                setPanelOpen(false);
+            }
+        });
+
+        updateGuestLabel(prefix);
+    }
+
+    function initActivityGuestDropdown() {
+        initGuestDropdown('activity');
+    }
+
+    function initCabGuestDropdown() {
+        initGuestDropdown('cab');
+    }
+
+    function selectActivitySuggestion(item) {
+        const query = document.getElementById('activity_query');
+        const destInput = document.getElementById('activity_destination');
+        const tourInput = document.getElementById('activity_tour_slug');
+        const countryInput = document.getElementById('activity_country');
+        const suggestions = document.getElementById('activitySuggestions');
+
+        if (query) query.value = item.label;
+        if (destInput) destInput.value = item.destination_slug || (item.type === 'destination' ? item.slug : '') || '';
+        if (tourInput) tourInput.value = item.type === 'tour' ? item.slug : '';
+        if (countryInput) countryInput.value = item.country || '';
+
+        if (suggestions) suggestions.setAttribute('hidden', '');
+
+        if (item.country) {
+            filterActivityDestinations(item.country, false);
+            setActiveSidebarCountry(item.country);
+        } else if (item.destination_slug) {
+            const dest = activityData.destinations.find(function(d) { return d.slug === item.destination_slug; });
+            if (dest) {
+                filterActivityDestinations(dest.country, false);
+                setActiveSidebarCountry(dest.country);
+            }
+        }
+    }
+
+    function renderActivitySuggestions(items) {
+        const box = document.getElementById('activitySuggestions');
+        if (!box) return;
+
+        if (!items.length) {
+            box.setAttribute('hidden', '');
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = items.map(function(item) {
+            const sub = item.sub ? '<small>' + item.sub + '</small>' : '';
+            return '<button type="button" class="activity-suggestion-item" data-type="' + item.type + '" data-slug="' + item.slug + '">' +
+                item.label + sub + '</button>';
+        }).join('');
+
+        box.removeAttribute('hidden');
+
+        box.querySelectorAll('.activity-suggestion-item').forEach(function(btn, index) {
+            btn.addEventListener('click', function() {
+                selectActivitySuggestion(items[index]);
+            });
+        });
+    }
+
+    function buildActivitySuggestions(term) {
+        const q = term.trim().toLowerCase();
+        if (q.length < 1) return [];
+
+        const results = [];
+
+        activityData.destinations.forEach(function(dest) {
+            if (dest.name.toLowerCase().includes(q) || (dest.city && dest.city.toLowerCase().includes(q))) {
+                results.push({
+                    type: 'destination',
+                    label: dest.name,
+                    sub: dest.country + (dest.tour_count ? ' · ' + dest.tour_count + ' tours' : ''),
+                    slug: dest.slug,
+                    destination_slug: dest.slug,
+                    country: dest.country
+                });
+            }
+        });
+
+        activityData.tours.forEach(function(tour) {
+            if (tour.title.toLowerCase().includes(q)) {
+                results.push({
+                    type: 'tour',
+                    label: tour.title,
+                    sub: tour.destination_name + ' · Tour',
+                    slug: tour.slug,
+                    destination_slug: tour.destination_slug,
+                    country: tour.country
+                });
+            }
+        });
+
+        return results.slice(0, 8);
+    }
+
+    function initActivityAutocomplete() {
+        const query = document.getElementById('activity_query');
+        if (!query) return;
+
+        query.addEventListener('input', function() {
+            const destInput = document.getElementById('activity_destination');
+            const tourInput = document.getElementById('activity_tour_slug');
+            const countryInput = document.getElementById('activity_country');
+            if (destInput) destInput.value = '';
+            if (tourInput) tourInput.value = '';
+            if (countryInput) countryInput.value = '';
+            renderActivitySuggestions(buildActivitySuggestions(query.value));
+        });
+
+        query.addEventListener('focus', function() {
+            renderActivitySuggestions(buildActivitySuggestions(query.value));
+        });
+
+        document.addEventListener('click', function(e) {
+            const wrap = document.querySelector('.activity-query-wrap');
+            const suggestions = document.getElementById('activitySuggestions');
+            if (wrap && suggestions && !wrap.contains(e.target)) {
+                suggestions.setAttribute('hidden', '');
+            }
+        });
+    }
+
+    function setActiveSidebarCountry(country) {
+        const sidebar = document.getElementById('activitySidebar');
+        if (!sidebar) return;
+
+        sidebar.querySelectorAll('.activity-sidebar-item').forEach(function(btn) {
+            const match = (btn.getAttribute('data-country') || '') === (country || '');
+            btn.classList.toggle('active', match);
+        });
+    }
+
+    function filterActivityDestinations(country, topOnly) {
+        const grid = document.getElementById('activityDestGrid');
+        if (!grid) return;
+
+        const cards = grid.querySelectorAll('.activity-dest-card');
+        let visible = 0;
+
+        cards.forEach(function(card) {
+            const cardCountry = card.getAttribute('data-country') || '';
+            const popular = card.getAttribute('data-popular') === '1';
+            let show = true;
+
+            if (country) {
+                show = cardCountry === country;
+            } else if (topOnly !== false) {
+                const anyPopular = Array.from(cards).some(function(c) { return c.getAttribute('data-popular') === '1'; });
+                show = anyPopular ? popular : true;
+            }
+
+            card.classList.toggle('is-hidden', !show);
+            if (show) visible++;
+        });
+
+        let empty = grid.querySelector('.activity-dest-empty');
+        if (!visible) {
+            if (!empty) {
+                empty = document.createElement('div');
+                empty.className = 'activity-dest-empty';
+                empty.textContent = 'No destinations found for this category.';
+                grid.appendChild(empty);
+            }
+        } else if (empty) {
+            empty.remove();
+        }
+    }
+
+    function initActivitySidebar() {
+        const sidebar = document.getElementById('activitySidebar');
+        if (!sidebar) return;
+
+        sidebar.querySelectorAll('.activity-sidebar-item').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const country = btn.getAttribute('data-country') || '';
+                setActiveSidebarCountry(country);
+                filterActivityDestinations(country, !country);
+
+                const countryInput = document.getElementById('activity_country');
+                if (countryInput) countryInput.value = country;
+            });
+        });
+
+        filterActivityDestinations('', true);
     }
 
     function initCabLocationFilter() {
@@ -147,21 +411,38 @@
     }
 
     function getTourSearchData() {
-        const destination = document.getElementById('activity_destination') || document.querySelector('#tourSearchForm select[name="destination"]');
-        const country = document.getElementById('activity_country') || document.querySelector('#tourSearchForm select[name="country"]');
-        const travelDateInput = document.getElementById('activity_travel_date') || document.querySelector('#tourSearchForm input[name="travel_date"]');
+        const query = document.getElementById('activity_query');
+        const destination = document.getElementById('activity_destination');
+        const tourSlug = document.getElementById('activity_tour_slug');
+        const country = document.getElementById('activity_country');
+        const travelDateInput = document.getElementById('activity_travel_date');
         const pickupPlace = document.getElementById('activity_pickup_place');
         const pickupDetail = document.getElementById('activity_pickup_detail');
+        const adults = document.getElementById('activity_adults');
+        const children = document.getElementById('activity_children');
+        const guests = document.getElementById('activity_guests');
+
+        let destinationText = '';
+        if (destination && destination.value) {
+            const dest = activityData.destinations.find(function(d) { return d.slug === destination.value; });
+            destinationText = dest ? dest.name : destination.value;
+        }
 
         return {
+            query: query ? query.value.trim() : '',
             destination: destination ? destination.value : '',
-            destinationText: destination ? (destination.options[destination.selectedIndex]?.text || '') : '',
+            destinationText: destinationText,
+            tour: tourSlug ? tourSlug.value : '',
             country: country ? country.value : '',
-            countryText: country ? (country.options[country.selectedIndex]?.text || '') : '',
+            countryText: country ? country.value : '',
             travel_date: travelDateInput ? travelDateInput.value : '',
             pickup_place: pickupPlace ? pickupPlace.value : '',
-            pickup_placeText: pickupPlace ? (pickupPlace.options[pickup.selectedIndex]?.text || '') : '',
-            pickup_detail: pickupDetail ? pickupDetail.value.trim() : ''
+            pickup_placeText: pickupPlace ? (pickupPlace.options[pickupPlace.selectedIndex]?.text || '') : '',
+            pickup_detail: pickupDetail ? pickupDetail.value.trim() : '',
+            adults: adults ? adults.value : '2',
+            children: children ? children.value : '0',
+            guests: guests ? guests.value : '2',
+            guestsText: document.getElementById('activityGuestLabel')?.textContent || ''
         };
     }
 
@@ -171,7 +452,7 @@
             alert('Please select a Pickup Place.');
             return false;
         }
-        if ((data.pickup_place === 'Hotel' || data.pickup_place === 'Otherlocation') && !data.pickup_detail) {
+        if ((data.pickup_place === 'Hotel' || data.pickup_place === 'Other Location' || data.pickup_place === 'Otherlocation') && !data.pickup_detail) {
             alert(data.pickup_place === 'Hotel'
                 ? 'Please enter your hotel name.'
                 : 'Please enter location details.');
@@ -180,24 +461,14 @@
         return true;
     }
 
-    function initActivityPickupDetail() {
-        if (typeof window.syncActivityPickupDetail === 'function') {
-            const sel = document.getElementById('activity_pickup_place');
-            if (sel && sel.dataset.pickupDetailBound !== '1') {
-                sel.dataset.pickupDetailBound = '1';
-                sel.addEventListener('change', window.syncActivityPickupDetail);
-                sel.addEventListener('input', window.syncActivityPickupDetail);
-                window.syncActivityPickupDetail();
-            }
-        }
-    }
-
     function getCabSearchData() {
         const pickup = document.getElementById('cab_pickup');
         const dropoff = document.getElementById('cab_dropoff');
         const travelDateInput = document.getElementById('cab_travel_date');
         const tripType = document.getElementById('cab_trip_type');
         const guests = document.getElementById('cab_guests');
+        const adults = document.getElementById('cab_adults');
+        const children = document.getElementById('cab_children');
 
         return {
             pickup: pickup ? pickup.value : '',
@@ -208,7 +479,9 @@
             trip_type: tripType ? tripType.value : 'one_way',
             trip_typeText: tripType ? (tripType.options[tripType.selectedIndex]?.text || '') : '',
             guests: guests ? guests.value : '2',
-            guestsText: guests ? (guests.options[guests.selectedIndex]?.text || '') : ''
+            adults: adults ? adults.value : '2',
+            children: children ? children.value : '0',
+            guestsText: document.getElementById('cabGuestLabel')?.textContent || '2 Adults'
         };
     }
 
@@ -241,7 +514,9 @@
                 return;
             }
             const data = getTourSearchData();
+            if (data.query) detailsHTML += '<div><strong>Search:</strong> ' + data.query + '</div>';
             if (data.destination) detailsHTML += '<div><strong>Destination:</strong> ' + data.destinationText + '</div>';
+            if (data.tour) detailsHTML += '<div><strong>Tour:</strong> ' + data.query + '</div>';
             if (data.country) detailsHTML += '<div><strong>Country:</strong> ' + data.countryText + '</div>';
             if (data.pickup_placeText) {
                 let pickupLine = data.pickup_placeText;
@@ -250,6 +525,7 @@
                 }
                 detailsHTML += '<div><strong>Pickup:</strong> ' + pickupLine + '</div>';
             }
+            if (data.guestsText) detailsHTML += '<div><strong>Guests:</strong> ' + data.guestsText + '</div>';
             if (data.travel_date) detailsHTML += '<div><strong>Travel Date:</strong> ' + data.travel_date + '</div>';
         }
 
@@ -332,6 +608,8 @@
                     if (data.travel_date) params.append('travel_date', data.travel_date);
                     if (data.trip_type) params.append('trip_type', data.trip_type);
                     if (data.guests) params.append('guests', data.guests);
+                    if (data.adults) params.append('adults', data.adults);
+                    if (data.children) params.append('children', data.children);
                     const qs = params.toString();
                     redirectUrl = BASE_URL + 'cab-route-details.php?route_id=' + route.id + (qs ? '&' + qs : '');
                 } else {
@@ -355,10 +633,14 @@
             return false;
         }
         if (tourData.destination) formData.append('destination', tourData.destination);
+        if (tourData.tour) formData.append('tour', tourData.tour);
         if (tourData.country) formData.append('from', tourData.country);
         if (tourData.travel_date) formData.append('travel_date', tourData.travel_date);
         if (tourData.pickup_place) formData.append('pickup_place', tourData.pickup_place);
         if (tourData.pickup_detail) formData.append('pickup_detail', tourData.pickup_detail);
+        if (tourData.adults) formData.append('adults', tourData.adults);
+        if (tourData.children) formData.append('children', tourData.children);
+        if (tourData.guests) formData.append('guests', tourData.guests);
 
         fetch(BASE_URL + 'api/save-search-query.php', {
             method: 'POST',
@@ -375,12 +657,16 @@
         })
         .then(function(data) {
             if (data.success) {
-                const params = new URLSearchParams();
-                formData.forEach(function(value, key) {
-                    if (value && key !== 'phone') params.append(key, value);
-                });
-                const queryString = params.toString();
-                redirectUrl = queryString ? BASE_URL + 'tours?' + queryString : BASE_URL + 'tours';
+                if (tourData.tour) {
+                    redirectUrl = BASE_URL + 'tour/' + encodeURIComponent(tourData.tour);
+                } else {
+                    const params = new URLSearchParams();
+                    formData.forEach(function(value, key) {
+                        if (value && key !== 'phone') params.append(key, value);
+                    });
+                    const queryString = params.toString();
+                    redirectUrl = queryString ? BASE_URL + 'tours?' + queryString : BASE_URL + 'tours';
+                }
                 window.location.href = redirectUrl;
             } else {
                 alert('Error: ' + (data.message || 'Failed to save search query. Please try again.'));
@@ -522,8 +808,11 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         initSearchTabs();
-        initActivityCountryFilter();
         initActivityPickupDetail();
+        initCabGuestDropdown();
+        initActivityGuestDropdown();
+        initActivityAutocomplete();
+        initActivitySidebar();
         initCabLocationFilter();
         initCardHoverEffects();
         initCounterAnimation();
