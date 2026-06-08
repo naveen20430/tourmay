@@ -9,7 +9,7 @@ $contact_email = function_exists('getSetting') ? (getSetting('contact_email') ?:
 $site_address = function_exists('getSetting') ? (getSetting('site_address') ?: '123 Travel Street, City, Country') : '123 Travel Street, City, Country';
 $opening_hours = function_exists('getSetting') ? (getSetting('opening_hours') ?: '9:00 AM - 6:00 PM') : '9:00 AM - 6:00 PM';
 ?>
-<div class="cab-routes-sidebar" style="position: sticky; top: 80px;">
+<div class="cab-routes-sidebar">
     <!-- Sidebar Header - Purple Theme to match Featured Tours -->
     <div class="section-header mb-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px 14px; border-radius: 8px; box-shadow: 0 4px 15px rgba(118, 75, 162, 0.3);">
         <h4 style="font-size: 1.05rem; font-weight: 700; color: white; margin-bottom: 3px; line-height: 1.2;">

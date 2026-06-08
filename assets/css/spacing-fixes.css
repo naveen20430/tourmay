@@ -58,6 +58,19 @@ div[class*="section"] {
     margin: 0 !important;
 }
 
+/* Flat destination blocks — no global section padding */
+.destinations-cab-section .destination-block,
+.destinations-cab-section .destination-tours {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.destinations-cab-section .destination-block + .destination-block {
+    margin-top: 50px !important;
+}
+
 /* Tablet sections */
 @media (min-width: 768px) and (max-width: 991px) {
     .section-space,

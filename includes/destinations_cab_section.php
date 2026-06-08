@@ -2,9 +2,8 @@
 <!-- Destinations & Cab Facilities Section -->
 <section id="destinations-cab-section" class="destinations-cab-section" style="background: #f8f9fa;">
     <div class="container">
-        <div class="row destinations-cab-layout">
-            <!-- 80% - Destinations & Tours -->
-            <div class="col-lg-6 col-md-12 mb-4 destinations-cab-main">
+        <div class="destinations-cab-layout">
+            <div class="destinations-cab-stack">
                 <?php 
                 // DEBUG: Check total destinations
                 $total_destinations = $db->fetchAll("
@@ -66,9 +65,7 @@
                         continue;
                     }
                 ?>
-                
-                <!-- Destination Section -->
-                <div class="destination-section mb-5" style="<?php echo $index > 0 ? 'margin-top: 50px;' : ''; ?>">
+                <div class="destination-block">
                     <!-- Destination Header -->
                    <div class="destination-header mb-3" style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
                         <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-start;">
@@ -84,7 +81,7 @@
                     </div>
                     
                     <!-- Tours Slider -->
-                    <div class="owl-carousel owl-theme tours-carousel-<?php echo $dest['id']; ?>">
+                    <div class="destination-tours owl-carousel owl-theme tours-carousel-<?php echo $dest['id']; ?>">
                             <?php foreach ($destination_tours as $tour): ?>
                             <div class="item">
                                 <div class="card" style="border: none; border-radius: 0; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1); transition: all 0.3s ease; position: relative;">
@@ -150,16 +147,13 @@
                             </div>
                             <?php endforeach; ?>
                     </div>
-                    
-                    <!-- View All Tours Link -->
-                   
                 </div>
                 
                 <?php endforeach; ?>
             </div>
-            
-            <!-- 20% - Cab Routes Sidebar -->
-           <div class="col-lg-3 col-md-12 destinations-cab-sidebar">
+
+            <!-- Cab Routes Sidebar -->
+            <div class="destinations-cab-sidebar">
                 <?php include 'cab_sidebar.php'; ?>
             </div>
         </div>
@@ -171,26 +165,52 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css" />
 
 <style>
-/* Keep Tours + Transport Facilities side-by-side on desktop */
+/* Tours (left stack) + Transport sidebar (right) */
 .destinations-cab-section .destinations-cab-layout {
-    display: flex !important;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-top: 30px;
+}
+
+.destinations-cab-section .destinations-cab-stack {
+    min-width: 0;
+}
+
+.destinations-cab-section .destination-header {
+    padding: 19px 19px 0;
+}
+
+.destinations-cab-section .destination-tours {
+    margin-bottom: 3rem;
 }
 
 @media (min-width: 992px) {
     .destinations-cab-section .destinations-cab-layout {
-        flex-wrap: nowrap;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 24px;
     }
 
-    .destinations-cab-section .destinations-cab-main {
-        flex: 0 0 75%;
-        max-width: 75%;
+    .destinations-cab-section .destinations-cab-stack {
+        flex: 1 1 0;
+        min-width: 0;
     }
 
     .destinations-cab-section .destinations-cab-sidebar {
-        flex: 0 0 25%;
-        max-width: 25%;
+        flex: 0 0 280px;
+        width: 280px;
+        max-width: 280px;
+        position: sticky;
+        top: 90px;
+        align-self: flex-start;
+        margin-top: 19px;
+    }
+
+    .destinations-cab-section .cab-routes-sidebar {
+        position: static;
+        top: auto;
+        margin-top: 0;
     }
 }
 
@@ -264,9 +284,17 @@
 }
 
 @media (max-width: 991px) {
-    .cab-routes-sidebar {
-        position: relative !important;
-        top: 0 !important;
+    .destinations-cab-section .destinations-cab-sidebar {
+        position: static;
+        top: auto;
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+    }
+
+    .destinations-cab-section .cab-routes-sidebar {
+        position: static;
+        top: auto;
         margin-top: 30px;
     }
 }
