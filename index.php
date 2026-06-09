@@ -167,19 +167,19 @@ include 'includes/header.php';
         </div>
 
         <div class="search-category-tabs" role="tablist" aria-label="Search type">
-            <button type="button" class="search-category-tab active" data-search-tab="transfer" role="tab" aria-selected="true" aria-controls="transferSearchPanel">
-                <i class="fas fa-car"></i>
-                <span>Travel</span>
-            </button>
-            <button type="button" class="search-category-tab" data-search-tab="activity" role="tab" aria-selected="false" aria-controls="activitySearchPanel">
+            <button type="button" class="search-category-tab active" data-search-tab="activity" role="tab" aria-selected="true" aria-controls="activitySearchPanel">
                 <i class="fas fa-camera"></i>
                 <span>Activity</span>
+            </button>
+            <button type="button" class="search-category-tab" data-search-tab="transfer" role="tab" aria-selected="false" aria-controls="transferSearchPanel">
+                <i class="fas fa-car"></i>
+                <span>Travel</span>
             </button>
         </div>
 
         <div class="search-container">
             <!-- Transfer / Cab search -->
-            <div id="transferSearchPanel" class="search-panel active" role="tabpanel" data-search-type="transfer">
+            <div id="transferSearchPanel" class="search-panel" role="tabpanel" data-search-type="transfer" hidden>
                 <form class="search-form search-form--transfer" id="cabSearchForm" onsubmit="return false;">
                     <div class="form-group form-group-trip-type">
                         <select name="trip_type" id="cab_trip_type" aria-label="Trip type">
@@ -269,7 +269,7 @@ include 'includes/header.php';
             </div>
 
             <!-- Activity / Tour search -->
-            <div id="activitySearchPanel" class="search-panel search-panel--activity" role="tabpanel" data-search-type="activity" hidden>
+            <div id="activitySearchPanel" class="search-panel search-panel--activity active" role="tabpanel" data-search-type="activity">
                 <form class="search-form search-form--activity-v2" id="tourSearchForm" onsubmit="return false;" autocomplete="off">
                     <div class="form-group activity-field activity-field--query">
                         <div class="input-wrapper activity-query-wrap">

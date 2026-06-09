@@ -4,37 +4,7 @@ require_once 'includes/checkout_helpers.php';
 
 $current_page = 'cart';
 $page_title = 'Cart - ' . getSetting('site_name');
-$extra_css = '<style>
-.cart-wrapper{padding:60px 0}
-.cart-card{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(15,23,42,.08);padding:22px}
-.cart-table{width:100%}
-.cart-table th,.cart-table td{padding:12px 10px;vertical-align:middle}
-.cart-actions{display:flex;gap:10px;flex-wrap:wrap}
-.cart-actions form{display:inline}
-.cart-empty{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(15,23,42,.08);padding:28px;text-align:center}
-.cart-row-title{font-weight:700;color:#0f172a}
-.cart-help{color:#64748b;font-size:14px}
-.cart-total{font-weight:800;font-size:20px}
-.cart-remove-btn{border:0;background:transparent;color:#ef4444;padding:0}
-.cart-input{width:100%;max-width:220px}
-.cart-input-sm{width:100%;max-width:140px}
-.cart-grid{display:grid;grid-template-columns:1fr;gap:20px}
-.cart-form-card{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(15,23,42,.08);padding:22px}
-.cart-total-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:18px}
-.cart-total-box .amount{font-size:1.35rem;font-weight:800;color:#0f172a}
-.payment-options{display:grid;gap:10px;margin-bottom:18px}
-.payment-option{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer}
-.payment-option input{margin-top:4px}
-.payment-option.is-active{border-color:#667eea;background:#f8faff;box-shadow:0 0 0 3px rgba(102,126,234,.12)}
-.payment-option strong{display:block;color:#0f172a}
-.payment-option span{display:block;color:#64748b;font-size:.9rem;margin-top:2px}
-.payment-option.is-disabled{opacity:.72;cursor:not-allowed;background:#f8fafc}
-.payment-option.is-disabled input{pointer-events:none}
-.payment-option .razorpay-badge{display:inline-flex;align-items:center;gap:8px;margin-top:4px}
-.payment-option .razorpay-badge img{height:18px;width:auto}
-.payment-setup-note{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;color:#9a3412;font-size:.85rem;margin-top:8px}
-@media (min-width: 992px){.cart-grid{grid-template-columns:1.35fr .65fr}}
-</style>';
+$extra_css = cssWithCache('assets/css/checkout-page.css');
 
 if (!isset($_SESSION['tour_cart']) || !is_array($_SESSION['tour_cart'])) {
     $_SESSION['tour_cart'] = [];
@@ -172,6 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($paymentMethod === 'razorpay' && !razorpayIsConfigured()) {
             $errors[] = 'Online payment is not available right now. Please choose cash payment.';
         }
+        if (empty($_POST['accept_terms'])) {
+            $errors[] = 'You must accept the Terms of Service and Privacy Policy to continue';
+        }
 
         if (!empty($errors)) {
             $_SESSION['cart_flash'] = ['type' => 'error', 'message' => implode(' | ', $errors)];
@@ -297,12 +270,31 @@ include 'includes/header.php';
                                     <?php if (!$tour) continue; ?>
                                     <tr>
                                         <td>
-                                            <div class="cart-row-title"><?php echo htmlspecialchars($tour['title']); ?></div>
-                                            <div class="cart-help">
-                                                <?php echo htmlspecialchars($tour['destination_name'] ?? ''); ?>
-                                                <?php if (!empty($tour['duration_days'])): ?>
-                                                    • <?php echo (int)$tour['duration_days']; ?> days
-                                                <?php endif; ?>
+                                            <?php
+                                            $cartTourImage = BASE_URL . 'assets/images/tours/default-tour.jpg';
+                                            if (!empty($tour['featured_image']) && file_exists($tour['featured_image'])) {
+                                                $cartTourImage = BASE_URL . $tour['featured_image'];
+                                            }
+                                            ?>
+                                            <div class="cart-tour-cell">
+                                                <a href="<?php echo tourUrl($tour['slug']); ?>" class="cart-tour-thumb">
+                                                    <img src="<?php echo htmlspecialchars($cartTourImage); ?>"
+                                                         alt="<?php echo htmlspecialchars($tour['title']); ?>"
+                                                         onerror="this.src='<?php echo BASE_URL; ?>assets/images/tours/default-tour.jpg'">
+                                                </a>
+                                                <div class="cart-tour-info">
+                                                    <div class="cart-row-title">
+                                                        <a href="<?php echo tourUrl($tour['slug']); ?>" style="color:inherit;text-decoration:none;">
+                                                            <?php echo htmlspecialchars($tour['title']); ?>
+                                                        </a>
+                                                    </div>
+                                                    <div class="cart-help">
+                                                        <?php echo htmlspecialchars($tour['destination_name'] ?? ''); ?>
+                                                        <?php if (!empty($tour['duration_days'])): ?>
+                                                            • <?php echo (int)$tour['duration_days']; ?> days
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td>
@@ -364,28 +356,28 @@ include 'includes/header.php';
                         <input type="hidden" name="action" value="checkout">
                         <input type="hidden" name="return_url" value="<?php echo htmlspecialchars(navUrl('cart')); ?>">
 
-                        <div class="mb-3">
-                            <label class="booking-form-label"><i class="fas fa-user"></i> Name</label>
-                            <input type="text" name="guest_name" class="form-control" value="<?php echo htmlspecialchars($prefillName); ?>" required>
+                        <div class="cart-field">
+                            <label class="cart-form-label" for="cartGuestName"><i class="fas fa-user"></i> Name</label>
+                            <input type="text" name="guest_name" id="cartGuestName" class="form-control" value="<?php echo htmlspecialchars($prefillName); ?>" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="booking-form-label"><i class="fas fa-envelope"></i> Email</label>
-                            <input type="email" name="guest_email" class="form-control" value="<?php echo htmlspecialchars($prefillEmail); ?>" required>
+                        <div class="cart-field">
+                            <label class="cart-form-label" for="cartGuestEmail"><i class="fas fa-envelope"></i> Email</label>
+                            <input type="email" name="guest_email" id="cartGuestEmail" class="form-control" value="<?php echo htmlspecialchars($prefillEmail); ?>" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="booking-form-label"><i class="fas fa-phone"></i> Phone</label>
-                            <input type="text" name="guest_phone" class="form-control" value="<?php echo htmlspecialchars($prefillPhone); ?>" required>
+                        <div class="cart-field">
+                            <label class="cart-form-label" for="cartGuestPhone"><i class="fas fa-phone"></i> Phone</label>
+                            <input type="text" name="guest_phone" id="cartGuestPhone" class="form-control" value="<?php echo htmlspecialchars($prefillPhone); ?>" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="booking-form-label"><i class="fas fa-comment-dots"></i> Special Requirements</label>
-                            <textarea name="special_requirements" class="form-control" rows="3" placeholder="Optional"></textarea>
+                        <div class="cart-field">
+                            <label class="cart-form-label" for="cartSpecialRequirements"><i class="fas fa-comment-dots"></i> Special Requirements</label>
+                            <textarea name="special_requirements" id="cartSpecialRequirements" class="form-control" rows="3" placeholder="Optional"></textarea>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="booking-form-label"><i class="fas fa-credit-card"></i> Payment Method</label>
+                        <div class="cart-field cart-payment-block">
+                            <label class="cart-form-label"><i class="fas fa-credit-card"></i> Payment Method</label>
                             <div class="payment-options">
                                 <label class="payment-option is-active">
                                     <input type="radio" name="payment_method" value="cash" checked>
@@ -410,7 +402,16 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100">Generate Invoice &amp; Continue</button>
+                        <div class="cart-terms-check">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="accept_terms" id="cartAcceptTerms" value="1" required>
+                                <label class="form-check-label" for="cartAcceptTerms">
+                                    I agree to the <a href="<?php echo navUrl('terms-conditions'); ?>" target="_blank" rel="noopener">Terms of Service</a> and <a href="<?php echo navUrl('privacy-policy'); ?>" target="_blank" rel="noopener">Privacy Policy</a>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Book Now</button>
                     </form>
                 </div>
             </div>

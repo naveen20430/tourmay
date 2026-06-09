@@ -7,7 +7,7 @@
     'use strict';
 
     const BASE_URL = window.BASE_URL || '';
-    let activeSearchType = 'transfer';
+    let activeSearchType = 'activity';
 
     function getActiveSearchType() {
         const activeTab = document.querySelector('.search-category-tab.active');

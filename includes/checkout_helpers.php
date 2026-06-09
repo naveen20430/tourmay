@@ -149,6 +149,18 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
     ];
 }
 
+function createInvoiceFromBooking(array $booking, array $guest, string $paymentMethod, $cab_functionality_enabled = false) {
+    $cartItems = [
+        (string) (int) $booking['tour_id'] => [
+            'tour_date' => trim((string) ($booking['tour_date'] ?? '')),
+            'people' => (int) ($booking['people'] ?? 0),
+            'cab_type' => trim((string) ($booking['cab_type'] ?? '')),
+        ],
+    ];
+
+    return createInvoiceFromCart($cartItems, $guest, $paymentMethod, $cab_functionality_enabled);
+}
+
 function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMethod, $cab_functionality_enabled = false) {
     global $db;
 

@@ -14,9 +14,11 @@ $success_message = '';
 $whatsappEnabled = twilioIsConfigured();
 $whatsappSandboxNotice = getWhatsAppSandboxInstructions();
 $loginRedirect = $_GET['redirect'] ?? navUrl('home');
+$activeLoginTab = 'whatsapp';
 
 // Handle login form submission
 if ($_POST) {
+    $activeLoginTab = 'email';
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $remember = isset($_POST['remember']);
@@ -72,99 +74,26 @@ if (isset($_GET['registered']) && $_GET['registered'] == '1') {
 // Set page variables
 $page_title = 'Login - ' . (getSetting('site_name') ?: 'Travel Hub');
 $current_page = 'login';
-$extra_css = '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        /* Login form specific styles (scoped to login section only) */
-        .login-section { 
-            padding: 80px 0; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: calc(100vh - 200px);
-        }
-        .login-card { 
-            background: white; 
-            border-radius: 20px; 
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15); 
-            overflow: hidden;
-        }
-        .login-header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-        }
-        .login-section .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
-        }
-        .login-section .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-        }
-        .login-section .btn-primary:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-        .social-login {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        .login-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-        .login-tab-btn {
-            flex: 1;
-            border: 1px solid #e2e8f0;
-            background: #fff;
-            color: #475569;
-            border-radius: 12px;
-            padding: 10px 12px;
-            font-weight: 600;
-        }
-        .login-tab-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            border-color: transparent;
-        }
-        .login-panel { display: none; }
-        .login-panel.active { display: block; }
-        .otp-input {
-            letter-spacing: 0.35em;
-            text-align: center;
-            font-weight: 700;
-        }
-        .whatsapp-note {
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
-            color: #065f46;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 0.9rem;
-            margin-bottom: 14px;
-        }
-    </style>';
+$extra_css = cssWithCache('assets/css/auth-pages.css');
 
 // Include header
 include 'includes/header.php';
 ?>
 
 <!-- Login Section -->
-<section class="login-section">
+<section class="auth-section login-section">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-5 col-md-7">
-                <div class="login-card">
-                    <div class="login-header p-4 text-center">
-                        <h2 class="mb-1">
+            <div class="col-lg-5 col-md-8 col-sm-10">
+                <div class="auth-card login-card">
+                    <div class="auth-card__head login-header">
+                        <h2>
                             <i class="fas fa-sign-in-alt me-2"></i>Welcome Back
                         </h2>
-                        <p class="mb-0 opacity-75">Sign in to your travel account</p>
+                        <p>Sign in to your travel account</p>
                     </div>
                     
-                    <div class="p-4">
+                    <div class="auth-card__body">
                         <!-- Success Message -->
                         <?php if ($success_message): ?>
                             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -190,34 +119,30 @@ include 'includes/header.php';
                         <?php endif; ?>
                         
                         <!-- Login Tabs -->
-                        <div class="login-tabs">
-                            <button type="button" class="login-tab-btn active" data-login-tab="email">
-                                <i class="fas fa-envelope me-1"></i> Email
+                        <div class="auth-tabs login-tabs">
+                            <button type="button" class="auth-tab-btn login-tab-btn <?php echo $activeLoginTab === 'whatsapp' ? 'active' : ''; ?>" data-login-tab="whatsapp">
+                                <i class="fab fa-whatsapp"></i> WhatsApp OTP
                             </button>
-                            <button type="button" class="login-tab-btn" data-login-tab="whatsapp">
-                                <i class="fab fa-whatsapp me-1"></i> WhatsApp OTP
+                            <button type="button" class="auth-tab-btn login-tab-btn <?php echo $activeLoginTab === 'email' ? 'active' : ''; ?>" data-login-tab="email">
+                                <i class="fas fa-envelope"></i> Email
                             </button>
                         </div>
 
                         <!-- Email Login -->
-                        <div class="login-panel active" id="loginPanelEmail">
+                        <div class="auth-panel login-panel <?php echo $activeLoginTab === 'email' ? 'active' : ''; ?>" id="loginPanelEmail">
                         <form method="POST" novalidate>
                             <div class="mb-3">
-                                <label class="form-label">
-                                    <i class="fas fa-envelope me-2 text-muted"></i>Email Address
-                                </label>
-                                <input type="email" name="email" class="form-control form-control-lg" 
+                                <label class="form-label" for="loginEmail">Email Address</label>
+                                <input type="email" name="email" id="loginEmail" class="form-control" 
                                        value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" 
                                        required placeholder="Enter your email">
                                 <div class="invalid-feedback">Please enter a valid email address</div>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">
-                                    <i class="fas fa-lock me-2 text-muted"></i>Password
-                                </label>
+                                <label class="form-label" for="password">Password</label>
                                 <div class="input-group">
-                                    <input type="password" name="password" class="form-control form-control-lg" 
+                                    <input type="password" name="password" class="form-control" 
                                            required placeholder="Enter your password" id="password">
                                     <button type="button" class="btn btn-outline-secondary" id="togglePassword">
                                         <i class="fas fa-eye"></i>
@@ -242,19 +167,18 @@ include 'includes/header.php';
                                 </div>
                             </div>
                             
-                            <div class="d-grid mb-3">
+                            <div class="d-grid mb-2">
                                 <button type="submit" class="btn btn-primary btn-lg">
                                     <i class="fas fa-sign-in-alt me-2"></i>Sign In
                                 </button>
-                            </div>
                             </div>
                         </form>
                         </div>
 
                         <!-- WhatsApp OTP Login -->
-                        <div class="login-panel" id="loginPanelWhatsapp">
+                        <div class="auth-panel login-panel <?php echo $activeLoginTab === 'whatsapp' ? 'active' : ''; ?>" id="loginPanelWhatsapp">
                             <?php if ($whatsappEnabled): ?>
-                                <div class="whatsapp-note">
+                                <div class="auth-note whatsapp-note">
                                     <i class="fab fa-whatsapp me-1"></i>
                                     We will send a 5-digit verification code to your WhatsApp number.
                                 </div>
@@ -271,16 +195,14 @@ include 'includes/header.php';
 
                             <div id="whatsappStepPhone">
                                 <div class="mb-3">
-                                    <label class="form-label">
-                                        <i class="fab fa-whatsapp me-2 text-success"></i>Mobile Number
-                                    </label>
-                                    <input type="tel" id="whatsappPhone" class="form-control form-control-lg"
+                                    <label class="form-label" for="whatsappPhone">Mobile Number</label>
+                                    <input type="tel" id="whatsappPhone" class="form-control"
                                            maxlength="16" placeholder="e.g. +91 9876543210 or 9876543210"
                                            <?php echo $whatsappEnabled ? '' : 'disabled'; ?>>
                                     <small class="text-muted">Include country code for numbers outside India.</small>
                                 </div>
-                                <div class="d-grid mb-3">
-                                    <button type="button" class="btn btn-success btn-lg" id="sendWhatsappOtpBtn" <?php echo $whatsappEnabled ? '' : 'disabled'; ?>>
+                                <div class="d-grid mb-2">
+                                    <button type="button" class="btn btn-primary btn-lg" id="sendWhatsappOtpBtn" <?php echo $whatsappEnabled ? '' : 'disabled'; ?>>
                                         <i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp
                                     </button>
                                 </div>
@@ -292,13 +214,11 @@ include 'includes/header.php';
                                     <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="changeWhatsappPhone">Change</button>
                                 </p>
                                 <div class="mb-3">
-                                    <label class="form-label">
-                                        <i class="fas fa-key me-2 text-muted"></i>Enter OTP
-                                    </label>
-                                    <input type="text" id="whatsappOtp" class="form-control form-control-lg otp-input"
+                                    <label class="form-label" for="whatsappOtp">Enter OTP</label>
+                                    <input type="text" id="whatsappOtp" class="form-control auth-otp-input otp-input"
                                            maxlength="5" pattern="[0-9]{5}" placeholder="5-digit code" inputmode="numeric">
                                 </div>
-                                <div class="d-grid gap-2 mb-3">
+                                <div class="d-grid gap-2 mb-2">
                                     <button type="button" class="btn btn-primary btn-lg" id="verifyWhatsappOtpBtn">
                                         <i class="fas fa-check-circle me-2"></i>Verify &amp; Login
                                     </button>
@@ -309,20 +229,14 @@ include 'includes/header.php';
                             </div>
                         </div>
                         
-                        <!-- Register Link -->
-                        <hr class="my-4">
-                        <div class="text-center">
-                            <p class="mb-0">
-                                Don't have an account? 
-                                <a href="register.php" class="text-primary text-decoration-none fw-bold">
-                                    Create Account
-                                </a>
-                            </p>
-                        </div>
+                        <hr class="auth-divider">
+                        <p class="auth-footer-text">
+                            Don't have an account?
+                            <a href="<?php echo navUrl('register'); ?>">Create Account</a>
+                        </p>
                         
-                        <!-- Back to Home -->
-                        <div class="text-center mt-3">
-                            <a href="index.php" class="btn btn-outline-secondary btn-sm">
+                        <div class="auth-back-link">
+                            <a href="<?php echo navUrl('home'); ?>" class="btn btn-outline-secondary btn-sm">
                                 <i class="fas fa-home me-2"></i>Back to Homepage
                             </a>
                         </div>
@@ -333,56 +247,52 @@ include 'includes/header.php';
     </div>
 </section>
 
-<?php include 'includes/footer.php'; ?>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php ob_start(); ?>
 <script>
-    // Form validation
-    (function() {
-        'use strict';
-        window.addEventListener('load', function() {
-            var forms = document.getElementsByTagName('form');
-            var validation = Array.prototype.filter.call(forms, function(form) {
-                form.addEventListener('submit', function(event) {
-                    if (form.checkValidity() === false) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    form.classList.add('was-validated');
-                }, false);
-            });
-        }, false);
-    })();
-    
-    // Password visibility toggle
-    document.getElementById('togglePassword').addEventListener('click', function() {
-        const password = document.getElementById('password');
-        const icon = this.querySelector('i');
-        
-        if (password.type === 'password') {
-            password.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            password.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
+(function() {
+    'use strict';
+
+    window.addEventListener('load', function() {
+        Array.prototype.forEach.call(document.getElementsByTagName('form'), function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
     });
-    
-    // Auto-hide success messages
+
+    var togglePassword = document.getElementById('togglePassword');
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            var password = document.getElementById('password');
+            var icon = this.querySelector('i');
+            if (!password || !icon) return;
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                password.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    }
+
     setTimeout(function() {
-        const alerts = document.querySelectorAll('.alert-success');
-        alerts.forEach(function(alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+        document.querySelectorAll('.alert-success').forEach(function(alert) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                bootstrap.Alert.getOrCreateInstance(alert).close();
+            }
         });
     }, 5000);
 
-    // Login tabs
     document.querySelectorAll('[data-login-tab]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            const tab = btn.getAttribute('data-login-tab');
+            var tab = btn.getAttribute('data-login-tab');
             document.querySelectorAll('[data-login-tab]').forEach(function(item) {
                 item.classList.toggle('active', item === btn);
             });
@@ -390,9 +300,9 @@ include 'includes/header.php';
             document.getElementById('loginPanelWhatsapp').classList.toggle('active', tab === 'whatsapp');
         });
     });
+})();
 
-    // WhatsApp OTP login
-    (function() {
+(function() {
         const redirectUrl = <?php echo json_encode($loginRedirect); ?>;
         const sendUrl = <?php echo json_encode(BASE_URL . 'api/whatsapp-send-otp.php'); ?>;
         const verifyUrl = <?php echo json_encode(BASE_URL . 'api/whatsapp-verify-otp.php'); ?>;
@@ -531,3 +441,6 @@ include 'includes/header.php';
         }
     })();
 </script>
+<?php
+$extra_js = ob_get_clean();
+include 'includes/footer.php';

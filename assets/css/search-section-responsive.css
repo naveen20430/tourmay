@@ -50,8 +50,10 @@
     border-radius: 12px;
     padding: 25px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 1300px;
-    width: 100%;
+    max-width: 1430px;
+    width: 110%;
+    margin-left: -5%;
+    margin-right: -5%;
     height: auto;
     min-height: auto;
     position: relative;
@@ -222,6 +224,10 @@
     .search-container {
         padding: 20px;
         border-radius: 10px;
+        width: 100%;
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
     }
 
     .search-form {

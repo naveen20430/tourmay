@@ -1,20 +1,13 @@
 <?php
 require_once 'config/config.php';
+require_once 'includes/checkout_helpers.php';
 
-// Set page variables
+requireUserLogin();
+
+$user_id = (int) $_SESSION['user_id'];
 $page_title = 'User Dashboard - ' . getSetting('site_name');
 $current_page = 'dashboard';
-
-// Include header
-include 'includes/header.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-    exit;
-}
-
-$user_id = $_SESSION['user_id'];
+$extra_css = cssWithCache('assets/css/dashboard-pages.css');
 $errors = [];
 $success_message = '';
 
@@ -30,19 +23,24 @@ try {
 }
 
 // Get user's bookings
+ensureCheckoutSchema();
 try {
     $bookings = $db->fetchAll("
-        SELECT b.*, t.title as tour_title, t.slug as tour_slug, t.featured_image, 
-               d.name as destination_name, d.country
-        FROM bookings b 
-        JOIN tours t ON b.tour_id = t.id 
-        LEFT JOIN destinations d ON t.destination_id = d.id 
-        WHERE b.guest_email = ? 
+        SELECT b.*, t.title as tour_title, t.slug as tour_slug, t.featured_image,
+               d.name as destination_name, d.country,
+               i.invoice_number, i.payment_status as invoice_payment_status, i.payment_method as invoice_payment_method
+        FROM bookings b
+        JOIN tours t ON b.tour_id = t.id
+        LEFT JOIN destinations d ON t.destination_id = d.id
+        LEFT JOIN invoices i ON b.invoice_id = i.id
+        WHERE b.user_id = ? OR b.guest_email = ?
         ORDER BY b.created_at DESC
-    ", [$user['email']]);
+    ", [$user_id, $user['email']]);
 } catch (Exception $e) {
     $bookings = [];
 }
+
+include 'includes/header.php';
 
 // Handle profile update
 if ($_POST && isset($_POST['action']) && $_POST['action'] == 'update_profile') {
@@ -113,88 +111,63 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] == 'change_password') 
         }
     }
 }
+$confirmedBookings = count(array_filter($bookings, static function ($booking) {
+    return ($booking['booking_status'] ?? '') === 'confirmed';
+}));
+$destinationCount = count(array_unique(array_filter(array_column($bookings, 'destination_name'))));
 ?>
 
-<style>
-    .dashboard-sidebar {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
-        height: fit-content;
-    }
-    .dashboard-content {
-        background: white;
-        border-radius: 10px;
-        padding: 30px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-    }
-    .booking-card {
-        border: 1px solid #e9ecef;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 15px;
-        transition: transform 0.2s;
-    }
-    .booking-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    .status-badge {
-        font-size: 0.8em;
-        padding: 4px 12px;
-        border-radius: 20px;
-    }
-    .nav-pills .nav-link.active {
-        background: #1bbc9b;
-    }
-</style>
+<section class="page-header">
+    <div class="container">
+        <h1>My Dashboard</h1>
+        <ul class="travhub-breadcrumb list-unstyled">
+            <li><a href="<?php echo navUrl('home'); ?>">Home</a></li>
+            <li>Dashboard</li>
+        </ul>
+    </div>
+</section>
 
-<div class="container my-5">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-lg-3 mb-4">
-            <div class="dashboard-sidebar">
-                <div class="text-center mb-4">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" 
-                         style="width: 80px; height: 80px; font-size: 2rem;">
+<section class="dashboard-section">
+    <div class="container">
+        <div class="dashboard-layout">
+            <aside class="dashboard-sidebar">
+                <div class="dashboard-user">
+                    <div class="dashboard-avatar">
                         <?php echo strtoupper(substr($user['first_name'], 0, 1)); ?>
                     </div>
-                    <h5 class="mt-3 mb-1"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h5>
-                    <p class="text-muted small"><?php echo htmlspecialchars($user['email']); ?></p>
+                    <h5><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></h5>
+                    <p><?php echo htmlspecialchars($user['email']); ?></p>
                 </div>
-                
-                <ul class="nav nav-pills flex-column" id="dashboard-tabs">
-                    <li class="nav-item mb-1">
+
+                <ul class="nav nav-pills flex-column dashboard-nav" id="dashboard-tabs">
+                    <li class="nav-item">
                         <a class="nav-link active" id="overview-tab" data-bs-toggle="pill" href="#overview">
-                            <i class="fas fa-tachometer-alt me-2"></i>Overview
-                        </a>
-                    </li>
-                    <li class="nav-item mb-1">
-                        <a class="nav-link" id="bookings-tab" data-bs-toggle="pill" href="#bookings">
-                            <i class="fas fa-calendar-check me-2"></i>My Bookings
-                        </a>
-                    </li>
-                    <li class="nav-item mb-1">
-                        <a class="nav-link" id="profile-tab" data-bs-toggle="pill" href="#profile">
-                            <i class="fas fa-user-edit me-2"></i>Edit Profile
-                        </a>
-                    </li>
-                    <li class="nav-item mb-1">
-                        <a class="nav-link" id="password-tab" data-bs-toggle="pill" href="#password">
-                            <i class="fas fa-lock me-2"></i>Change Password
+                            <i class="fas fa-tachometer-alt"></i> Overview
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="logout.php" class="nav-link text-danger">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        <a class="nav-link" id="bookings-tab" data-bs-toggle="pill" href="#bookings">
+                            <i class="fas fa-calendar-check"></i> My Bookings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="profile-tab" data-bs-toggle="pill" href="#profile">
+                            <i class="fas fa-user-edit"></i> Edit Profile
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="password-tab" data-bs-toggle="pill" href="#password">
+                            <i class="fas fa-lock"></i> Change Password
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="<?php echo BASE_URL; ?>logout.php" class="nav-link logout-link">
+                            <i class="fas fa-sign-out-alt"></i> Logout
                         </a>
                     </li>
                 </ul>
-            </div>
-        </div>
-        
-        <!-- Main Content -->
-        <div class="col-lg-9">
+            </aside>
+
             <div class="dashboard-content">
                 <!-- Messages -->
                 <?php if ($success_message): ?>
@@ -216,131 +189,123 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] == 'change_password') 
                 <?php endif; ?>
                 
                 <div class="tab-content">
-                    <!-- Overview Tab -->
                     <div class="tab-pane fade show active" id="overview">
-                        <h4 class="mb-4">
-                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard Overview
+                        <h4 class="dashboard-panel-title">
+                            <i class="fas fa-tachometer-alt"></i>Dashboard Overview
                         </h4>
-                        
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <div class="card text-center border-primary">
-                                    <div class="card-body">
-                                        <i class="fas fa-calendar-check fa-2x text-primary mb-2"></i>
-                                        <h3 class="text-primary"><?php echo count($bookings); ?></h3>
-                                        <p class="mb-0">Total Bookings</p>
-                                    </div>
-                                </div>
+
+                        <div class="dashboard-stats">
+                            <div class="dashboard-stat-card">
+                                <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+                                <h3><?php echo count($bookings); ?></h3>
+                                <p>Total Bookings</p>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <div class="card text-center border-success">
-                                    <div class="card-body">
-                                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                                        <h3 class="text-success">
-                                            <?php echo count(array_filter($bookings, fn($b) => $b['booking_status'] === 'confirmed')); ?>
-                                        </h3>
-                                        <p class="mb-0">Confirmed Tours</p>
-                                    </div>
-                                </div>
+                            <div class="dashboard-stat-card">
+                                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                                <h3><?php echo $confirmedBookings; ?></h3>
+                                <p>Confirmed Tours</p>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <div class="card text-center border-info">
-                                    <div class="card-body">
-                                        <i class="fas fa-map-marked-alt fa-2x text-info mb-2"></i>
-                                        <h3 class="text-info">
-                                            <?php echo count(array_unique(array_column($bookings, 'destination_name'))); ?>
-                                        </h3>
-                                        <p class="mb-0">Destinations Visited</p>
-                                    </div>
-                                </div>
+                            <div class="dashboard-stat-card">
+                                <div class="stat-icon"><i class="fas fa-map-marked-alt"></i></div>
+                                <h3><?php echo $destinationCount; ?></h3>
+                                <p>Destinations</p>
                             </div>
                         </div>
-                        
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <h5>Account Information</h5>
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <p><strong>Member Since:</strong> <?php echo date('M d, Y', strtotime($user['created_at'])); ?></p>
-                                                <p><strong>Email:</strong> <?php echo htmlspecialchars($user['email']); ?></p>
-                                                <p><strong>Phone:</strong> <?php echo htmlspecialchars($user['phone'] ?: 'Not provided'); ?></p>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <p><strong>Country:</strong> <?php echo htmlspecialchars($user['country'] ?: 'Not specified'); ?></p>
-                                                <p><strong>Status:</strong> 
-                                                    <span class="badge bg-success">Active</span>
-                                                    <?php if ($user['email_verified']): ?>
-                                                        <span class="badge bg-primary">Verified</span>
-                                                    <?php endif; ?>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
+
+                        <div class="dashboard-info-card">
+                            <h5>Account Information</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Member Since:</strong> <?php echo date('M d, Y', strtotime($user['created_at'])); ?></p>
+                                    <p><strong>Email:</strong> <?php echo htmlspecialchars($user['email']); ?></p>
+                                    <p><strong>Phone:</strong> <?php echo htmlspecialchars($user['phone'] ?: 'Not provided'); ?></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Country:</strong> <?php echo htmlspecialchars($user['country'] ?: 'Not specified'); ?></p>
+                                    <p><strong>Status:</strong>
+                                        <span class="badge bg-success">Active</span>
+                                        <?php if (!empty($user['email_verified'])): ?>
+                                            <span class="badge bg-primary">Verified</span>
+                                        <?php endif; ?>
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Bookings Tab -->
                     <div class="tab-pane fade" id="bookings">
-                        <h4 class="mb-4">
-                            <i class="fas fa-calendar-check me-2 text-primary"></i>My Bookings
+                        <h4 class="dashboard-panel-title">
+                            <i class="fas fa-calendar-check"></i>My Bookings
                         </h4>
-                        
+
                         <?php if (empty($bookings)): ?>
-                            <div class="text-center py-5">
-                                <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
-                                <h5 class="text-muted">No Bookings Yet</h5>
-                                <p class="text-muted">Start exploring our amazing tours and make your first booking!</p>
-                                <a href="tours.php" class="btn btn-primary">
+                            <div class="dashboard-empty">
+                                <i class="fas fa-calendar-times d-block"></i>
+                                <h5>No Bookings Yet</h5>
+                                <p class="text-muted">Start exploring our amazing tours and make your first booking.</p>
+                                <a href="<?php echo navUrl('tours'); ?>" class="btn btn-primary">
                                     <i class="fas fa-search me-2"></i>Browse Tours
                                 </a>
                             </div>
                         <?php else: ?>
                             <?php foreach ($bookings as $booking): ?>
-                                <div class="booking-card">
-                                    <div class="row align-items-center">
+                                <?php
+                                $statusClass = 'is-default';
+                                if (($booking['booking_status'] ?? '') === 'confirmed') {
+                                    $statusClass = 'is-confirmed';
+                                } elseif (($booking['booking_status'] ?? '') === 'pending') {
+                                    $statusClass = 'is-pending';
+                                } elseif (($booking['booking_status'] ?? '') === 'cancelled') {
+                                    $statusClass = 'is-cancelled';
+                                }
+                                $bookingTotal = (float) ($booking['total_with_cab'] ?? $booking['total_amount'] ?? 0);
+                                if ($bookingTotal <= 0) {
+                                    $bookingTotal = (float) $booking['total_amount'] + (float) ($booking['cab_price'] ?? 0);
+                                }
+                                ?>
+                                <div class="dashboard-booking-card">
+                                    <div class="row align-items-center g-3">
                                         <div class="col-md-3">
-                                            <?php if ($booking['featured_image']): ?>
-                                                <img src="<?php echo $booking['featured_image']; ?>" 
-                                                     class="img-fluid rounded" alt="<?php echo htmlspecialchars($booking['tour_title']); ?>">
+                                            <?php if (!empty($booking['featured_image'])): ?>
+                                                <img src="<?php echo htmlspecialchars($booking['featured_image']); ?>"
+                                                     class="tour-thumb" alt="<?php echo htmlspecialchars($booking['tour_title']); ?>">
                                             <?php else: ?>
-                                                <div class="bg-light rounded p-4 text-center">
-                                                    <i class="fas fa-image fa-2x text-muted"></i>
+                                                <div class="tour-thumb-placeholder">
+                                                    <i class="fas fa-image fa-2x"></i>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
                                         <div class="col-md-6">
-                                            <h6 class="mb-1">
-                                                <a href="tour/<?php echo $booking['tour_slug']; ?>" class="text-decoration-none">
+                                            <h6>
+                                                <a href="<?php echo tourUrl($booking['tour_slug']); ?>">
                                                     <?php echo htmlspecialchars($booking['tour_title']); ?>
                                                 </a>
                                             </h6>
-                                            <p class="text-muted mb-1">
-                                                <i class="fas fa-map-marker-alt me-1"></i>
-                                                <?php echo htmlspecialchars($booking['destination_name'] . ', ' . $booking['country']); ?>
+                                            <p class="dashboard-booking-meta">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                                <?php echo htmlspecialchars(trim(($booking['destination_name'] ?? '') . ', ' . ($booking['country'] ?? ''), ', ')); ?>
                                             </p>
-                                            <p class="mb-1">
-                                                <small>
-                                                    <strong>Date:</strong> <?php echo date('M d, Y', strtotime($booking['tour_date'])); ?> |
-                                                    <strong>People:</strong> <?php echo $booking['number_of_people']; ?> |
-                                                    <strong>Total:</strong> ₹<?php echo number_format($booking['total_amount'], 0); ?>
-                                                </small>
+                                            <p class="dashboard-booking-meta mb-0">
+                                                <strong>Date:</strong> <?php echo date('M d, Y', strtotime($booking['tour_date'])); ?>
+                                                &bull; <strong>People:</strong> <?php echo (int) $booking['number_of_people']; ?>
+                                                &bull; <strong>Total:</strong> ₹<?php echo number_format($bookingTotal, 0); ?>
                                             </p>
+                                            <?php if (!empty($booking['invoice_number'])): ?>
+                                                <a href="<?php echo invoiceUrl($booking['invoice_number']); ?>" class="dashboard-invoice-link">
+                                                    <i class="fas fa-file-invoice"></i>
+                                                    View Invoice
+                                                    <?php if (($booking['invoice_payment_status'] ?? '') === 'pending'): ?>
+                                                        (Payment Pending)
+                                                    <?php endif; ?>
+                                                </a>
+                                            <?php endif; ?>
                                         </div>
-                                        <div class="col-md-3 text-end">
-                                            <span class="status-badge 
-                                                <?php 
-                                                    echo $booking['booking_status'] === 'confirmed' ? 'bg-success text-white' :
-                                                         ($booking['booking_status'] === 'pending' ? 'bg-warning text-dark' :
-                                                          ($booking['booking_status'] === 'cancelled' ? 'bg-danger text-white' : 'bg-secondary text-white'));
-                                                ?>">
-                                                <?php echo ucfirst($booking['booking_status']); ?>
+                                        <div class="col-md-3 text-md-end">
+                                            <span class="dashboard-status-badge <?php echo $statusClass; ?>">
+                                                <?php echo ucfirst($booking['booking_status'] ?? 'pending'); ?>
                                             </span>
                                             <p class="small text-muted mt-2 mb-0">
-                                                Booking #<?php echo $booking['booking_number']; ?>
+                                                #<?php echo htmlspecialchars($booking['booking_number']); ?>
                                             </p>
                                         </div>
                                     </div>
@@ -349,10 +314,9 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] == 'change_password') 
                         <?php endif; ?>
                     </div>
                     
-                    <!-- Profile Tab -->
                     <div class="tab-pane fade" id="profile">
-                        <h4 class="mb-4">
-                            <i class="fas fa-user-edit me-2 text-primary"></i>Edit Profile
+                        <h4 class="dashboard-panel-title">
+                            <i class="fas fa-user-edit"></i>Edit Profile
                         </h4>
                         
                         <form method="POST">
@@ -408,10 +372,9 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] == 'change_password') 
                         </form>
                     </div>
                     
-                    <!-- Password Tab -->
                     <div class="tab-pane fade" id="password">
-                        <h4 class="mb-4">
-                            <i class="fas fa-lock me-2 text-primary"></i>Change Password
+                        <h4 class="dashboard-panel-title">
+                            <i class="fas fa-lock"></i>Change Password
                         </h4>
                         
                         <form method="POST">
@@ -442,6 +405,6 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] == 'change_password') 
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php include 'includes/footer.php'; ?>
