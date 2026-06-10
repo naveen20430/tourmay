@@ -151,24 +151,16 @@
 	        <div class="topbar-one__inner">
 	            <ul class="list-unstyled topbar-one__info">
 	                <li class="topbar-one__info__item">
-	                    <i class="flaticon-pin-1 topbar-one__info__icon"></i>
-	                    <?php echo function_exists('getSetting') ? getSetting('site_address') ?: '123 Travel Street, City, Country' : '123 Travel Street, City, Country'; ?>
-	                </li>
-	                <li class="topbar-one__info__item">
 	                    <i class="flaticon-mail topbar-one__info__icon"></i>
 	                    <a href="mailto:<?php echo function_exists('getSetting') ? getSetting('contact_email') ?: 'info@travhub.com' : 'info@travhub.com'; ?>">
 	                        <?php echo function_exists('getSetting') ? getSetting('contact_email') ?: 'info@travhub.com' : 'info@travhub.com'; ?>
 	                    </a>
 	                </li>
-	                <li class="topbar-one__info__item">
+	                <li class="topbar-one__info__item topbar-one__info__item--last">
 	                    <i class="flaticon-phone-call topbar-one__info__icon"></i>
 	                    <a href="tel:<?php echo function_exists('getSetting') ? str_replace(' ', '', getSetting('contact_phone')) ?: '+1234567890' : '+1234567890'; ?>">
 	                        <?php echo function_exists('getSetting') ? getSetting('contact_phone') ?: '+1 234 567 890' : '+1 234 567 890'; ?>
 	                    </a>
-	                </li>
-	                <li class="topbar-one__info__item topbar-one__info__item--last">
-	                    <i class="flaticon-three-o-clock-clock topbar-one__info__icon"></i>
-	                    <?php echo function_exists('getSetting') ? getSetting('opening_hours') ?: '9:00am - 10:00pm' : '9:00am - 10:00pm'; ?>
 	                </li>
 	            </ul><!-- /.list-unstyled topbar-one__info -->
 	        </div><!-- /.topbar-one__inner -->

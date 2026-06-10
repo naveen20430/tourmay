@@ -221,43 +221,7 @@ include 'includes/header.php';
                             <input class="travhub-multi-datepicker" id="cab_travel_date" type="text" name="travel_date" placeholder="Date" data-label="Date">
                         </div>
                     </div>
-                    <div class="form-group activity-field activity-guest-field">
-                        <div class="activity-guest-dropdown" id="cabGuestDropdown">
-                            <button type="button" class="activity-guest-toggle" id="cabGuestToggle" aria-expanded="false" aria-haspopup="listbox">
-                                <span id="cabGuestLabel">2 Adults</span>
-                                <svg class="activity-guest-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 8" width="12" height="8" aria-hidden="true"><path fill="currentColor" d="M1 1l5 5 5-5"/></svg>
-                            </button>
-                            <div class="activity-guest-panel" id="cabGuestPanel" hidden>
-                                <div class="activity-guest-panel-head" id="cabGuestPanelHead">2 Adults</div>
-                                <div class="activity-guest-row">
-                                    <div>
-                                        <strong>Adults</strong>
-                                        <span class="activity-guest-sub">Above 12 Years</span>
-                                    </div>
-                                    <div class="activity-guest-counter">
-                                        <button type="button" class="activity-counter-btn" data-guest-action="adults-minus" aria-label="Fewer adults">−</button>
-                                        <span id="cabAdultsCount">2</span>
-                                        <button type="button" class="activity-counter-btn" data-guest-action="adults-plus" aria-label="More adults">+</button>
-                                    </div>
-                                </div>
-                                <div class="activity-guest-row">
-                                    <div>
-                                        <strong>Children</strong>
-                                        <span class="activity-guest-sub">Below 12 Years</span>
-                                    </div>
-                                    <div class="activity-guest-counter">
-                                        <button type="button" class="activity-counter-btn" data-guest-action="children-minus" aria-label="Fewer children">−</button>
-                                        <span id="cabChildrenCount">0</span>
-                                        <button type="button" class="activity-counter-btn" data-guest-action="children-plus" aria-label="More children">+</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <input type="hidden" name="adults" id="cab_adults" value="2">
-                            <input type="hidden" name="children" id="cab_children" value="0">
-                            <input type="hidden" name="guests" id="cab_guests" value="2">
-                        </div>
-                    </div>
-                    <button type="button" class="search-btn search-btn--red" onclick="showPhoneModal('transfer')">
+                    <button type="button" class="search-btn search-btn--red" onclick="submitCabSearch()">
                         <span>Search</span>
                     </button>
                 </form>

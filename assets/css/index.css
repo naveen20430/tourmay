@@ -722,9 +722,9 @@
     box-shadow: 0 8px 20px rgba(230, 57, 70, 0.45) !important;
 }
 
-/* Transfer form: 5 columns + button */
+/* Transfer form: trip type + pickup + dropoff + date + button */
 .search-form--transfer {
-    grid-template-columns: 120px repeat(3, minmax(160px, 1fr)) 130px 140px !important;
+    grid-template-columns: 120px repeat(3, minmax(160px, 1fr)) 140px !important;
 }
 
 @media (min-width: 992px) {
@@ -879,7 +879,7 @@
     }
 
     .search-section .search-form--transfer {
-        grid-template-columns: 120px repeat(3, minmax(140px, 1fr)) 130px 140px !important;
+        grid-template-columns: 120px repeat(3, minmax(140px, 1fr)) 140px !important;
     }
 
     .form-group {
@@ -2144,7 +2144,7 @@
 }
 
 .search-section .search-form--transfer {
-    grid-template-columns: 120px repeat(3, minmax(140px, 1fr)) 130px 140px !important;
+    grid-template-columns: 120px repeat(3, minmax(140px, 1fr)) 140px !important;
 }
 
 .search-section .form-group {

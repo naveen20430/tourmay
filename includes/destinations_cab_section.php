@@ -35,12 +35,11 @@
                 // echo "<!-- Destinations with tours found: " . count($destinations_list) . " -->";
                 
                 if (empty($destinations_list)) {
-                    echo "<div style='padding: 40px; text-align: center; background: white; border-radius: 10px;'>";
+                    echo "<div class='destinations-view destinations-view--tours' id='destinationsToursView'><div style='padding: 40px; text-align: center; background: white; border-radius: 10px;'>";
                     echo "<p style='color:#888; font-size: 1.1rem;'>No destinations with active tours found.</p>";
-                    echo "</div>";
+                    echo "</div></div>";
                 } else {
-                    // Display destination count for debugging
-                    // echo "<!-- Showing " . count($destinations_list) . " destinations -->";
+                    echo '<div class="destinations-view destinations-view--tours" id="destinationsToursView">';
                 }
 
                 foreach ($destinations_list as $index => $dest):
@@ -150,6 +149,12 @@
                 </div>
                 
                 <?php endforeach; ?>
+
+                <?php if (!empty($destinations_list)): ?>
+                </div>
+                <?php endif; ?>
+
+                <?php include __DIR__ . '/cab_travel_listing.php'; ?>
             </div>
 
             <!-- Cab Routes Sidebar -->
@@ -304,6 +309,146 @@
     background: linear-gradient(135deg, #1bbc9b 0%, #17a689 100%) !important;
     transform: translateY(-2px) scale(1.02) !important;
     box-shadow: 0 5px 15px rgba(27, 188, 155, 0.4) !important;
+}
+
+/* Travel tab — cab listing in destination stack */
+.destinations-view--travel[hidden],
+.cab-route-block.is-hidden,
+.cab-travel-empty--filter[hidden] {
+    display: none !important;
+}
+
+.cab-route-block {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+    padding: 24px 20px 20px;
+    margin-bottom: 28px;
+}
+
+.cab-travel-title {
+    text-align: center;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #222;
+    margin: 0 0 22px;
+    line-height: 1.35;
+}
+
+.cab-travel-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.cab-travel-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 1fr 130px;
+    align-items: center;
+    gap: 0;
+    border: 1px solid #d9dee7;
+    border-bottom: 0;
+    background: #fff;
+    min-height: 92px;
+}
+
+.cab-travel-row:last-child {
+    border-bottom: 1px solid #d9dee7;
+}
+
+.cab-travel-row > div {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 14px 12px;
+    border-right: 1px solid #d9dee7;
+}
+
+.cab-travel-row > div:last-child {
+    border-right: 0;
+}
+
+.cab-travel-row__image {
+    padding: 10px !important;
+}
+
+.cab-travel-row__image img {
+    width: 100%;
+    max-width: 92px;
+    height: 58px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #f3f4f6;
+}
+
+.cab-travel-row__type span,
+.cab-travel-row__fare span {
+    display: block;
+    font-size: 0.82rem;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.cab-travel-row__type strong,
+.cab-travel-row__fare strong {
+    font-size: 1.05rem;
+    color: #222;
+    font-weight: 700;
+}
+
+.cab-travel-book-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 108px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    text-decoration: none;
+    border: 0;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.28);
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cab-travel-book-btn:hover {
+    background: linear-gradient(135deg, #6b46c1 0%, #5a67d8 100%);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(102, 126, 234, 0.38);
+}
+
+.cab-travel-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: #64748b;
+    font-size: 1rem;
+}
+
+@media (max-width: 991px) {
+    .cab-travel-row {
+        grid-template-columns: 90px 1fr 1fr 110px;
+    }
+}
+
+@media (max-width: 767px) {
+    .cab-travel-row {
+        grid-template-columns: 1fr;
+    }
+
+    .cab-travel-row > div {
+        border-right: 0;
+        border-bottom: 1px solid #d9dee7;
+    }
+
+    .cab-travel-row > div:last-child {
+        border-bottom: 0;
+    }
 }
 </style>
 

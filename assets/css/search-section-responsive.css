@@ -75,7 +75,7 @@
 }
 
 .search-form--transfer {
-    grid-template-columns: 120px repeat(3, minmax(140px, 1fr)) 130px 140px !important;
+    grid-template-columns: 120px repeat(3, minmax(140px, 1fr)) 140px !important;
 }
 
 .search-form--activity .activity-pickup-group {

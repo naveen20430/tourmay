@@ -17,6 +17,66 @@
     /**
      * Tab switching: Transfer (cab) / Activity (tour)
      */
+    function scrollToDestinationsSection() {
+        const section = document.getElementById('destinations-cab-section');
+        if (!section) return;
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function filterCabTravelBlocks() {
+        const pickup = document.getElementById('cab_pickup');
+        const dropoff = document.getElementById('cab_dropoff');
+        const pickupVal = pickup ? pickup.value : '';
+        const dropoffVal = dropoff ? dropoff.value : '';
+        const blocks = document.querySelectorAll('.cab-route-block');
+        const emptyMsg = document.getElementById('cabTravelEmptyFilter');
+        let visible = 0;
+
+        blocks.forEach(function(block) {
+            const from = block.getAttribute('data-from') || '';
+            const to = block.getAttribute('data-to') || '';
+            let show = true;
+
+            if (pickupVal && from !== pickupVal) {
+                show = false;
+            }
+            if (dropoffVal && to !== dropoffVal) {
+                show = false;
+            }
+
+            block.classList.toggle('is-hidden', !show);
+            if (show) {
+                visible++;
+            }
+        });
+
+        if (emptyMsg) {
+            emptyMsg.hidden = !(blocks.length && visible === 0);
+        }
+    }
+
+    function switchHomeSectionView(type) {
+        const toursView = document.getElementById('destinationsToursView');
+        const travelView = document.getElementById('destinationsTravelView');
+        if (!toursView || !travelView) {
+            return;
+        }
+
+        if (type === 'transfer') {
+            toursView.hidden = true;
+            travelView.hidden = false;
+            filterCabTravelBlocks();
+            scrollToDestinationsSection();
+        } else {
+            toursView.hidden = false;
+            travelView.hidden = true;
+            const emptyMsg = document.getElementById('cabTravelEmptyFilter');
+            if (emptyMsg) {
+                emptyMsg.hidden = true;
+            }
+        }
+    }
+
     function initSearchTabs() {
         const tabs = document.querySelectorAll('.search-category-tab');
         const panels = document.querySelectorAll('.search-panel');
@@ -42,6 +102,8 @@
                         panel.setAttribute('hidden', '');
                     }
                 });
+
+                switchHomeSectionView(type);
             });
         });
     }
@@ -487,7 +549,18 @@
             }
         }
 
-        pickup.addEventListener('change', updateDropoffs);
+        pickup.addEventListener('change', function() {
+            updateDropoffs();
+            if (getActiveSearchType() === 'transfer') {
+                filterCabTravelBlocks();
+            }
+        });
+
+        dropoff.addEventListener('change', function() {
+            if (getActiveSearchType() === 'transfer') {
+                filterCabTravelBlocks();
+            }
+        });
     }
 
     function findCabRoute(pickup, dropoff) {
@@ -553,9 +626,6 @@
         const dropoff = document.getElementById('cab_dropoff');
         const travelDateInput = document.getElementById('cab_travel_date');
         const tripType = document.getElementById('cab_trip_type');
-        const guests = document.getElementById('cab_guests');
-        const adults = document.getElementById('cab_adults');
-        const children = document.getElementById('cab_children');
 
         return {
             pickup: pickup ? pickup.value : '',
@@ -564,57 +634,71 @@
             dropoffText: dropoff ? (dropoff.options[dropoff.selectedIndex]?.text || '') : '',
             travel_date: travelDateInput ? travelDateInput.value : '',
             trip_type: tripType ? tripType.value : 'one_way',
-            trip_typeText: tripType ? (tripType.options[tripType.selectedIndex]?.text || '') : '',
-            guests: guests ? guests.value : '2',
-            adults: adults ? adults.value : '2',
-            children: children ? children.value : '0',
-            guestsText: document.getElementById('cabGuestLabel')?.textContent || '2 Adults'
+            trip_typeText: tripType ? (tripType.options[tripType.selectedIndex]?.text || '') : ''
         };
+    }
+
+    function submitCabSearch() {
+        activeSearchType = 'transfer';
+        const data = getCabSearchData();
+
+        if (!data.pickup || !data.dropoff) {
+            alert('Please select both Pick-Up and Drop-Off locations.');
+            return false;
+        }
+        if (data.pickup === data.dropoff) {
+            alert('Pick-Up and Drop-Off must be different.');
+            return false;
+        }
+
+        switchHomeSectionView('transfer');
+
+        const route = findCabRoute(data.pickup, data.dropoff);
+        if (route) {
+            const params = new URLSearchParams();
+            if (data.travel_date) params.append('travel_date', data.travel_date);
+            if (data.trip_type) params.append('trip_type', data.trip_type);
+            const qs = params.toString();
+            window.location.href = BASE_URL + 'cab-route-details.php?route_id=' + route.id + (qs ? '&' + qs : '');
+            return false;
+        }
+
+        scrollToDestinationsSection();
+        return false;
     }
 
     function showPhoneModal(type) {
         activeSearchType = type || getActiveSearchType();
+
+        if (activeSearchType === 'transfer') {
+            submitCabSearch();
+            return;
+        }
+
         let detailsHTML = '';
 
         const submitText = document.getElementById('modalSubmitText');
         if (submitText) {
-            submitText.textContent = activeSearchType === 'transfer' ? 'Search Cabs' : 'Search Tours';
+            submitText.textContent = 'Search Tours';
         }
 
-        if (activeSearchType === 'transfer') {
-            const data = getCabSearchData();
-            if (!data.pickup || !data.dropoff) {
-                alert('Please select both Pick-Up and Drop-Off locations.');
-                return;
-            }
-            if (data.pickup === data.dropoff) {
-                alert('Pick-Up and Drop-Off must be different.');
-                return;
-            }
-            if (data.pickup) detailsHTML += '<div><strong>Pick-Up:</strong> ' + data.pickupText + '</div>';
-            if (data.dropoff) detailsHTML += '<div><strong>Drop-Off:</strong> ' + data.dropoffText + '</div>';
-            if (data.trip_typeText) detailsHTML += '<div><strong>Trip:</strong> ' + data.trip_typeText + '</div>';
-            if (data.travel_date) detailsHTML += '<div><strong>Date:</strong> ' + data.travel_date + '</div>';
-            if (data.guestsText) detailsHTML += '<div><strong>Guests:</strong> ' + data.guestsText + '</div>';
-        } else {
-            if (!validateActivityPickup()) {
-                return;
-            }
-            const data = getTourSearchData();
-            if (data.query) detailsHTML += '<div><strong>Search:</strong> ' + data.query + '</div>';
-            if (data.destination) detailsHTML += '<div><strong>Destination:</strong> ' + data.destinationText + '</div>';
-            if (data.tour) detailsHTML += '<div><strong>Tour:</strong> ' + data.query + '</div>';
-            if (data.country) detailsHTML += '<div><strong>Country:</strong> ' + data.countryText + '</div>';
-            if (data.pickup_placeText) {
-                let pickupLine = data.pickup_placeText;
-                if (data.pickup_detail) {
-                    pickupLine += ' — ' + data.pickup_detail;
-                }
-                detailsHTML += '<div><strong>Pickup:</strong> ' + pickupLine + '</div>';
-            }
-            if (data.guestsText) detailsHTML += '<div><strong>Guests:</strong> ' + data.guestsText + '</div>';
-            if (data.travel_date) detailsHTML += '<div><strong>Travel Date:</strong> ' + data.travel_date + '</div>';
+        if (!validateActivityPickup()) {
+            return;
         }
+        const data = getTourSearchData();
+        if (data.query) detailsHTML += '<div><strong>Search:</strong> ' + data.query + '</div>';
+        if (data.destination) detailsHTML += '<div><strong>Destination:</strong> ' + data.destinationText + '</div>';
+        if (data.tour) detailsHTML += '<div><strong>Tour:</strong> ' + data.query + '</div>';
+        if (data.country) detailsHTML += '<div><strong>Country:</strong> ' + data.countryText + '</div>';
+        if (data.pickup_placeText) {
+            let pickupLine = data.pickup_placeText;
+            if (data.pickup_detail) {
+                pickupLine += ' — ' + data.pickup_detail;
+            }
+            detailsHTML += '<div><strong>Pickup:</strong> ' + pickupLine + '</div>';
+        }
+        if (data.guestsText) detailsHTML += '<div><strong>Guests:</strong> ' + data.guestsText + '</div>';
+        if (data.travel_date) detailsHTML += '<div><strong>Travel Date:</strong> ' + data.travel_date + '</div>';
 
         if (!detailsHTML) {
             detailsHTML = '<div style="color: #6c757d; font-style: italic;">No search filters selected</div>';
@@ -665,53 +749,7 @@
         let redirectUrl = BASE_URL + 'tours';
 
         if (activeSearchType === 'transfer') {
-            const data = getCabSearchData();
-            if (!data.pickup || !data.dropoff) {
-                alert('Please select both Pick-Up and Drop-Off locations.');
-                return false;
-            }
-
-            const route = findCabRoute(data.pickup, data.dropoff);
-            formData.append('from', data.pickup);
-            formData.append('destination', data.dropoff);
-            if (data.travel_date) formData.append('travel_date', data.travel_date);
-
-            fetch(BASE_URL + 'api/save-search-query.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(function(response) {
-                return response.text().then(function(text) {
-                    try {
-                        return JSON.parse(text);
-                    } catch (e) {
-                        throw new Error('Server returned invalid JSON');
-                    }
-                });
-            })
-            .then(function(apiData) {
-                if (route) {
-                    const params = new URLSearchParams();
-                    if (data.travel_date) params.append('travel_date', data.travel_date);
-                    if (data.trip_type) params.append('trip_type', data.trip_type);
-                    if (data.guests) params.append('guests', data.guests);
-                    if (data.adults) params.append('adults', data.adults);
-                    if (data.children) params.append('children', data.children);
-                    const qs = params.toString();
-                    redirectUrl = BASE_URL + 'cab-route-details.php?route_id=' + route.id + (qs ? '&' + qs : '');
-                } else {
-                    redirectUrl = BASE_URL + '#destinations-cab-section';
-                }
-                window.location.href = redirectUrl;
-            })
-            .catch(function() {
-                if (route) {
-                    window.location.href = BASE_URL + 'cab-route-details.php?route_id=' + route.id;
-                } else {
-                    window.location.href = BASE_URL + '#destinations-cab-section';
-                }
-            });
-
+            submitCabSearch();
             return false;
         }
 
@@ -896,7 +934,6 @@
     document.addEventListener('DOMContentLoaded', function() {
         initSearchTabs();
         initActivityPickupDetail();
-        initCabGuestDropdown();
         initActivityGuestDropdown();
         initActivityAutocomplete();
         initActivityDestCards();
@@ -912,5 +949,6 @@
     window.showPhoneModal = showPhoneModal;
     window.closePhoneModal = closePhoneModal;
     window.submitSearch = submitSearch;
+    window.submitCabSearch = submitCabSearch;
 
 })();
