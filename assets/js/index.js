@@ -59,7 +59,7 @@
         if (!sel || !wrap || !inp) return;
 
         const value = sel.value;
-        const needsDetail = value === 'Hotel' || value === 'Other Location' || value === 'Otherlocation';
+        const needsDetail = value === 'Hotel' || value === 'Others' || value === 'Other Location' || value === 'Otherlocation';
 
         if (needsDetail) {
             wrap.removeAttribute('hidden');
@@ -177,6 +177,49 @@
         initGuestDropdown('cab');
     }
 
+    function previewActivitySuggestion(item) {
+        if (item.country) {
+            filterActivityDestinations(item.country, false);
+            setActiveSidebarCountry(item.country);
+        } else if (item.destination_slug) {
+            const dest = activityData.destinations.find(function(d) { return d.slug === item.destination_slug; });
+            if (dest) {
+                filterActivityDestinations(dest.country, false);
+                setActiveSidebarCountry(dest.country);
+            }
+        }
+
+        const grid = document.getElementById('activityDestGrid');
+        if (!grid || !item.destination_slug) return;
+
+        grid.querySelectorAll('.activity-dest-card').forEach(function(card) {
+            const match = card.getAttribute('data-slug') === item.destination_slug;
+            card.classList.toggle('is-preview', match);
+        });
+    }
+
+    function clearActivitySuggestionPreview() {
+        const grid = document.getElementById('activityDestGrid');
+        if (!grid) return;
+        grid.querySelectorAll('.activity-dest-card.is-preview').forEach(function(card) {
+            card.classList.remove('is-preview');
+        });
+    }
+
+    function navigateActivitySuggestion(item) {
+        if (item.type === 'tour' && item.slug) {
+            window.location.href = BASE_URL + 'tour/' + encodeURIComponent(item.slug);
+            return;
+        }
+
+        if (item.type === 'destination' && item.slug) {
+            window.location.href = BASE_URL + 'tours/destination/' + encodeURIComponent(item.slug);
+            return;
+        }
+
+        selectActivitySuggestion(item);
+    }
+
     function selectActivitySuggestion(item) {
         const query = document.getElementById('activity_query');
         const destInput = document.getElementById('activity_destination');
@@ -191,16 +234,8 @@
 
         if (suggestions) suggestions.setAttribute('hidden', '');
 
-        if (item.country) {
-            filterActivityDestinations(item.country, false);
-            setActiveSidebarCountry(item.country);
-        } else if (item.destination_slug) {
-            const dest = activityData.destinations.find(function(d) { return d.slug === item.destination_slug; });
-            if (dest) {
-                filterActivityDestinations(dest.country, false);
-                setActiveSidebarCountry(dest.country);
-            }
-        }
+        previewActivitySuggestion(item);
+        clearActivitySuggestionPreview();
     }
 
     function renderActivitySuggestions(items) {
@@ -222,8 +257,11 @@
         box.removeAttribute('hidden');
 
         box.querySelectorAll('.activity-suggestion-item').forEach(function(btn, index) {
+            btn.addEventListener('mouseenter', function() {
+                previewActivitySuggestion(items[index]);
+            });
             btn.addEventListener('click', function() {
-                selectActivitySuggestion(items[index]);
+                navigateActivitySuggestion(items[index]);
             });
         });
     }
@@ -265,7 +303,12 @@
 
     function initActivityAutocomplete() {
         const query = document.getElementById('activity_query');
+        const suggestions = document.getElementById('activitySuggestions');
         if (!query) return;
+
+        if (suggestions) {
+            suggestions.addEventListener('mouseleave', clearActivitySuggestionPreview);
+        }
 
         query.addEventListener('input', function() {
             const destInput = document.getElementById('activity_destination');
@@ -334,6 +377,50 @@
         } else if (empty) {
             empty.remove();
         }
+    }
+
+    function selectActivityDestination(dest) {
+        const query = document.getElementById('activity_query');
+        const destInput = document.getElementById('activity_destination');
+        const tourInput = document.getElementById('activity_tour_slug');
+        const countryInput = document.getElementById('activity_country');
+        const suggestions = document.getElementById('activitySuggestions');
+
+        if (query) query.value = dest.name || '';
+        if (destInput) destInput.value = dest.slug || '';
+        if (tourInput) tourInput.value = '';
+        if (countryInput) countryInput.value = dest.country || '';
+
+        if (suggestions) {
+            suggestions.setAttribute('hidden', '');
+            suggestions.innerHTML = '';
+        }
+
+        if (dest.country) {
+            filterActivityDestinations(dest.country, false);
+            setActiveSidebarCountry(dest.country);
+        }
+
+        clearActivitySuggestionPreview();
+
+        if (query) {
+            query.focus();
+        }
+    }
+
+    function initActivityDestCards() {
+        const grid = document.getElementById('activityDestGrid');
+        if (!grid) return;
+
+        grid.querySelectorAll('.activity-dest-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+                selectActivityDestination({
+                    name: card.getAttribute('data-name') || '',
+                    slug: card.getAttribute('data-slug') || '',
+                    country: card.getAttribute('data-country') || ''
+                });
+            });
+        });
     }
 
     function initActivitySidebar() {
@@ -452,7 +539,7 @@
             alert('Please select a Pickup Place.');
             return false;
         }
-        if ((data.pickup_place === 'Hotel' || data.pickup_place === 'Other Location' || data.pickup_place === 'Otherlocation') && !data.pickup_detail) {
+        if ((data.pickup_place === 'Hotel' || data.pickup_place === 'Others' || data.pickup_place === 'Other Location' || data.pickup_place === 'Otherlocation') && !data.pickup_detail) {
             alert(data.pickup_place === 'Hotel'
                 ? 'Please enter your hotel name.'
                 : 'Please enter location details.');
@@ -812,6 +899,7 @@
         initCabGuestDropdown();
         initActivityGuestDropdown();
         initActivityAutocomplete();
+        initActivityDestCards();
         initActivitySidebar();
         initCabLocationFilter();
         initCardHoverEffects();

@@ -176,12 +176,15 @@ $extra_css = '
 .tours-topbar .left i{font-size:20px}
 .tours-topbar .right{font-weight:600;font-size:1rem;cursor:pointer}
 .tours-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:30px}
-.tours-filterbar{display:grid;grid-template-columns:200px minmax(0,1fr);gap:15px;margin-bottom:20px}
-.tours-filterbar .sort-wrap{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e9ecef;border-radius:6px;padding:8px 15px;box-shadow:0 2px 10px rgba(0,0,0,0.02)}
-.tours-filterbar .sort-wrap span{font-weight:600;color:#495057;white-space:nowrap;font-size:0.95rem}
-.tours-filterbar select,.tours-filterbar input{width:100%;border:1px solid #e9ecef;border-radius:6px;height:48px;padding:0 15px;background:#fff;font-size:0.95rem;color:#495057;transition:all 0.3s ease}
-.tours-filterbar select:focus,.tours-filterbar input:focus{border-color:#667eea;outline:none;box-shadow:0 0 0 3px rgba(102,126,234,0.1)}
-.search-wrap{position:relative}
+.tours-filterbar{display:grid;grid-template-columns:minmax(320px,38%) minmax(0,1fr);gap:15px;margin-bottom:20px;align-items:stretch}
+.tours-filterbar .sort-wrap{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:0 16px;min-height:48px;box-shadow:0 2px 10px rgba(0,0,0,0.02)}
+.tours-filterbar .sort-wrap span{font-weight:600;color:#495057;white-space:nowrap;font-size:0.95rem;flex-shrink:0}
+.tours-filterbar .sort-form{margin:0;flex:1;min-width:0}
+.tours-filterbar .tours-sort-select{width:100%;min-width:170px;border:0;border-radius:0;height:46px;padding:0 32px 0 0;background-color:transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 viewBox=%220 0 12 8%22%3E%3Cpath fill=%22%23667eea%22 d=%22M1 1l5 5 5-5%22/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;font-weight:600;font-size:0.95rem;color:#495057;cursor:pointer;appearance:none;-webkit-appearance:none;-moz-appearance:none}
+.tours-filterbar .tours-sort-select:focus{outline:none;box-shadow:none}
+.tours-filterbar input[type="text"]{width:100%;border:1px solid #e9ecef;border-radius:8px;height:48px;padding:0 50px 0 15px;background:#fff;font-size:0.95rem;color:#495057;transition:all 0.3s ease}
+.tours-filterbar input[type="text"]:focus{border-color:#667eea;outline:none;box-shadow:0 0 0 3px rgba(102,126,234,0.1)}
+.search-wrap{position:relative;min-width:0}
 .search-wrap button{position:absolute;right:0;top:0;height:48px;width:50px;border:0;background:transparent;color:#667eea;font-size:1.1rem;transition:all 0.3s ease}
 .search-wrap button:hover{color:#764ba2}
 .tour-row{display:grid;grid-template-columns:320px minmax(0,1fr);background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.08);margin-bottom:25px;overflow:hidden;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);border:1px solid rgba(0,0,0,0.03)}
@@ -398,11 +401,11 @@ include 'includes/header.php';
                     <div class="tours-filterbar">
                         <div class="sort-wrap">
                             <span>Sort results by:</span>
-                            <form method="GET" action="" style="margin:0; flex:1;" id="sortForm">
+                            <form method="GET" action="" class="sort-form" id="sortForm">
                                 <?php if($search): ?><input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>"><?php endif; ?>
                                 <?php if($category): ?><input type="hidden" name="category" value="<?php echo htmlspecialchars($category); ?>"><?php endif; ?>
                                 <?php if($destination): ?><input type="hidden" name="destination" value="<?php echo htmlspecialchars($destination); ?>"><?php endif; ?>
-                                <select name="sort" style="border:0; padding:0; height:auto; width:100%; font-weight:600; color:#555;" onchange="document.getElementById('sortForm').submit();">
+                                <select name="sort" class="tours-sort-select" aria-label="Sort tours" onchange="document.getElementById('sortForm').submit();">
                                     <option value="popular" <?php echo $sort === 'popular' ? 'selected' : ''; ?>>Most Popular</option>
                                     <option value="price_low" <?php echo $sort === 'price_low' ? 'selected' : ''; ?>>Price: Low to High</option>
                                     <option value="price_high" <?php echo $sort === 'price_high' ? 'selected' : ''; ?>>Price: High to Low</option>

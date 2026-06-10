@@ -32,22 +32,7 @@ $tours = $db->fetchAll("
     ORDER BY t.title ASC
 ");
 
-$cabRoutes = $db->fetchAll("SELECT from_location FROM cab_routes WHERE status = 'active'");
-$pickupPlaces = [];
-foreach ($cabRoutes as $route) {
-    $pickupPlaces[$route['from_location']] = true;
-}
-foreach ($destinations as $dest) {
-    $city = trim((string) ($dest['city'] ?? ''));
-    if ($city !== '') {
-        $pickupPlaces[$city] = true;
-    }
-}
-$pickupPlaces['Hotel'] = true;
-$pickupPlaces['Lift Parking'] = true;
-$pickupPlaces['Other Location'] = true;
-$pickupList = array_keys($pickupPlaces);
-sort($pickupList);
+$pickupList = ['Hotel', 'Lift Parking', 'Others'];
 
 function activityApiImage(array $dest) {
     $img = trim((string) ($dest['featured_image'] ?? ''));

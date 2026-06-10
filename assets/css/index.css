@@ -2294,7 +2294,7 @@
 
 .activity-suggestion-item:hover,
 .activity-suggestion-item:focus {
-    background: #f8fafc;
+    background: linear-gradient(90deg, #f8f9ff 0%, #eef2ff 100%);
     outline: none;
 }
 
@@ -2426,8 +2426,10 @@
 
 .activity-browser-layout {
     display: grid;
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 1fr;
     min-height: 320px;
+    position: relative;
+    overflow: hidden;
 }
 
 .activity-sidebar {
@@ -2436,6 +2438,98 @@
     display: flex;
     flex-direction: column;
     padding: 0;
+}
+
+/* Desktop: destinations + sidebar reveal on hover */
+@media (min-width: 992px) and (hover: hover) {
+    #activitySearchPanel .activity-browser {
+        max-height: 0;
+        opacity: 0;
+        visibility: hidden;
+        overflow: hidden;
+        border-top-color: transparent;
+        margin-top: 0;
+        transition: max-height 0.35s ease, opacity 0.28s ease, visibility 0.28s, border-color 0.28s ease;
+    }
+
+    #activitySearchPanel:hover .activity-browser,
+    #activitySearchPanel:focus-within .activity-browser {
+        max-height: 720px;
+        opacity: 1;
+        visibility: visible;
+        border-top-color: #e5e7eb;
+    }
+
+    #activitySearchPanel .activity-browser-layout {
+        min-height: 0;
+    }
+
+    #activitySearchPanel:hover .activity-browser-layout,
+    #activitySearchPanel:focus-within .activity-browser-layout {
+        min-height: 320px;
+    }
+
+    #activitySearchPanel .activity-dest-grid {
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 0.28s ease, transform 0.28s ease, padding-left 0.28s ease;
+    }
+
+    #activitySearchPanel:hover .activity-dest-grid,
+    #activitySearchPanel:focus-within .activity-dest-grid {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .activity-sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 220px;
+        z-index: 6;
+        transform: translateX(-100%);
+        opacity: 0;
+        visibility: hidden;
+        transition: transform 0.28s ease, opacity 0.28s ease, visibility 0.28s;
+        box-shadow: 8px 0 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .activity-browser-layout:hover .activity-sidebar,
+    .activity-sidebar:focus-within {
+        transform: translateX(0);
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .activity-browser-layout::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        z-index: 5;
+        background: linear-gradient(90deg, rgba(30, 58, 95, 0.18) 0%, transparent 100%);
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .activity-browser-layout:hover::before {
+        opacity: 0;
+    }
+
+    .activity-browser-layout:hover .activity-dest-grid {
+        padding-left: 236px;
+    }
+
+}
+
+/* Desktop without hover (touch laptops): keep browser visible */
+@media (min-width: 992px) and (hover: none) {
+    .activity-browser-layout {
+        grid-template-columns: 220px 1fr;
+    }
 }
 
 .activity-sidebar-item {
@@ -2486,17 +2580,30 @@
 .activity-dest-card {
     position: relative;
     display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
     border-radius: 4px;
     overflow: hidden;
     aspect-ratio: 4 / 3;
     text-decoration: none;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    background: transparent;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.activity-dest-card:hover {
+.activity-dest-card:hover,
+.activity-dest-card.is-preview {
     transform: translateY(-4px);
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.activity-dest-card.is-preview {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
 }
 
 .activity-dest-card img {
@@ -2545,13 +2652,20 @@
 
     .activity-browser-layout {
         grid-template-columns: 1fr;
+        overflow: visible;
     }
 
     .activity-sidebar {
+        position: static;
+        transform: none;
+        opacity: 1;
+        visibility: visible;
+        width: auto;
         flex-direction: row;
         overflow-x: auto;
         border-right: 0;
         border-bottom: 1px solid #e5e7eb;
+        box-shadow: none;
     }
 
     .activity-sidebar-item {

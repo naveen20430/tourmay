@@ -99,12 +99,7 @@ $activity_tours = $db->fetchAll("
     ORDER BY t.title ASC
 ");
 
-$activity_pickup_places = array_values(array_unique(array_filter(array_merge(
-    $cab_pickup_locations,
-    array_map(static fn($d) => trim((string) ($d['city'] ?? '')), $activity_destinations),
-    ['Hotel', 'Lift Parking', 'Other Location']
-))));
-sort($activity_pickup_places);
+$activity_pickup_places = ['Hotel', 'Lift Parking', 'Others'];
 
 function activityDestinationImageUrl(array $dest) {
     $img = trim((string) ($dest['featured_image'] ?? ''));
@@ -378,17 +373,19 @@ include 'includes/header.php';
                         </nav>
                         <div class="activity-dest-grid" id="activityDestGrid" role="list">
                             <?php foreach ($activity_destinations as $dest): ?>
-                            <a href="<?php echo htmlspecialchars(toursUrl(['destination' => $dest['slug']])); ?>"
+                            <button type="button"
                                class="activity-dest-card"
                                role="listitem"
+                               data-name="<?php echo htmlspecialchars($dest['name']); ?>"
                                data-country="<?php echo htmlspecialchars($dest['country'] ?? ''); ?>"
                                data-popular="<?php echo (int) ($dest['popular'] ?? 0); ?>"
-                               data-slug="<?php echo htmlspecialchars($dest['slug']); ?>">
+                               data-slug="<?php echo htmlspecialchars($dest['slug']); ?>"
+                               aria-label="<?php echo htmlspecialchars($dest['name']); ?>">
                                 <img src="<?php echo htmlspecialchars(activityDestinationImageUrl($dest)); ?>"
                                      alt="<?php echo htmlspecialchars($dest['name']); ?>"
                                      loading="lazy">
                                 <span class="activity-dest-card__name"><?php echo htmlspecialchars($dest['name']); ?></span>
-                            </a>
+                            </button>
                             <?php endforeach; ?>
                         </div>
                     </div>
