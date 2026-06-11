@@ -41,6 +41,52 @@ function getHeroContent() {
 }
 
 /**
+ * Background images for the homepage search hero (rotating slideshow).
+ * @return string[] Relative image paths under assets/
+ */
+function getHeroSearchBackgrounds() {
+    global $db;
+
+    $paths = [];
+
+    try {
+        $rows = $db->fetchAll("SELECT image_path FROM hero_images ORDER BY sort_order ASC, created_at DESC");
+        foreach ($rows as $row) {
+            $path = trim((string) ($row['image_path'] ?? ''));
+            if ($path !== '' && is_file(BASE_PATH . $path)) {
+                $paths[] = $path;
+            }
+        }
+    } catch (Exception $e) {
+        // hero_images table may not exist yet
+    }
+
+    if (empty($paths)) {
+        try {
+            $tours = $db->fetchAll("
+                SELECT featured_image
+                FROM tours
+                WHERE status = 'active'
+                  AND featured_image IS NOT NULL
+                  AND featured_image != ''
+                ORDER BY featured DESC, popular DESC, id DESC
+                LIMIT 6
+            ");
+            foreach ($tours as $tour) {
+                $path = trim((string) ($tour['featured_image'] ?? ''));
+                if ($path !== '' && is_file(BASE_PATH . $path)) {
+                    $paths[] = $path;
+                }
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+    }
+
+    return array_values(array_unique($paths));
+}
+
+/**
  * Check if current page should have hero section
  * @param string $page Current page identifier
  * @return bool True if page should have hero

@@ -32,14 +32,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 break;
                 
+            case 'update_image':
+                $id = intval($_POST['id'] ?? 0);
+                $title = trim($_POST['title'] ?? '');
+                $subtitle = trim($_POST['subtitle'] ?? '');
+
+                if (!$id) {
+                    $errors[] = 'Invalid hero image.';
+                    break;
+                }
+
+                $hero = $db->fetch("SELECT * FROM hero_images WHERE id = ?", [$id]);
+                if (!$hero) {
+                    $errors[] = 'Hero image not found.';
+                    break;
+                }
+
+                $image_path = $hero['image_path'];
+
+                if (isset($_FILES['hero_image']) && $_FILES['hero_image']['error'] === UPLOAD_ERR_OK) {
+                    $uploadResult = uploadFile($_FILES['hero_image'], 'hero');
+                    if ($uploadResult) {
+                        $oldPath = BASE_PATH . $hero['image_path'];
+                        if (is_file($oldPath)) {
+                            unlink($oldPath);
+                        }
+                        $image_path = $uploadResult;
+                    } else {
+                        $errors[] = 'Failed to upload replacement image.';
+                    }
+                }
+
+                if (empty($errors)) {
+                    $db->execute(
+                        "UPDATE hero_images SET title = ?, subtitle = ?, image_path = ? WHERE id = ?",
+                        [$title, $subtitle, $image_path, $id]
+                    );
+                    $success = 'Hero image updated successfully!';
+                }
+                break;
+
             case 'toggle_active':
                 $id = intval($_POST['id']);
                 $is_active = intval($_POST['is_active']);
-                
-                // If activating, deactivate others first
-                if ($is_active) {
-                    $db->execute("UPDATE hero_images SET is_active = 0");
-                }
                 
                 $db->execute("UPDATE hero_images SET is_active = ? WHERE id = ?", [$is_active, $id]);
                 $success = 'Hero image status updated!';
@@ -84,9 +119,13 @@ include 'includes/header.php';
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Hero Images Management</h3>
+                    <h3 class="card-title">Homepage Search Hero Backgrounds</h3>
                 </div>
                 <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Upload images here to show behind the homepage search section (“Luxury Options”).
+                        All images rotate automatically. Recommended size: 1920×1080px landscape.
+                    </p>
                     <?php if ($success): ?>
                         <div class="alert alert-success"><?php echo $success; ?></div>
                     <?php endif; ?>
@@ -101,7 +140,7 @@ include 'includes/header.php';
 
                     <!-- Add New Hero Image Form -->
                     <div class="mb-4">
-                        <h4>Add New Hero Image</h4>
+                        <h4>Add Background Image</h4>
                         <form method="POST" enctype="multipart/form-data" class="border p-3">
                             <input type="hidden" name="action" value="add">
                             
@@ -134,7 +173,7 @@ include 'includes/header.php';
                             <div class="form-group">
                                 <label for="hero_image">Hero Image</label>
                                 <input type="file" class="form-control" name="hero_image" id="hero_image" accept="image/*" required>
-                                <small class="text-muted">Recommended size: 1920x1080px or similar landscape orientation</small>
+                                <small class="text-muted">Shown on homepage search hero. Use 1920×1080px or similar landscape.</small>
                             </div>
                             
                             <button type="submit" class="btn btn-primary">Add Hero Image</button>
@@ -160,8 +199,8 @@ include 'includes/header.php';
                                                 <th>Image</th>
                                                 <th>Title</th>
                                                 <th>Subtitle</th>
-                                                <th>Status</th>
                                                 <th>Sort Order</th>
+                                                <th>Update</th>
                                                 <th>Actions</th>
                                             </tr>
                                         </thead>
@@ -175,27 +214,22 @@ include 'includes/header.php';
                                                     <td><?php echo htmlspecialchars($hero['title'] ?: 'No title'); ?></td>
                                                     <td><?php echo htmlspecialchars($hero['subtitle'] ?: 'No subtitle'); ?></td>
                                                     <td>
-                                                        <span class="badge <?php echo $hero['is_active'] ? 'bg-success' : 'bg-secondary'; ?>">
-                                                            <?php echo $hero['is_active'] ? 'Active' : 'Inactive'; ?>
-                                                        </span>
-                                                    </td>
-                                                    <td>
                                                         <input type="number" name="hero_orders[<?php echo $hero['id']; ?>]" 
                                                                value="<?php echo $hero['sort_order']; ?>" 
                                                                class="form-control" style="width: 80px;">
                                                     </td>
                                                     <td>
+                                                        <form method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-1" style="min-width:200px;">
+                                                            <input type="hidden" name="action" value="update_image">
+                                                            <input type="hidden" name="id" value="<?php echo $hero['id']; ?>">
+                                                            <input type="text" name="title" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hero['title'] ?: ''); ?>" placeholder="Title">
+                                                            <input type="text" name="subtitle" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hero['subtitle'] ?: ''); ?>" placeholder="Subtitle">
+                                                            <input type="file" name="hero_image" class="form-control form-control-sm" accept="image/*">
+                                                            <button type="submit" class="btn btn-sm btn-primary">Save / Replace Image</button>
+                                                        </form>
+                                                    </td>
+                                                    <td>
                                                         <div class="btn-group">
-                                                            <!-- Toggle Active Status -->
-                                                            <form method="POST" style="display: inline;">
-                                                                <input type="hidden" name="action" value="toggle_active">
-                                                                <input type="hidden" name="id" value="<?php echo $hero['id']; ?>">
-                                                                <input type="hidden" name="is_active" value="<?php echo $hero['is_active'] ? 0 : 1; ?>">
-                                                                <button type="submit" class="btn btn-sm <?php echo $hero['is_active'] ? 'btn-warning' : 'btn-success'; ?>">
-                                                                    <?php echo $hero['is_active'] ? 'Deactivate' : 'Activate'; ?>
-                                                                </button>
-                                                            </form>
-                                                            
                                                             <!-- Delete -->
                                                             <form method="POST" style="display: inline;" 
                                                                   onsubmit="return confirm('Are you sure you want to delete this hero image?')">

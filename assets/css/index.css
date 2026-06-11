@@ -612,15 +612,42 @@
     margin-top: 0;
     margin-bottom: 30px;
     position: relative;
-    overflow: visible;
+    overflow: hidden;
+}
+
+.hero-search__bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.hero-search__bg-slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transform: scale(1.04);
+    transition: opacity 1s ease, transform 7s ease;
+}
+
+.hero-search__bg-slide.is-active {
+    opacity: 1;
+    transform: scale(1);
 }
 
 .hero-search-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(88, 28, 135, 0.82) 0%, rgba(79, 70, 229, 0.75) 100%);
+    background: linear-gradient(135deg, rgba(88, 28, 135, 0.62) 0%, rgba(79, 70, 229, 0.55) 100%);
     z-index: 1;
     pointer-events: none;
+}
+
+.hero-search-section .container {
+    position: relative;
+    z-index: 2;
 }
 
 .hero-search-header {
@@ -2140,7 +2167,11 @@
 }
 
 .search-section .search-form--activity-v2 {
-    grid-template-columns: minmax(200px, 1.4fr) minmax(140px, 1fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) 120px !important;
+    grid-template-columns: minmax(220px, 1.6fr) minmax(140px, 1fr) minmax(140px, 1fr) 120px !important;
+}
+
+.search-section .search-form--activity-v2 .activity-pickup-group {
+    display: none !important;
 }
 
 .search-section .search-form--transfer {
@@ -2452,8 +2483,7 @@
         transition: max-height 0.35s ease, opacity 0.28s ease, visibility 0.28s, border-color 0.28s ease;
     }
 
-    #activitySearchPanel:hover .activity-browser,
-    #activitySearchPanel:focus-within .activity-browser {
+    #activitySearchPanel.is-dest-browser-open .activity-browser {
         max-height: 720px;
         opacity: 1;
         visibility: visible;
@@ -2464,8 +2494,7 @@
         min-height: 0;
     }
 
-    #activitySearchPanel:hover .activity-browser-layout,
-    #activitySearchPanel:focus-within .activity-browser-layout {
+    #activitySearchPanel.is-dest-browser-open .activity-browser-layout {
         min-height: 320px;
     }
 
@@ -2475,8 +2504,7 @@
         transition: opacity 0.28s ease, transform 0.28s ease, padding-left 0.28s ease;
     }
 
-    #activitySearchPanel:hover .activity-dest-grid,
-    #activitySearchPanel:focus-within .activity-dest-grid {
+    #activitySearchPanel.is-dest-browser-open .activity-dest-grid {
         opacity: 1;
         transform: translateY(0);
     }

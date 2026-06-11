@@ -48,9 +48,8 @@ $all_destinations = $db->fetchAll("
     ORDER BY d.name ASC
 ");
 
-// Hero background for search section
-$hero_image = getHeroContent();
-$hero_bg_url = BASE_URL . ($hero_image['image_path'] ?? 'assets/images/hero/default-hero.jpg');
+// Hero background slideshow for search section (managed in Admin → Hero Images)
+$hero_search_backgrounds = getHeroSearchBackgrounds();
 
 // Cab routes for Transfer (cab) search
 $cab_routes = $db->fetchAll("
@@ -150,7 +149,14 @@ include 'includes/header.php';
 ?>
 
 <!-- Hero Search Section: Transfer (Cab) + Activity (Tour) -->
-<section class="search-section hero-search-section" style="background-image: url('<?php echo htmlspecialchars($hero_bg_url); ?>');">
+<section class="search-section hero-search-section<?php echo !empty($hero_search_backgrounds) ? ' hero-search-section--slider' : ''; ?>">
+    <?php if (!empty($hero_search_backgrounds)): ?>
+    <div class="hero-search__bg" aria-hidden="true">
+        <?php foreach ($hero_search_backgrounds as $hero_bg_path): ?>
+        <div class="hero-search__bg-slide" style="background-image:url('<?php echo BASE_URL . htmlspecialchars($hero_bg_path); ?>')"></div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
     <div class="hero-search-overlay"></div>
     <div class="decorative-element decorative-element-1"></div>
     <div class="decorative-element decorative-element-2"></div>
@@ -249,7 +255,7 @@ include 'includes/header.php';
                         </div>
                     </div>
 
-                    <div class="form-group activity-field activity-pickup-group" id="activityPickupGroup">
+                    <div class="form-group activity-field activity-pickup-group" id="activityPickupGroup" hidden>
                         <div class="input-wrapper">
                             <select name="pickup_place" id="activity_pickup_place" aria-label="Pickup Place">
                                 <option value="" disabled selected hidden>Pickup Place</option>

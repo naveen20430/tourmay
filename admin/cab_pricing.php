@@ -5,6 +5,16 @@ requireLogin();
 $success_message = '';
 $error_message = '';
 
+// Ensure cab_types.image_path column exists
+try {
+    $imageColumn = $db->fetch("SHOW COLUMNS FROM cab_types LIKE 'image_path'");
+    if (!$imageColumn) {
+        $db->execute("ALTER TABLE cab_types ADD COLUMN image_path VARCHAR(255) NULL DEFAULT NULL AFTER description");
+    }
+} catch (Exception $e) {
+    // Non-fatal; upload UI still works once column is added manually
+}
+
 // Handle form submissions
 if ($_POST) {
     $action = $_POST['action'] ?? '';
@@ -13,11 +23,47 @@ if ($_POST) {
         if ($action === 'update_base_pricing') {
             // Update base cab pricing
             $cab_updates = $_POST['cabs'] ?? [];
+            $remove_images = $_POST['remove_image'] ?? [];
             
             foreach ($cab_updates as $cab_id => $cab_data) {
+                $currentCab = $db->fetch("SELECT image_path FROM cab_types WHERE id = ?", [$cab_id]);
+                $image_path = $currentCab['image_path'] ?? null;
+
+                if (!empty($remove_images[$cab_id])) {
+                    if ($image_path && is_file('../' . $image_path)) {
+                        unlink('../' . $image_path);
+                    }
+                    $image_path = null;
+                }
+
+                if (!empty($_FILES['cab_images']['name'][$cab_id])) {
+                    $file = [
+                        'name' => $_FILES['cab_images']['name'][$cab_id],
+                        'type' => $_FILES['cab_images']['type'][$cab_id],
+                        'tmp_name' => $_FILES['cab_images']['tmp_name'][$cab_id],
+                        'error' => $_FILES['cab_images']['error'][$cab_id],
+                        'size' => $_FILES['cab_images']['size'][$cab_id],
+                    ];
+
+                    $uploadErrors = getUploadError($file);
+                    if (!empty($uploadErrors)) {
+                        throw new Exception('Cab image (' . ($cab_data['display_name'] ?? $cab_id) . '): ' . implode(', ', $uploadErrors));
+                    }
+
+                    if ($image_path && is_file('../' . $image_path)) {
+                        unlink('../' . $image_path);
+                    }
+
+                    $upload_result = uploadFile($file, 'cabs');
+                    if (!$upload_result) {
+                        throw new Exception('Failed to upload image for ' . ($cab_data['display_name'] ?? 'cab type'));
+                    }
+                    $image_path = $upload_result;
+                }
+
                 $db->execute("
                     UPDATE cab_types 
-                    SET display_name = ?, base_price = ?, price_per_km = ?, max_passengers = ?, description = ?
+                    SET display_name = ?, base_price = ?, price_per_km = ?, max_passengers = ?, description = ?, image_path = ?
                     WHERE id = ?
                 ", [
                     $cab_data['display_name'],
@@ -25,6 +71,7 @@ if ($_POST) {
                     $cab_data['price_per_km'],
                     $cab_data['max_passengers'],
                     $cab_data['description'],
+                    $image_path,
                     $cab_id
                 ]);
             }
@@ -109,6 +156,8 @@ $tour_pricing = $db->fetchAll("
         .pricing-card .card-header { background: #f8f9fa; font-weight: bold; }
         .price-input { max-width: 120px; }
         .tour-pricing-table { font-size: 0.9em; }
+        .cab-image-preview { width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; background: #f8f9fa; }
+        .cab-image-placeholder { width: 100%; height: 120px; border-radius: 8px; border: 1px dashed #ced4da; background: #f8f9fa; display: flex; align-items: center; justify-content: center; color: #adb5bd; font-size: 0.85rem; }
     </style>
 </head>
 <body>
@@ -171,7 +220,7 @@ $tour_pricing = $db->fetchAll("
                             <h4><i class="fas fa-cog me-2"></i>Base Cab Types & Default Pricing</h4>
                         </div>
                         <div class="card-body">
-                            <form method="POST">
+                            <form method="POST" enctype="multipart/form-data">
                                 <input type="hidden" name="action" value="update_base_pricing">
                                 
                                 <div class="row">
@@ -182,6 +231,26 @@ $tour_pricing = $db->fetchAll("
                                                     <i class="fas fa-car me-2"></i><?php echo htmlspecialchars($cab['display_name']); ?>
                                                 </div>
                                                 <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Cab Image</label>
+                                                        <?php if (!empty($cab['image_path']) && is_file('../' . $cab['image_path'])): ?>
+                                                            <img src="../<?php echo htmlspecialchars($cab['image_path']); ?>"
+                                                                 alt="<?php echo htmlspecialchars($cab['display_name']); ?>"
+                                                                 class="cab-image-preview mb-2">
+                                                            <div class="form-check mb-2">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                       name="remove_image[<?php echo $cab['id']; ?>]"
+                                                                       value="1" id="remove_image_<?php echo $cab['id']; ?>">
+                                                                <label class="form-check-label" for="remove_image_<?php echo $cab['id']; ?>">Remove current image</label>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <div class="cab-image-placeholder mb-2">No image uploaded</div>
+                                                        <?php endif; ?>
+                                                        <input type="file" class="form-control"
+                                                               name="cab_images[<?php echo $cab['id']; ?>]"
+                                                               accept="image/jpeg,image/png,image/gif,image/webp">
+                                                        <small class="text-muted">Shown on travel cab listings (Car Type row)</small>
+                                                    </div>
                                                     <div class="mb-3">
                                                         <label class="form-label">Display Name</label>
                                                         <input type="text" class="form-control" 

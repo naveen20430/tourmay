@@ -11,6 +11,11 @@ $cab_travel_routes = $db->fetchAll("
 ");
 
 function cabTravelImageUrl(array $pricingRow) {
+    $imagePath = trim((string) ($pricingRow['image_path'] ?? ''));
+    if ($imagePath !== '' && is_file(BASE_PATH . $imagePath)) {
+        return BASE_URL . $imagePath;
+    }
+
     $slug = strtolower((string) ($pricingRow['cab_slug'] ?? ''));
     $candidates = [
         'sedan' => 'assets/images/cabs/sedan.jpg',
@@ -42,7 +47,7 @@ function cabTravelFareLabel($amount) {
         <?php foreach ($cab_travel_routes as $route): ?>
             <?php
             $pricing_rows = $db->fetchAll("
-                SELECT crp.*, ct.display_name, ct.name AS cab_slug
+                SELECT crp.*, ct.display_name, ct.name AS cab_slug, ct.image_path
                 FROM cab_route_pricing crp
                 INNER JOIN cab_types ct ON crp.cab_type_id = ct.id
                 WHERE crp.route_id = ? AND crp.status = 'active' AND ct.status = 'active'

@@ -485,6 +485,48 @@
         });
     }
 
+    function initActivityDestBrowserHover() {
+        const panel = document.getElementById('activitySearchPanel');
+        const queryWrap = document.querySelector('.activity-query-wrap');
+        const browser = document.getElementById('activityBrowser');
+        if (!panel || !queryWrap || !browser) return;
+
+        let closeTimer = null;
+
+        function openBrowser() {
+            window.clearTimeout(closeTimer);
+            panel.classList.add('is-dest-browser-open');
+        }
+
+        function scheduleClose() {
+            window.clearTimeout(closeTimer);
+            closeTimer = window.setTimeout(function() {
+                panel.classList.remove('is-dest-browser-open');
+            }, 180);
+        }
+
+        function isInsideBrowserZone(node) {
+            if (!node) return false;
+            return queryWrap.contains(node) || browser.contains(node);
+        }
+
+        queryWrap.addEventListener('mouseenter', openBrowser);
+        browser.addEventListener('mouseenter', openBrowser);
+        queryWrap.addEventListener('mouseleave', scheduleClose);
+        browser.addEventListener('mouseleave', scheduleClose);
+
+        queryWrap.addEventListener('focusin', openBrowser);
+        browser.addEventListener('focusin', openBrowser);
+        queryWrap.addEventListener('focusout', function(e) {
+            if (isInsideBrowserZone(e.relatedTarget)) return;
+            scheduleClose();
+        });
+        browser.addEventListener('focusout', function(e) {
+            if (isInsideBrowserZone(e.relatedTarget)) return;
+            scheduleClose();
+        });
+    }
+
     function initActivitySidebar() {
         const sidebar = document.getElementById('activitySidebar');
         if (!sidebar) return;
@@ -607,17 +649,6 @@
     }
 
     function validateActivityPickup() {
-        const data = getTourSearchData();
-        if (!data.pickup_place) {
-            alert('Please select a Pickup Place.');
-            return false;
-        }
-        if ((data.pickup_place === 'Hotel' || data.pickup_place === 'Others' || data.pickup_place === 'Other Location' || data.pickup_place === 'Otherlocation') && !data.pickup_detail) {
-            alert(data.pickup_place === 'Hotel'
-                ? 'Please enter your hotel name.'
-                : 'Please enter location details.');
-            return false;
-        }
         return true;
     }
 
@@ -931,12 +962,31 @@
         });
     }
 
+    function initHeroSearchSlider() {
+        const slides = Array.prototype.slice.call(document.querySelectorAll('.hero-search__bg-slide'));
+        if (!slides.length) return;
+
+        let idx = 0;
+        slides.forEach(function(slide) { slide.classList.remove('is-active'); });
+        slides[0].classList.add('is-active');
+
+        if (slides.length === 1) return;
+
+        window.setInterval(function() {
+            slides[idx].classList.remove('is-active');
+            idx = (idx + 1) % slides.length;
+            slides[idx].classList.add('is-active');
+        }, 5000);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+        initHeroSearchSlider();
         initSearchTabs();
         initActivityPickupDetail();
         initActivityGuestDropdown();
         initActivityAutocomplete();
         initActivityDestCards();
+        initActivityDestBrowserHover();
         initActivitySidebar();
         initCabLocationFilter();
         initCardHoverEffects();
