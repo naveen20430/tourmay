@@ -28,51 +28,12 @@ $inclusions = json_decode($tour['inclusions'], true) ?: [];
 $exclusions = json_decode($tour['exclusions'], true) ?: [];
 $itinerary = json_decode($tour['itinerary'], true) ?: [];
 
-// Panel data for slide sidebar (same as tours listing)
 $availability = '';
 if (!empty($tour['availability_start']) || !empty($tour['availability_end'])) {
     $start = !empty($tour['availability_start']) ? date('d M Y', strtotime($tour['availability_start'])) : 'Open';
     $end = !empty($tour['availability_end']) ? date('d M Y', strtotime($tour['availability_end'])) : 'Open';
     $availability = $start . ' — ' . $end;
 }
-
-$tour_panel_data = [];
-$tour_panel_data[(int) $tour['id']] = [
-    'id' => (int) $tour['id'],
-    'title' => $tour['title'],
-    'slug' => $tour['slug'],
-    'destination' => $tour['destination_name'] ?? '',
-    'country' => $tour['country'] ?? '',
-    'booking_url' => bookingUrl((int) $tour['id']),
-    'detail_url' => tourUrl($tour['slug']),
-    'cart_url' => navUrl('cart'),
-    'default_people' => max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8))),
-    'price' => (float) ($tour['discount_price'] ?: $tour['price']),
-    'panels' => [
-        'description' => [
-            'title' => 'Description',
-            'short' => $tour['short_description'] ?? '',
-            'body' => $tour['description'] ?? '',
-        ],
-        'inclusion' => [
-            'title' => 'Inclusion',
-            'inclusions' => $inclusions,
-            'exclusions' => $exclusions,
-        ],
-        'timings' => [
-            'title' => 'Timings',
-            'duration_days' => (int) ($tour['duration_days'] ?? 0),
-            'duration_nights' => (int) ($tour['duration_nights'] ?? 0),
-            'availability' => $availability,
-            'itinerary' => $itinerary,
-        ],
-        'useful' => [
-            'title' => 'Useful Info',
-            'destination' => trim(($tour['destination_name'] ?? '') . (!empty($tour['country']) ? ', ' . $tour['country'] : '')),
-            'body' => $tour['destination_description'] ?? '',
-        ],
-    ],
-];
 
 $defaultPeople = max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8)));
 $tomorrow = date('Y-m-d', strtotime('+1 day'));
@@ -825,8 +786,10 @@ $extra_css .= '<style>
 .tour-tabs div:hover i{color:#667eea}
 .tour-tabs div:last-child{border-right:0}
 .tour-bottom{display:flex;align-items:stretch;justify-content:space-between;gap:12px;background:#fff;border-top:1px solid #f1f3f5}
+.tour-bottom--top{border-top:0;border-bottom:1px solid #f1f3f5}
 .tour-price{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;padding:15px 20px;color:#6c757d;font-size:0.85rem;font-weight:600;text-transform:uppercase}
 .tour-price b{font-size:1.6rem;color:#1a202c;margin-top:2px;line-height:1}
+.tour-price-note{display:block;margin-top:6px;font-size:0.72rem;font-weight:500;color:#868e96;text-transform:none;letter-spacing:0;line-height:1.35;font-style:italic}
 .tour-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;flex-shrink:0}
 .tour-cart-form{margin:0;display:flex}
 .tour-cart-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid #667eea;border-radius:6px;background:#fff;color:#667eea;font-weight:700;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.3px;cursor:pointer;transition:all .2s ease;white-space:nowrap}
@@ -877,6 +840,31 @@ $extra_css .= '<style>
 .tour-info-sidebar__foot-form .btn-cart{width:100%}
 .tour-info-sidebar--detail .btn-view{display:none}
 body.tour-sidebar-open{overflow:hidden}
+
+/* Tour detail page — inline panels (no sidebar) */
+.tour-detail-panels{padding:22px 24px 8px;border-top:1px solid #f1f3f5;background:#fff}
+.tour-detail-panel{display:none;color:#374151;font-size:0.95rem;line-height:1.65}
+.tour-detail-panel.is-active{display:block}
+.tour-detail-panel__title{margin:0 0 14px;font-size:1.15rem;font-weight:700;color:#1a202c}
+.tour-detail-panel__lead{color:#6c757d;font-size:1rem;margin-bottom:12px}
+.tour-detail-panel__body{color:#374151}
+.tour-detail-panel__empty{color:#6c757d;font-style:italic;margin:0}
+.tour-detail-panel h4{margin:18px 0 10px;font-size:1rem;color:#1a202c}
+.tour-detail-panel h4:first-of-type{margin-top:0}
+.tour-detail-list{margin:0;padding:0;list-style:none}
+.tour-detail-list li{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed #f1f3f5}
+.tour-detail-list li i{margin-top:4px;color:#28a745;flex-shrink:0}
+.tour-detail-list--exclude li i{color:#dc3545}
+.tour-detail-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.tour-detail-meta div{background:#f8f9fa;border-radius:8px;padding:12px 14px}
+.tour-detail-meta span{display:block;font-size:0.75rem;text-transform:uppercase;color:#6c757d;font-weight:700;letter-spacing:0.04em;margin-bottom:4px}
+.tour-detail-meta strong{font-size:1rem;color:#1a202c}
+.tour-detail-day{padding:12px 0;border-bottom:1px solid #f1f3f5}
+.tour-detail-day:last-child{border-bottom:0}
+.tour-detail-day strong{display:block;color:#1a202c;margin-bottom:4px}
+.tour-detail-day p{margin:0;color:#6c757d}
+.tour-tabs--inline .tour-tab-btn{cursor:pointer}
+.tour-tabs--inline .tour-tab-btn.active{background:#fff;color:#667eea;box-shadow:inset 0 -3px 0 #667eea}
 @media (max-width:767px){
 .tour-tabs{grid-template-columns:repeat(2,1fr)}
 .tour-tabs div{border-bottom:1px solid #e9ecef;padding:15px 10px}
@@ -946,8 +934,26 @@ $extra_js = '<script>
   else initHeroSlider();
 })();
 </script>'
-    . '<script>window.TOURS_PANEL_DATA = ' . json_encode($tour_panel_data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';</script>'
-    . jsWithCache('assets/js/tours-list.js');
+    . '<script>
+(function(){
+  function initTourDetailTabs(){
+    var tabs=document.querySelectorAll(".tour-tabs--inline .tour-tab-btn[data-inline-tab]");
+    var panels=document.querySelectorAll(".tour-detail-panel[data-inline-panel]");
+    if(!tabs.length||!panels.length)return;
+    function show(tab){
+      tabs.forEach(function(btn){btn.classList.toggle("active",btn.getAttribute("data-inline-tab")===tab);});
+      panels.forEach(function(panel){panel.classList.toggle("is-active",panel.getAttribute("data-inline-panel")===tab);});
+    }
+    tabs.forEach(function(btn){
+      function activate(e){if(e)e.preventDefault();show(btn.getAttribute("data-inline-tab"));}
+      btn.addEventListener("click",activate);
+      btn.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){activate(e);}});
+    });
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initTourDetailTabs);
+  else initTourDetailTabs();
+})();
+</script>';
 
 // Include header
 include 'includes/header.php';
@@ -1026,15 +1032,11 @@ $hero_images = array_slice($hero_images, 0, 6);
                                     <span><i class="far fa-check-circle"></i> REFUNDABLE</span>
                                 </div>
                             </div>
-                            <div class="tour-tabs">
-                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="description" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="far fa-file-alt"></i> Description</div>
-                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="inclusion" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="fas fa-pen-square"></i> Inclusion</div>
-                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="timings" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="far fa-clock"></i> Timings</div>
-                                <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="useful" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="fas fa-info-circle"></i> Useful Info</div>
-                            </div>
+                            <?php ob_start(); ?>
                             <div class="tour-bottom">
                                 <div class="tour-price">
                                     FROM INR <b>₹ <?php echo number_format($tour_price, 2); ?></b>
+                                    <span class="tour-price-note">This is only transportation price</span>
                                 </div>
                                 <div class="tour-actions">
                                     <form method="POST" action="<?php echo htmlspecialchars(navUrl('cart')); ?>" class="tour-cart-form">
@@ -1050,6 +1052,82 @@ $hero_images = array_slice($hero_images, 0, 6);
                                     <a href="<?php echo bookingUrl((int) $tour['id']); ?>" class="tour-book-btn">Book Now</a>
                                 </div>
                             </div>
+                            <?php $tour_price_bar = ob_get_clean(); echo str_replace('class="tour-bottom"', 'class="tour-bottom tour-bottom--top"', $tour_price_bar); ?>
+                            <div class="tour-tabs tour-tabs--inline">
+                                <div class="tour-tab-btn active" role="button" tabindex="0" data-inline-tab="description"><i class="far fa-file-alt"></i> Description</div>
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-inline-tab="inclusion"><i class="fas fa-pen-square"></i> Inclusion</div>
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-inline-tab="timings"><i class="far fa-clock"></i> Timings</div>
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-inline-tab="useful"><i class="fas fa-info-circle"></i> Useful Info</div>
+                            </div>
+                            <div class="tour-detail-panels">
+                                <div class="tour-detail-panel is-active" id="tour-panel-description" data-inline-panel="description">
+                                    <h3 class="tour-detail-panel__title">Description</h3>
+                                    <?php if (!empty($tour['short_description'])): ?>
+                                        <p class="tour-detail-panel__lead"><?php echo nl2br(htmlspecialchars($tour['short_description'])); ?></p>
+                                    <?php endif; ?>
+                                    <?php if (!empty($tour['description'])): ?>
+                                        <div class="tour-detail-panel__body"><?php echo nl2br(htmlspecialchars($tour['description'])); ?></div>
+                                    <?php elseif (empty($tour['short_description'])): ?>
+                                        <p class="tour-detail-panel__empty">No description available for this tour.</p>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="tour-detail-panel" id="tour-panel-inclusion" data-inline-panel="inclusion">
+                                    <h3 class="tour-detail-panel__title">Inclusion</h3>
+                                    <?php if (!empty($inclusions)): ?>
+                                        <h4>What's Included</h4>
+                                        <ul class="tour-detail-list">
+                                            <?php foreach ($inclusions as $item): ?>
+                                                <li><i class="fas fa-check"></i><span><?php echo htmlspecialchars($item); ?></span></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    <?php endif; ?>
+                                    <?php if (!empty($exclusions)): ?>
+                                        <h4>What's Not Included</h4>
+                                        <ul class="tour-detail-list tour-detail-list--exclude">
+                                            <?php foreach ($exclusions as $item): ?>
+                                                <li><i class="fas fa-times"></i><span><?php echo htmlspecialchars($item); ?></span></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    <?php endif; ?>
+                                    <?php if (empty($inclusions) && empty($exclusions)): ?>
+                                        <p class="tour-detail-panel__empty">No inclusion details added yet.</p>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="tour-detail-panel" id="tour-panel-timings" data-inline-panel="timings">
+                                    <h3 class="tour-detail-panel__title">Timings</h3>
+                                    <div class="tour-detail-meta">
+                                        <div><span>Duration</span><strong><?php echo (int) $tour['duration_days']; ?> Days / <?php echo (int) $tour['duration_nights']; ?> Nights</strong></div>
+                                        <?php if ($availability): ?>
+                                            <div><span>Availability</span><strong><?php echo htmlspecialchars($availability); ?></strong></div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if (!empty($itinerary)): ?>
+                                        <h4>Day-wise Schedule</h4>
+                                        <?php foreach ($itinerary as $day): ?>
+                                            <div class="tour-detail-day">
+                                                <strong>Day <?php echo htmlspecialchars((string) ($day['day'] ?? '')); ?>: <?php echo htmlspecialchars((string) ($day['title'] ?? 'Schedule')); ?></strong>
+                                                <?php if (!empty($day['description'])): ?>
+                                                    <p><?php echo nl2br(htmlspecialchars($day['description'])); ?></p>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php elseif (!$availability): ?>
+                                        <p class="tour-detail-panel__empty">No timing details available.</p>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="tour-detail-panel" id="tour-panel-useful" data-inline-panel="useful">
+                                    <h3 class="tour-detail-panel__title">Useful Info</h3>
+                                    <?php if (!empty($tour['destination_name'])): ?>
+                                        <p><strong><?php echo htmlspecialchars(trim($tour['destination_name'] . (!empty($tour['country']) ? ', ' . $tour['country'] : ''))); ?></strong></p>
+                                    <?php endif; ?>
+                                    <?php if (!empty($tour['destination_description'])): ?>
+                                        <div class="tour-detail-panel__body"><?php echo nl2br(htmlspecialchars($tour['destination_description'])); ?></div>
+                                    <?php else: ?>
+                                        <p class="tour-detail-panel__empty">No useful information available for this destination.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php echo $tour_price_bar; ?>
                         </div>
 
                         <!-- Photo Collage Gallery -->
@@ -1496,42 +1574,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
-    <!-- Tour info slide sidebar (same as tours listing) -->
-    <div id="tourInfoSidebar" class="tour-info-sidebar tour-info-sidebar--detail" aria-hidden="true">
-        <div class="tour-info-sidebar__overlay" data-tour-sidebar-close></div>
-        <aside class="tour-info-sidebar__panel" role="dialog" aria-modal="true" aria-labelledby="tourInfoSidebarTitle">
-            <header class="tour-info-sidebar__head">
-                <div>
-                    <h2 id="tourInfoSidebarTitle">Tour details</h2>
-                    <p id="tourInfoSidebarMeta"></p>
-                </div>
-                <button type="button" class="tour-info-sidebar__close" data-tour-sidebar-close aria-label="Close">&times;</button>
-            </header>
-            <nav class="tour-info-sidebar__tabs" id="tourInfoSidebarTabs">
-                <button type="button" class="tour-info-sidebar__tab is-active" data-panel-tab="description">Description</button>
-                <button type="button" class="tour-info-sidebar__tab" data-panel-tab="inclusion">Inclusion</button>
-                <button type="button" class="tour-info-sidebar__tab" data-panel-tab="timings">Timings</button>
-                <button type="button" class="tour-info-sidebar__tab" data-panel-tab="useful">Useful Info</button>
-            </nav>
-            <div class="tour-info-sidebar__body" id="tourInfoSidebarBody"></div>
-            <footer class="tour-info-sidebar__foot">
-                <div class="tour-info-sidebar__foot-actions">
-                    <form method="POST" action="<?php echo htmlspecialchars(navUrl('cart')); ?>" class="tour-info-sidebar__foot-form" id="tourInfoSidebarCartForm">
-                        <input type="hidden" name="action" value="add">
-                        <input type="hidden" name="tour_id" id="tourInfoSidebarTourId" value="">
-                        <input type="hidden" name="tour_date" id="tourInfoSidebarTourDate" value="<?php echo htmlspecialchars($tomorrow); ?>">
-                        <input type="hidden" name="people" id="tourInfoSidebarPeople" value="<?php echo (int) $defaultPeople; ?>">
-                        <input type="hidden" name="return_url" id="tourInfoSidebarReturnUrl" value="<?php echo htmlspecialchars((string) ($_SERVER['REQUEST_URI'] ?? '')); ?>">
-                        <button type="submit" class="btn-cart">
-                            <i class="fas fa-shopping-cart"></i> Add to Cart
-                        </button>
-                    </form>
-                    <a href="#" class="btn-book" id="tourInfoSidebarBookLink">Book Now</a>
-                    <a href="#" class="btn-view" id="tourInfoSidebarViewLink">View full tour</a>
-                </div>
-            </footer>
-        </aside>
-    </div>
 
 <?php include 'includes/footer.php'; ?>
