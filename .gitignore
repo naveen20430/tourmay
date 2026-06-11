@@ -9,8 +9,9 @@ Thumbs.db
 *.tmp
 tmp_*.txt
 
-# Secrets (copy config/database.example.php to config/database.php)
+# Secrets — never commit live DB credentials
 config/database.php
+**/database.local.php
 .env
 .env.*
 
