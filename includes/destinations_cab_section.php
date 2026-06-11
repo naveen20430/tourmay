@@ -194,7 +194,7 @@
     .destinations-cab-section .destinations-cab-layout {
         flex-direction: row;
         align-items: flex-start;
-        gap: 24px;
+        gap: 45px;
     }
 
     .destinations-cab-section .destinations-cab-stack {
