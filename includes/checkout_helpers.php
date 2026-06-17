@@ -39,6 +39,12 @@ function ensureCheckoutSchema() {
     if (!in_array('invoice_id', $cols, true)) {
         $pdo->exec('ALTER TABLE bookings ADD COLUMN invoice_id INT NULL AFTER booking_number');
     }
+    if (!in_array('pickup_place', $cols, true)) {
+        $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_place VARCHAR(100) NULL AFTER cab_price');
+    }
+    if (!in_array('pickup_detail', $cols, true)) {
+        $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_detail VARCHAR(255) NULL AFTER pickup_place');
+    }
 
     $ready = true;
 }
@@ -113,6 +119,8 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
         $pricePerPerson = $tour['discount_price'] ? (float) $tour['discount_price'] : (float) $tour['price'];
         $lineTotal = $pricePerPerson * $people;
         $cabType = trim((string) ($item['cab_type'] ?? ''));
+        $pickupPlace = trim((string) ($item['pickup_place'] ?? ''));
+        $pickupDetail = trim((string) ($item['pickup_detail'] ?? ''));
         $cabPrice = 0.0;
 
         if ($cab_functionality_enabled && $cabType !== '' && class_exists('CabOptions')) {
@@ -121,7 +129,18 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
                 $errors[] = 'Selected cab type cannot accommodate ' . $people . ' people for: ' . $tour['title'];
                 continue;
             }
+            if ($pickupPlace === '') {
+                $errors[] = 'Please select a pickup point for: ' . $tour['title'];
+                continue;
+            }
+            if (in_array($pickupPlace, ['Hotel', 'Others'], true) && $pickupDetail === '') {
+                $errors[] = 'Please enter pickup details for: ' . $tour['title'];
+                continue;
+            }
             $cabPrice = (float) $cabOptions->calculateCabPrice($cabType, (int) $tour['duration_days']);
+        } elseif ($cabType !== '') {
+            $pickupPlace = '';
+            $pickupDetail = '';
         }
 
         $lines[] = [
@@ -130,6 +149,8 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
             'tour_date' => $tourDate,
             'people' => $people,
             'cab_type' => $cabType,
+            'pickup_place' => $pickupPlace,
+            'pickup_detail' => $pickupDetail,
             'cab_price' => $cabPrice,
             'price_per_person' => $pricePerPerson,
             'line_total' => $lineTotal + $cabPrice,
@@ -205,8 +226,8 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
 
             if ($cab_functionality_enabled && $cabType) {
                 $db->execute(
-                    "INSERT INTO bookings (booking_number, invoice_id, tour_id, user_id, guest_name, guest_email, guest_phone, number_of_people, tour_date, total_amount, cab_type, cab_price, total_with_cab, special_requirements, booking_status, payment_status, payment_method, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, NOW())",
+                    "INSERT INTO bookings (booking_number, invoice_id, tour_id, user_id, guest_name, guest_email, guest_phone, number_of_people, tour_date, total_amount, cab_type, cab_price, pickup_place, pickup_detail, total_with_cab, special_requirements, booking_status, payment_status, payment_method, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, NOW())",
                     [
                         $bookingNumber,
                         $invoiceId,
@@ -220,6 +241,8 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
                         $totalAmount,
                         $cabType,
                         $line['cab_price'],
+                        $line['pickup_place'] !== '' ? $line['pickup_place'] : null,
+                        $line['pickup_detail'] !== '' ? $line['pickup_detail'] : null,
                         $line['line_total'],
                         $guest['special_requirements'] ?? '',
                         $paymentMethod,

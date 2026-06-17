@@ -65,7 +65,10 @@ class CabOptions {
                 'text' => $cab['display_name'] . ' - ₹' . number_format($cab['base_price'], 0) . '/day' . $feature_text,
                 'price' => $cab['base_price'],
                 'max_passengers' => $cab['max_passengers'],
-                'description' => $cab['description']
+                'description' => $cab['description'],
+                'display_name' => $cab['display_name'],
+                'image_path' => $cab['image_path'] ?? '',
+                'image_url' => cabTypeImageUrl($cab),
             ];
         }
         
@@ -100,6 +103,40 @@ class CabOptions {
         
         return $recommended;
     }
+}
+
+/**
+ * Static function to get cab display name
+ */
+function cabTypeImageUrl(array $cab) {
+    $imagePath = trim((string) ($cab['image_path'] ?? ''));
+    if ($imagePath !== '' && defined('BASE_PATH') && is_file(BASE_PATH . $imagePath)) {
+        return BASE_URL . $imagePath;
+    }
+
+    $slug = strtolower((string) ($cab['name'] ?? ''));
+    $candidates = [
+        'sedan' => 'assets/images/cabs/sedan.jpg',
+        'xuv_tavera' => 'assets/images/cabs/suv.jpg',
+        'innova' => 'assets/images/cabs/innova.jpg',
+        'ertiga' => 'assets/images/cabs/ertiga.jpg',
+        'tempo_traveller' => 'assets/images/cabs/tempo.jpg',
+    ];
+
+    $relative = $candidates[$slug] ?? '';
+    if ($relative !== '' && defined('BASE_PATH') && is_file(BASE_PATH . $relative)) {
+        return BASE_URL . $relative;
+    }
+
+    if (defined('BASE_URL')) {
+        return BASE_URL . 'assets/images/tours/default-tour.jpg';
+    }
+
+    return 'assets/images/tours/default-tour.jpg';
+}
+
+function getActivityPickupPlaces() {
+    return ['Hotel', 'Lift Parking', 'Others'];
 }
 
 /**
