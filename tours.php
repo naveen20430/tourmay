@@ -114,6 +114,9 @@ foreach ($tours as $tour) {
             'inclusion' => [
                 'title' => 'Inclusion',
                 'inclusions' => $inclusions,
+            ],
+            'exclusion' => [
+                'title' => 'Exclusion',
                 'exclusions' => $exclusions,
             ],
             'timings' => [
@@ -205,7 +208,7 @@ $extra_css = '
 .tour-meta-line i{color:#667eea}
 .tour-flags{display:flex;gap:15px;flex-wrap:wrap;margin-top:12px;color:#28a745;font-weight:600;font-size:0.85rem}
 .tour-flags i{margin-right:6px}
-.tour-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #f1f3f5;border-bottom:1px solid #f1f3f5;background:#f8f9fa}
+.tour-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid #f1f3f5;border-bottom:1px solid #f1f3f5;background:#f8f9fa}
 .tour-tabs div{padding:12px 10px;border-right:1px solid #e9ecef;font-weight:600;color:#495057;font-size:0.85rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all 0.3s ease;cursor:pointer}
 .tour-tabs div:hover{background:#fff;color:#667eea}
 .tour-tabs div i{font-size:1.1rem;color:#aeb5bc}
@@ -234,8 +237,11 @@ $extra_css = '
 .cat-item:hover i{color:#667eea}
 .cat-item.active{color:#667eea}
 .cat-item.active i{color:#667eea}
+.cat-item--disabled{cursor:default;pointer-events:none;opacity:0.85}
+.cat-item--disabled:hover{color:#495057;padding-left:0}
+.cat-item--disabled:hover i{color:#dee2e6}
 @media (max-width: 1199px){.tours-layout{grid-template-columns:1fr}.tour-row{grid-template-columns:280px minmax(0,1fr)}.tour-actions{padding:10px 12px}}
-@media (max-width: 767px){.tours-listing{padding:40px 0}.tours-topbar{flex-direction:column;align-items:flex-start;gap:15px}.tours-filterbar{grid-template-columns:1fr}.tour-row{grid-template-columns:1fr}.tour-row .thumb{height:220px;min-height:220px}.tour-title{font-size:1.2rem}.tour-tabs{grid-template-columns:repeat(2,1fr)}.tour-tabs div{border-bottom:1px solid #e9ecef;padding:15px 10px}.tour-tabs div:nth-child(3),.tour-tabs div:nth-child(4){border-bottom:0}.tour-tabs div:nth-child(even){border-right:0}.tour-bottom{flex-direction:column;align-items:stretch}.tour-price{padding:15px 20px;text-align:center;align-items:center}.tour-actions{justify-content:center;padding:12px 15px 15px;flex-wrap:wrap}.tour-cart-form,.tour-cart-btn,.tour-book-btn{flex:1 1 auto;min-width:120px}}
+@media (max-width: 767px){.tours-listing{padding:40px 0}.tours-topbar{flex-direction:column;align-items:flex-start;gap:15px}.tours-filterbar{grid-template-columns:1fr}.tour-row{grid-template-columns:1fr}.tour-row .thumb{height:220px;min-height:220px}.tour-title{font-size:1.2rem}.tour-tabs{grid-template-columns:repeat(2,1fr)}.tour-tabs div{border-bottom:1px solid #e9ecef;padding:15px 10px}.tour-tabs div:nth-child(2n){border-right:0}.tour-tabs div:nth-child(5){border-bottom:0}.tour-bottom{flex-direction:column;align-items:stretch}.tour-price{padding:15px 20px;text-align:center;align-items:center}.tour-actions{justify-content:center;padding:12px 15px 15px;flex-wrap:wrap}.tour-cart-form,.tour-cart-btn,.tour-book-btn{flex:1 1 auto;min-width:120px}}
 .tour-tab-btn.active{background:#fff;color:#667eea;box-shadow:inset 0 -3px 0 #667eea}
 .tour-tab-btn.active i{color:#667eea}
 .tour-info-sidebar{position:fixed;inset:0;z-index:10050;pointer-events:none;visibility:hidden}
@@ -404,6 +410,7 @@ include 'includes/header.php';
                                     <div class="tour-tabs">
                                         <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="description" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="far fa-file-alt"></i> Description</div>
                                         <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="inclusion" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="fas fa-pen-square"></i> Inclusion</div>
+                                        <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="exclusion" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="fas fa-ban"></i> Exclusion</div>
                                         <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="timings" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="far fa-clock"></i> Timings</div>
                                         <div class="tour-tab-btn" role="button" tabindex="0" data-tour-tab="useful" data-tour-id="<?php echo (int) $tour['id']; ?>"><i class="fas fa-info-circle"></i> Useful Info</div>
                                     </div>
@@ -461,12 +468,10 @@ include 'includes/header.php';
                         </div>
                         <div class="cat-list">
                             <?php foreach ($categories as $cat): ?>
-                                <a href="<?php echo $build_tours_url(['category' => $cat['slug']]); ?>" 
-                                   class="cat-item <?php echo $category === $cat['slug'] ? 'active' : ''; ?>" 
-                                   style="text-decoration:none;">
+                                <span class="cat-item cat-item--disabled" aria-disabled="true">
                                     <i class="fas fa-check-circle"></i>
                                     <span style="text-transform:uppercase;"><?php echo htmlspecialchars($cat['name']); ?></span>
-                                </a>
+                                </span>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -489,6 +494,7 @@ include 'includes/header.php';
             <nav class="tour-info-sidebar__tabs" id="tourInfoSidebarTabs">
                 <button type="button" class="tour-info-sidebar__tab is-active" data-panel-tab="description">Description</button>
                 <button type="button" class="tour-info-sidebar__tab" data-panel-tab="inclusion">Inclusion</button>
+                <button type="button" class="tour-info-sidebar__tab" data-panel-tab="exclusion">Exclusion</button>
                 <button type="button" class="tour-info-sidebar__tab" data-panel-tab="timings">Timings</button>
                 <button type="button" class="tour-info-sidebar__tab" data-panel-tab="useful">Useful Info</button>
             </nav>

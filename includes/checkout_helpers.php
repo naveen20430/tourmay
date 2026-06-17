@@ -273,7 +273,7 @@ function getInvoiceBookings($invoiceId) {
     global $db;
     return $db->fetchAll("
         SELECT b.*, t.title AS tour_title, t.slug AS tour_slug, t.duration_days, t.duration_nights,
-               t.itinerary, t.short_description, d.name AS destination_name
+               t.itinerary, t.description AS tour_description, t.short_description, d.name AS destination_name
         FROM bookings b
         JOIN tours t ON b.tour_id = t.id
         LEFT JOIN destinations d ON t.destination_id = d.id
@@ -419,4 +419,107 @@ function decodeTourItinerary($json) {
     }
     $data = json_decode($json, true);
     return is_array($data) ? $data : [];
+}
+
+function extractTourItineraryFromDescription($description) {
+    $description = trim((string) $description);
+    if ($description === '') {
+        return '';
+    }
+
+    if (preg_match('/Tour Itinerary\s*\n([\s\S]*)/iu', $description, $matches)) {
+        $chunk = trim($matches[1]);
+        if (preg_match('/^([\s\S]*?)(?=\n\s*(?:🚗|✅|❌|💼)|\nVehicle Capacity|\n✅ Inclusions|\n❌ Exclusions)/u', $chunk, $section)) {
+            return trim($section[1]);
+        }
+        return $chunk;
+    }
+
+    return $description;
+}
+
+function parseTourItinerarySections($text) {
+    $text = trim((string) $text);
+    if ($text === '') {
+        return [];
+    }
+
+    $sections = [];
+    $currentTitle = null;
+    $currentBody = [];
+
+    $flush = function () use (&$sections, &$currentTitle, &$currentBody) {
+        if ($currentTitle === null) {
+            return;
+        }
+        $body = trim(implode("\n", $currentBody));
+        if ($body === '' && $currentTitle === '') {
+            return;
+        }
+        $sections[] = [
+            'day' => '',
+            'title' => $currentTitle,
+            'description' => $body,
+            'is_section' => true,
+        ];
+        $currentTitle = null;
+        $currentBody = [];
+    };
+
+    foreach (preg_split('/\r\n|\r|\n/', $text) as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '') {
+            if ($currentTitle !== null && !empty($currentBody)) {
+                $currentBody[] = '';
+            }
+            continue;
+        }
+
+        if (preg_match('/^([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*){0,3}):\s*$/', $trimmed)) {
+            $flush();
+            $currentTitle = rtrim($trimmed, ':');
+            $currentBody = [];
+            continue;
+        }
+
+        if (preg_match('/^([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*){0,3}):\s*(.+)$/', $trimmed, $match)) {
+            $flush();
+            $currentTitle = trim($match[1]);
+            $currentBody = [trim($match[2])];
+            continue;
+        }
+
+        if ($currentTitle === null) {
+            $currentTitle = 'Itinerary';
+        }
+        $currentBody[] = $trimmed;
+    }
+
+    $flush();
+
+    return $sections;
+}
+
+function getInvoiceTourItineraryDays(array $booking) {
+    $days = decodeTourItinerary($booking['itinerary'] ?? '');
+    if (!empty($days)) {
+        return $days;
+    }
+
+    $text = extractTourItineraryFromDescription($booking['tour_description'] ?? '');
+    $sections = parseTourItinerarySections($text);
+    if (!empty($sections)) {
+        return $sections;
+    }
+
+    if ($text !== '') {
+        return [[
+            'day' => '',
+            'title' => 'Full Itinerary',
+            'description' => $text,
+            'is_section' => true,
+        ]];
+    }
+
+    return [];
 }

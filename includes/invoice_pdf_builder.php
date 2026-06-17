@@ -423,22 +423,31 @@ class InvoicePdfBuilder {
                 if ($contentY < $boxY + 30) {
                     break;
                 }
+                $isSection = !empty($day['is_section']);
                 $dayNo = (string) ($day['day'] ?? '');
                 $dayTitle = (string) ($day['title'] ?? 'Schedule');
                 $dayDesc = (string) ($day['description'] ?? '');
 
-                $this->fillRect($left + 12, $contentY - 24, 52, 28, $this->primaryR, $this->primaryG, $this->primaryB);
-                $this->text($left + 20, $contentY - 8, 'DAY', 6, true, 1, 1, 1);
-                $this->text($left + 28, $contentY - 18, $dayNo, 11, true, 1, 1, 1);
+                $textLeft = $left + 12;
+                if (!$isSection) {
+                    $this->fillRect($left + 12, $contentY - 24, 52, 28, $this->primaryR, $this->primaryG, $this->primaryB);
+                    $this->text($left + 20, $contentY - 8, 'DAY', 6, true, 1, 1, 1);
+                    $this->text($left + 28, $contentY - 18, $dayNo, 11, true, 1, 1, 1);
+                    $textLeft = $left + 74;
+                }
 
-                $this->text($left + 74, $contentY - 8, $dayTitle, 9, true);
+                $this->text($textLeft, $contentY - 8, $dayTitle, 9, true);
                 $descY = $contentY - 20;
-                foreach (array_slice($this->wrap($dayDesc, 72), 0, 2) as $line) {
-                    $this->text($left + 74, $descY, $line, 7, false, 0.45, 0.5, 0.58);
+                $wrapWidth = $isSection ? 90 : 72;
+                foreach ($this->wrap($dayDesc, $wrapWidth) as $line) {
+                    if ($descY < $boxY + 20) {
+                        break;
+                    }
+                    $this->text($textLeft, $descY, $line, 7, false, 0.45, 0.5, 0.58);
                     $descY -= 10;
                 }
 
-                $contentY -= 36;
+                $contentY = min($descY, $contentY) - 16;
                 $this->drawLine($left + 12, $contentY + 8, $left + $w - 12, $contentY + 8, 0.9, 0.92, 0.96, 0.4);
             }
         }

@@ -189,7 +189,7 @@
             <a href="<?php echo navUrl('about-us'); ?>">About Us</a>
         </li>
         <li <?php echo (isset($current_page) && $current_page == 'contact') ? 'class="current"' : ''; ?>>
-            <a href="<?php echo navUrl('contact'); ?>">Contact</a>
+            <a href="<?php echo navUrl('contact'); ?>">Contact Us</a>
         </li>
         <?php if (isset($_SESSION['user_id'])): ?>
             <li class="dropdown">

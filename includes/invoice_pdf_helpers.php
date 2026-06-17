@@ -126,7 +126,7 @@ function generateInvoicePdfFile(array $invoice, array $bookings) {
     $pdf->drawSectionTitle('Tour Itinerary');
 
     foreach ($bookings as $booking) {
-        $itinerary = decodeTourItinerary($booking['itinerary'] ?? '');
+        $itinerary = getInvoiceTourItineraryDays($booking);
         $pdf->drawItineraryTour(
             (string) ($booking['tour_title'] ?? 'Tour'),
             (string) ($booking['short_description'] ?? ''),

@@ -429,6 +429,15 @@
     color: var(--inv-muted);
     font-size: 0.8rem;
     line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.itinerary-day--section {
+    grid-template-columns: 1fr;
+}
+
+.itinerary-day--section .itinerary-day-content strong {
+    color: var(--inv-primary);
 }
 
 .invoice-footer-note {

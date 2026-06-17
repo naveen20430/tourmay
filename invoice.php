@@ -156,7 +156,7 @@ $methodLabel = ($invoice['payment_method'] ?? 'cash') === 'razorpay' ? 'Razorpay
                         <h3>Tour Itinerary</h3>
                     </div>
                     <?php foreach ($bookings as $booking): ?>
-                        <?php $itinerary = decodeTourItinerary($booking['itinerary'] ?? ''); ?>
+                        <?php $itinerary = getInvoiceTourItineraryDays($booking); ?>
                         <div class="itinerary-tour">
                             <h4><?php echo htmlspecialchars($booking['tour_title']); ?></h4>
                             <?php if (!empty($booking['short_description'])): ?>
@@ -164,11 +164,14 @@ $methodLabel = ($invoice['payment_method'] ?? 'cash') === 'razorpay' ? 'Razorpay
                             <?php endif; ?>
                             <?php if (!empty($itinerary)): ?>
                                 <?php foreach ($itinerary as $day): ?>
-                                    <div class="itinerary-day">
+                                    <?php $isSection = !empty($day['is_section']); ?>
+                                    <div class="itinerary-day<?php echo $isSection ? ' itinerary-day--section' : ''; ?>">
+                                        <?php if (!$isSection): ?>
                                         <div class="itinerary-day-badge">
                                             Day
                                             <span><?php echo htmlspecialchars((string) ($day['day'] ?? '')); ?></span>
                                         </div>
+                                        <?php endif; ?>
                                         <div class="itinerary-day-content">
                                             <strong><?php echo htmlspecialchars((string) ($day['title'] ?? 'Schedule')); ?></strong>
                                             <?php if (!empty($day['description'])): ?>

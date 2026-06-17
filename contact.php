@@ -99,7 +99,7 @@ include 'includes/header.php';
                     <h1 class="page-header__title text-white">Contact Us</h1>
                     <ul class="travhub-breadcrumb list-unstyled">
                         <li><a href="<?php echo navUrl('home'); ?>">Home</a></li>
-                        <li>Contact</li>
+                        <li>Contact Us</li>
                     </ul>
                 </div>
             </div>

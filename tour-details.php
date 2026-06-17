@@ -779,7 +779,7 @@ $extra_css .= '<style>
 .tour-detail-card .tour-meta-line i{color:#667eea}
 .tour-detail-card .tour-flags{display:flex;gap:15px;flex-wrap:wrap;color:#28a745;font-weight:600;font-size:0.85rem}
 .tour-detail-card .tour-flags i{margin-right:6px}
-.tour-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #f1f3f5;border-bottom:1px solid #f1f3f5;background:#f8f9fa}
+.tour-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid #f1f3f5;border-bottom:1px solid #f1f3f5;background:#f8f9fa}
 .tour-tabs div{padding:12px 10px;border-right:1px solid #e9ecef;font-weight:600;color:#495057;font-size:0.85rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all 0.3s ease;cursor:pointer}
 .tour-tabs div:hover{background:#fff;color:#667eea}
 .tour-tabs div i{font-size:1.1rem;color:#aeb5bc}
@@ -868,8 +868,8 @@ body.tour-sidebar-open{overflow:hidden}
 @media (max-width:767px){
 .tour-tabs{grid-template-columns:repeat(2,1fr)}
 .tour-tabs div{border-bottom:1px solid #e9ecef;padding:15px 10px}
-.tour-tabs div:nth-child(3),.tour-tabs div:nth-child(4){border-bottom:0}
-.tour-tabs div:nth-child(even){border-right:0}
+.tour-tabs div:nth-child(2n){border-right:0}
+.tour-tabs div:nth-child(5){border-bottom:0}
 .tour-bottom{flex-direction:column;align-items:stretch}
 .tour-price{padding:15px 20px;text-align:center;align-items:center}
 .tour-actions{justify-content:center;padding:12px 15px 15px;flex-wrap:wrap}
@@ -1056,6 +1056,7 @@ $hero_images = array_slice($hero_images, 0, 6);
                             <div class="tour-tabs tour-tabs--inline">
                                 <div class="tour-tab-btn active" role="button" tabindex="0" data-inline-tab="description"><i class="far fa-file-alt"></i> Description</div>
                                 <div class="tour-tab-btn" role="button" tabindex="0" data-inline-tab="inclusion"><i class="fas fa-pen-square"></i> Inclusion</div>
+                                <div class="tour-tab-btn" role="button" tabindex="0" data-inline-tab="exclusion"><i class="fas fa-ban"></i> Exclusion</div>
                                 <div class="tour-tab-btn" role="button" tabindex="0" data-inline-tab="timings"><i class="far fa-clock"></i> Timings</div>
                                 <div class="tour-tab-btn" role="button" tabindex="0" data-inline-tab="useful"><i class="fas fa-info-circle"></i> Useful Info</div>
                             </div>
@@ -1074,23 +1075,25 @@ $hero_images = array_slice($hero_images, 0, 6);
                                 <div class="tour-detail-panel" id="tour-panel-inclusion" data-inline-panel="inclusion">
                                     <h3 class="tour-detail-panel__title">Inclusion</h3>
                                     <?php if (!empty($inclusions)): ?>
-                                        <h4>What's Included</h4>
                                         <ul class="tour-detail-list">
                                             <?php foreach ($inclusions as $item): ?>
                                                 <li><i class="fas fa-check"></i><span><?php echo htmlspecialchars($item); ?></span></li>
                                             <?php endforeach; ?>
                                         </ul>
+                                    <?php else: ?>
+                                        <p class="tour-detail-panel__empty">No inclusion details added yet.</p>
                                     <?php endif; ?>
+                                </div>
+                                <div class="tour-detail-panel" id="tour-panel-exclusion" data-inline-panel="exclusion">
+                                    <h3 class="tour-detail-panel__title">Exclusion</h3>
                                     <?php if (!empty($exclusions)): ?>
-                                        <h4>What's Not Included</h4>
                                         <ul class="tour-detail-list tour-detail-list--exclude">
                                             <?php foreach ($exclusions as $item): ?>
                                                 <li><i class="fas fa-times"></i><span><?php echo htmlspecialchars($item); ?></span></li>
                                             <?php endforeach; ?>
                                         </ul>
-                                    <?php endif; ?>
-                                    <?php if (empty($inclusions) && empty($exclusions)): ?>
-                                        <p class="tour-detail-panel__empty">No inclusion details added yet.</p>
+                                    <?php else: ?>
+                                        <p class="tour-detail-panel__empty">No exclusion details added yet.</p>
                                     <?php endif; ?>
                                 </div>
                                 <div class="tour-detail-panel" id="tour-panel-timings" data-inline-panel="timings">

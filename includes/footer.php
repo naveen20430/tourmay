@@ -42,7 +42,7 @@
                             <li><a href="<?php echo navUrl('home'); ?>">Home</a></li>
                             <li><a href="<?php echo navUrl('tours'); ?>">Tours</a></li>
                             <li><a href="<?php echo navUrl('about-us'); ?>">About Us</a></li>
-                            <li><a href="<?php echo navUrl('contact'); ?>">Contact</a></li>
+                            <li><a href="<?php echo navUrl('contact'); ?>">Contact Us</a></li>
                         </ul>
                     </div>
                 </div>

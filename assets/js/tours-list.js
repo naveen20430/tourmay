@@ -42,25 +42,27 @@
 
     function renderInclusion(panel) {
         const inc = panel.inclusions || [];
-        const exc = panel.exclusions || [];
-        if (!inc.length && !exc.length) {
+        if (!inc.length) {
             return '<p class="tour-info-sidebar__empty">No inclusion details added yet.</p>';
         }
-        let html = '';
-        if (inc.length) {
-            html += '<h4>What\'s Included</h4><ul class="tour-info-sidebar__list">';
-            inc.forEach(function(item) {
-                html += '<li><i class="fas fa-check"></i><span>' + escapeHtml(item) + '</span></li>';
-            });
-            html += '</ul>';
+        let html = '<ul class="tour-info-sidebar__list">';
+        inc.forEach(function(item) {
+            html += '<li><i class="fas fa-check"></i><span>' + escapeHtml(item) + '</span></li>';
+        });
+        html += '</ul>';
+        return html;
+    }
+
+    function renderExclusion(panel) {
+        const exc = panel.exclusions || [];
+        if (!exc.length) {
+            return '<p class="tour-info-sidebar__empty">No exclusion details added yet.</p>';
         }
-        if (exc.length) {
-            html += '<h4 style="margin-top:18px;">What\'s Not Included</h4><ul class="tour-info-sidebar__list">';
-            exc.forEach(function(item) {
-                html += '<li class="is-exclude"><i class="fas fa-times"></i><span>' + escapeHtml(item) + '</span></li>';
-            });
-            html += '</ul>';
-        }
+        let html = '<ul class="tour-info-sidebar__list">';
+        exc.forEach(function(item) {
+            html += '<li class="is-exclude"><i class="fas fa-times"></i><span>' + escapeHtml(item) + '</span></li>';
+        });
+        html += '</ul>';
         return html;
     }
 
@@ -114,6 +116,8 @@
                 return renderDescription(panel);
             case 'inclusion':
                 return renderInclusion(panel);
+            case 'exclusion':
+                return renderExclusion(panel);
             case 'timings':
                 return renderTimings(panel);
             case 'useful':
