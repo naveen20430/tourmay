@@ -9,7 +9,7 @@ $min_price = $_GET['min_price'] ?? '';
 $max_price = $_GET['max_price'] ?? '';
 $difficulty = $_GET['difficulty'] ?? '';
 $tour_type = $_GET['tour_type'] ?? '';
-$sort = $_GET['sort'] ?? 'popular';
+$sort = $_GET['sort'] ?? 'duration';
 
 // Build query
 $where_conditions = ['t.status = "active"'];
@@ -54,13 +54,17 @@ if ($tour_type) {
 
 $where_clause = implode(' AND ', $where_conditions);
 
-$order_clause = 't.featured DESC, t.created_at DESC';
-if ($sort === 'price_low') {
-    $order_clause = 'COALESCE(NULLIF(t.discount_price, 0), t.price) ASC, t.created_at DESC';
+$order_clause = 't.duration_days ASC, t.duration_nights ASC, t.featured DESC, t.created_at DESC';
+if ($sort === 'popular') {
+    $order_clause = 't.featured DESC, t.created_at DESC';
+} elseif ($sort === 'price_low') {
+    $order_clause = 'COALESCE(NULLIF(t.discount_price, 0), t.price) ASC, t.duration_days ASC, t.created_at DESC';
 } elseif ($sort === 'price_high') {
-    $order_clause = 'COALESCE(NULLIF(t.discount_price, 0), t.price) DESC, t.created_at DESC';
+    $order_clause = 'COALESCE(NULLIF(t.discount_price, 0), t.price) DESC, t.duration_days ASC, t.created_at DESC';
 } elseif ($sort === 'latest') {
     $order_clause = 't.created_at DESC';
+} elseif ($sort === 'duration') {
+    $order_clause = 't.duration_days ASC, t.duration_nights ASC, t.featured DESC, t.created_at DESC';
 }
 
 // Get tours
@@ -406,6 +410,7 @@ include 'includes/header.php';
                                 <?php if($category): ?><input type="hidden" name="category" value="<?php echo htmlspecialchars($category); ?>"><?php endif; ?>
                                 <?php if($destination): ?><input type="hidden" name="destination" value="<?php echo htmlspecialchars($destination); ?>"><?php endif; ?>
                                 <select name="sort" class="tours-sort-select" aria-label="Sort tours" onchange="document.getElementById('sortForm').submit();">
+                                    <option value="duration" <?php echo $sort === 'duration' ? 'selected' : ''; ?>>Duration: Shortest First</option>
                                     <option value="popular" <?php echo $sort === 'popular' ? 'selected' : ''; ?>>Most Popular</option>
                                     <option value="price_low" <?php echo $sort === 'price_low' ? 'selected' : ''; ?>>Price: Low to High</option>
                                     <option value="price_high" <?php echo $sort === 'price_high' ? 'selected' : ''; ?>>Price: High to Low</option>

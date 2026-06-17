@@ -553,8 +553,8 @@ try {
                                                         <span class="badge bg-danger ms-2"><?php echo $newContacts; ?></span>
                                                     <?php endif; ?>
                                                 </a>
-                                                <a href="../blog.php" class="list-group-item list-group-item-action py-2" target="_blank">
-                                                    <i class="fas fa-external-link-alt me-2"></i>View Blog Page
+                                                <a href="../about-us.php" class="list-group-item list-group-item-action py-2" target="_blank">
+                                                    <i class="fas fa-external-link-alt me-2"></i>View About Us Page
                                                 </a>
                                                 <a href="../contact.php" class="list-group-item list-group-item-action py-2" target="_blank">
                                                     <i class="fas fa-external-link-alt me-2"></i>View Contact Page
@@ -602,8 +602,8 @@ try {
                                                 <a href="../tours.php" class="btn btn-outline-primary btn-sm" target="_blank">
                                                     <i class="fas fa-map-marked-alt me-1"></i>All Tours
                                                 </a>
-                                                <a href="../blog.php" class="btn btn-outline-primary btn-sm" target="_blank">
-                                                    <i class="fas fa-blog me-1"></i>Blog
+                                                <a href="../about-us.php" class="btn btn-outline-primary btn-sm" target="_blank">
+                                                    <i class="fas fa-info-circle me-1"></i>About Us
                                                 </a>
                                                 <a href="../booking.php" class="btn btn-outline-primary btn-sm" target="_blank">
                                                     <i class="fas fa-calendar-check me-1"></i>Booking

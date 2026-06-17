@@ -185,8 +185,8 @@
         <li <?php echo (isset($current_page) && $current_page == 'tours') ? 'class="current"' : ''; ?>>
             <a href="<?php echo navUrl('tours'); ?>">Tours</a>
         </li>
-        <li <?php echo (isset($current_page) && $current_page == 'blog') ? 'class="current"' : ''; ?>>
-            <a href="<?php echo navUrl('blog'); ?>">Blog</a>
+        <li <?php echo (isset($current_page) && $current_page == 'about') ? 'class="current"' : ''; ?>>
+            <a href="<?php echo navUrl('about-us'); ?>">About Us</a>
         </li>
         <li <?php echo (isset($current_page) && $current_page == 'contact') ? 'class="current"' : ''; ?>>
             <a href="<?php echo navUrl('contact'); ?>">Contact</a>

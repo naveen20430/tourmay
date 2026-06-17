@@ -41,7 +41,7 @@
                         <ul class="list-unstyled main-footer__menu">
                             <li><a href="<?php echo navUrl('home'); ?>">Home</a></li>
                             <li><a href="<?php echo navUrl('tours'); ?>">Tours</a></li>
-                            <li><a href="<?php echo navUrl('blog'); ?>">Blog</a></li>
+                            <li><a href="<?php echo navUrl('about-us'); ?>">About Us</a></li>
                             <li><a href="<?php echo navUrl('contact'); ?>">Contact</a></li>
                         </ul>
                     </div>
@@ -53,7 +53,7 @@
                         <ul class="list-unstyled main-footer__menu">
                             <li><a href="<?php echo navUrl('tours'); ?>">Tour Packages</a></li>
                             <li><a href="<?php echo navUrl('destinations'); ?>">Destinations</a></li>
-                            <li><a href="<?php echo navUrl('blog'); ?>">Travel Blog</a></li>
+                            <li><a href="<?php echo navUrl('about-us'); ?>">About Us</a></li>
                             <li><a href="<?php echo navUrl('contact'); ?>">Customer Support</a></li>
                         </ul>
                     </div>
@@ -158,7 +158,7 @@
 	<!-- /.search-popup__overlay -->
 	<div class="search-popup__content">
 		<div class="search-popup__header">
-			<h3 class="search-popup__title">Search Tours, Destinations & Blogs</h3>
+			<h3 class="search-popup__title">Search Tours & Destinations</h3>
 			<button class="search-popup__close search-toggler" aria-label="Close search">
 				<i class="fas fa-times"></i>
 			</button>
@@ -166,7 +166,7 @@
 		
 		<form role="search" method="get" class="search-popup__form" id="ajaxSearchForm">
 			<div class="search-input-wrapper">
-				<input type="text" id="ajaxSearchInput" placeholder="Search tours, destinations, blogs..." autocomplete="off" />
+				<input type="text" id="ajaxSearchInput" placeholder="Search tours and destinations..." autocomplete="off" />
 				<button type="submit" aria-label="search submit" class="search-submit-btn">
 					<span>
 						<i class="flaticon-search"></i>
@@ -189,7 +189,7 @@
 				<button type="button" class="search-filter-btn" data-type="destinations">
 					<i class="fas fa-globe"></i> Destinations
 				</button>
-				<button type="button" class="search-filter-btn" data-type="blog">
+				<button type="button" class="search-filter-btn" data-type="blog" style="display:none;" aria-hidden="true">
 					<i class="fas fa-blog"></i> Blog
 				</button>
 			</div>
@@ -200,7 +200,7 @@
 			<div class="search-welcome">
 				<i class="fas fa-search fa-3x mb-3"></i>
 				<h4>Start typing to search</h4>
-				<p>Find tours, destinations, and blog posts instantly</p>
+				<p>Find tours and destinations instantly</p>
 			</div>
 		</div>
 		
@@ -214,8 +214,8 @@
 				<a href="<?php echo BASE_URL; ?>destinations.php" class="quick-action-btn">
 					<i class="fas fa-globe"></i> Explore Destinations
 				</a>
-				<a href="<?php echo BASE_URL; ?>blog.php" class="quick-action-btn">
-					<i class="fas fa-blog"></i> Read Our Blog
+				<a href="<?php echo navUrl('about-us'); ?>" class="quick-action-btn">
+					<i class="fas fa-info-circle"></i> About Us
 				</a>
 			</div>
 		</div>

@@ -187,7 +187,8 @@ function navUrl($page) {
         case 'cart':
             return BASE_URL . "cart";
         case 'about':
-            return BASE_URL . "about";
+        case 'about-us':
+            return BASE_URL . "about-us";
         case 'gallery':
             return BASE_URL . "gallery";
         case 'login':
@@ -269,6 +270,7 @@ function isCurrentPage($page) {
         case 'contact':
             return strpos($current_uri, '/contact') === 0;
         case 'about':
+        case 'about-us':
             return strpos($current_uri, '/about') === 0;
         case 'gallery':
             return strpos($current_uri, '/gallery') === 0;

@@ -89,8 +89,9 @@ RewriteRule ^register/?$ register.php [NC,L]
 RewriteRule ^logout/?$ logout.php [NC,L]
 RewriteRule ^profile/?$ profile.php [NC,L]
 
-# About page
-RewriteRule ^about/?$ about.php [NC,L]
+# About Us page
+RewriteRule ^about-us/?$ about-us.php [NC,L]
+RewriteRule ^about/?$ about-us.php [NC,L]
 
 # Privacy Policy page
 RewriteRule ^privacy-policy/?$ privacy-policy.php [NC,L]
