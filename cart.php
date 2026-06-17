@@ -97,9 +97,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $pickupPlace = trim((string)($_POST['pickup_place'] ?? ''));
         $pickupDetail = trim((string)($_POST['pickup_detail'] ?? ''));
+        $pickupTime = trim((string)($_POST['pickup_time'] ?? ''));
+        if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
+            $pickupTime = '';
+        }
         if ($cabType === '') {
             $pickupPlace = '';
             $pickupDetail = '';
+            $pickupTime = '';
         }
 
         $_SESSION['tour_cart'][(string)$tourId] = [
@@ -108,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'cab_type' => $cabType,
             'pickup_place' => $pickupPlace,
             'pickup_detail' => $pickupDetail,
+            'pickup_time' => $pickupTime,
         ];
 
         $_SESSION['cart_flash'] = ['type' => 'success', 'message' => 'Added to cart'];
@@ -280,6 +286,7 @@ include 'includes/header.php';
                             $selectedCab = (string)($item['cab_type'] ?? '');
                             $selectedPickup = (string)($item['pickup_place'] ?? '');
                             $selectedPickupDetail = (string)($item['pickup_detail'] ?? '');
+                            $selectedPickupTime = (string)($item['pickup_time'] ?? '');
                             $showPickup = $selectedCab !== '';
                             $needsPickupDetail = in_array($selectedPickup, ['Hotel', 'Others'], true);
                             $line = $cartLinesByTourId[$tourIdStr] ?? null;
@@ -414,6 +421,13 @@ include 'includes/header.php';
                                                            placeholder="<?php echo $selectedPickup === 'Hotel' ? 'Enter hotel name' : ($selectedPickup === 'Others' ? 'Enter location details' : 'Enter details'); ?>"
                                                            <?php echo $needsPickupDetail ? 'required' : ''; ?>>
                                                 </div>
+                                                <label class="cart-field-label" for="pickup_time_<?php echo (int)$tour['id']; ?>">Pickup time</label>
+                                                <input type="time"
+                                                       name="pickup_time"
+                                                       id="pickup_time_<?php echo (int)$tour['id']; ?>"
+                                                       class="form-control cart-pickup-time"
+                                                       data-cart-pickup-time
+                                                       value="<?php echo htmlspecialchars($selectedPickupTime); ?>">
                                             </div>
                                         </div>
                                     <?php endif; ?>
@@ -581,6 +595,7 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
     const pickupSel = card ? card.querySelector('[data-cart-pickup-place]') : null;
     const detailWrap = card ? card.querySelector('[data-cart-pickup-detail-wrap]') : null;
     const detailInp = card ? card.querySelector('[data-cart-pickup-detail]') : null;
+    const pickupTimeInp = card ? card.querySelector('[data-cart-pickup-time]') : null;
     const totalStatus = card ? card.querySelector('[data-cart-total-status]') : null;
     const totalAmount = card ? card.querySelector('[data-cart-total-amount]') : null;
 
@@ -621,6 +636,7 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         if (hasCab) {
             pickupWrap.removeAttribute('hidden');
             syncPickupDetail();
+            if (pickupTimeInp) pickupTimeInp.setAttribute('required', 'required');
             return;
         }
         pickupWrap.setAttribute('hidden', '');
@@ -628,6 +644,10 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         if (detailInp) detailInp.value = '';
         if (detailWrap) detailWrap.setAttribute('hidden', '');
         if (detailInp) detailInp.removeAttribute('required');
+        if (pickupTimeInp) {
+            pickupTimeInp.value = '';
+            pickupTimeInp.removeAttribute('required');
+        }
     }
 
     picker.querySelectorAll('input[name="cab_type"]').forEach(function(radio) {

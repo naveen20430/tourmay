@@ -290,7 +290,8 @@
 }
 
 .cart-pickup-place,
-.cart-pickup-detail {
+.cart-pickup-detail,
+.cart-pickup-time {
     width: 100%;
     min-height: 44px;
     border: 1.5px solid #e2e8f0;
@@ -302,7 +303,8 @@
 }
 
 .cart-pickup-place:focus,
-.cart-pickup-detail:focus {
+.cart-pickup-detail:focus,
+.cart-pickup-time:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
     outline: none;

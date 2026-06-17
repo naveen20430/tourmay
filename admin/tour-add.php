@@ -1,5 +1,6 @@
 <?php
 require_once '../config/config.php';
+require_once '../includes/html_helpers.php';
 requireLogin();
 
 $errors = [];
@@ -16,7 +17,7 @@ if ($_POST) {
     
     $title = trim($_POST['title'] ?? '');
     $destination_id = $_POST['destination_id'] ?? '';
-    $description = trim($_POST['description'] ?? '');
+    $description = sanitizeRichTextHtml(trim($_POST['description'] ?? ''));
     $short_description = trim($_POST['short_description'] ?? '');
     $price = floatval($_POST['price'] ?? 0);
     $discount_price = $_POST['discount_price'] ? floatval($_POST['discount_price']) : null;
@@ -52,7 +53,7 @@ if ($_POST) {
     
     // Validation
     if (empty($title)) $errors[] = 'Tour title is required';
-    if (empty($description)) $errors[] = 'Tour description is required';
+    if (!richTextHasContent($description)) $errors[] = 'Tour description is required';
     if (empty($short_description)) $errors[] = 'Short description is required';
     if ($price <= 0) $errors[] = 'Price must be greater than 0';
     if ($duration_days <= 0) $errors[] = 'Duration days must be greater than 0';
@@ -159,6 +160,10 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
         .image-preview { max-width: 200px; max-height: 150px; object-fit: cover; border-radius: 8px; margin: 5px; }
         .itinerary-item { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; background: #f9f9f9; }
         .remove-btn { background: #dc3545; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; font-size: 12px; }
+        .tour-description-editor-wrap .tox-tinymce {
+            border-radius: 0.375rem;
+            border-color: #ced4da;
+        }
     </style>
 </head>
 <body>
@@ -256,9 +261,10 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
                                         <label class="form-label">Short Description *</label>
                                         <textarea name="short_description" class="form-control" rows="2" required><?php echo htmlspecialchars($_POST['short_description'] ?? ''); ?></textarea>
                                     </div>
-                                    <div class="col-md-12 mb-3">
-                                        <label class="form-label">Full Description *</label>
-                                        <textarea name="description" class="form-control" rows="6" required><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                                    <div class="col-md-12 mb-3 tour-description-editor-wrap">
+                                        <label class="form-label" for="tour-description-editor">Full Description *</label>
+                                        <textarea id="tour-description-editor" name="description" class="form-control" rows="10" required><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                                        <small class="text-muted">Use the toolbar for bold text, font size, and lists.</small>
                                     </div>
                                 </div>
                                 
@@ -591,5 +597,7 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
             }
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"></script>
+    <script src="assets/js/tour-description-editor.js"></script>
 </body>
 </html>

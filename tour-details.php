@@ -1,6 +1,7 @@
 <?php
 require_once 'config/config.php';
 require_once 'includes/cab_options.php';
+require_once 'includes/html_helpers.php';
 
 // Get tour slug
 $slug = $_GET['slug'] ?? '';
@@ -848,6 +849,9 @@ body.tour-sidebar-open{overflow:hidden}
 .tour-detail-panel__title{margin:0 0 14px;font-size:1.15rem;font-weight:700;color:#1a202c}
 .tour-detail-panel__lead{color:#6c757d;font-size:1rem;margin-bottom:12px}
 .tour-detail-panel__body{color:#374151}
+.tour-detail-panel__body--rich p{margin:0 0 12px}
+.tour-detail-panel__body--rich ul,.tour-detail-panel__body--rich ol{margin:0 0 12px;padding-left:1.25rem}
+.tour-detail-panel__body--rich strong,.tour-detail-panel__body--rich b{font-weight:700;color:#1a202c}
 .tour-detail-panel__empty{color:#6c757d;font-style:italic;margin:0}
 .tour-detail-panel h4{margin:18px 0 10px;font-size:1rem;color:#1a202c}
 .tour-detail-panel h4:first-of-type{margin-top:0}
@@ -1067,7 +1071,7 @@ $hero_images = array_slice($hero_images, 0, 6);
                                         <p class="tour-detail-panel__lead"><?php echo nl2br(htmlspecialchars($tour['short_description'])); ?></p>
                                     <?php endif; ?>
                                     <?php if (!empty($tour['description'])): ?>
-                                        <div class="tour-detail-panel__body"><?php echo nl2br(htmlspecialchars($tour['description'])); ?></div>
+                                        <div class="tour-detail-panel__body tour-detail-panel__body--rich"><?php echo formatTourDescriptionForDisplay($tour['description']); ?></div>
                                     <?php elseif (empty($tour['short_description'])): ?>
                                         <p class="tour-detail-panel__empty">No description available for this tour.</p>
                                     <?php endif; ?>

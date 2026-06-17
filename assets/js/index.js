@@ -698,6 +698,38 @@
         return false;
     }
 
+    function runActivitySearch() {
+        activeSearchType = 'activity';
+
+        if (!validateActivityPickup()) {
+            return false;
+        }
+
+        const tourData = getTourSearchData();
+        let redirectUrl = BASE_URL + 'tours';
+
+        if (tourData.tour) {
+            redirectUrl = BASE_URL + 'tour/' + encodeURIComponent(tourData.tour);
+        } else {
+            const params = new URLSearchParams();
+            if (tourData.destination) params.append('destination', tourData.destination);
+            if (tourData.country) params.append('from', tourData.country);
+            if (tourData.travel_date) params.append('travel_date', tourData.travel_date);
+            if (tourData.pickup_place) params.append('pickup_place', tourData.pickup_place);
+            if (tourData.pickup_detail) params.append('pickup_detail', tourData.pickup_detail);
+            if (tourData.adults) params.append('adults', tourData.adults);
+            if (tourData.children) params.append('children', tourData.children);
+            if (tourData.guests) params.append('guests', tourData.guests);
+            const queryString = params.toString();
+            if (queryString) {
+                redirectUrl = BASE_URL + 'tours?' + queryString;
+            }
+        }
+
+        window.location.href = redirectUrl;
+        return false;
+    }
+
     function showPhoneModal(type) {
         activeSearchType = type || getActiveSearchType();
 
@@ -706,45 +738,8 @@
             return;
         }
 
-        let detailsHTML = '';
-
-        const submitText = document.getElementById('modalSubmitText');
-        if (submitText) {
-            submitText.textContent = 'Search Tours';
-        }
-
-        if (!validateActivityPickup()) {
-            return;
-        }
-        const data = getTourSearchData();
-        if (data.query) detailsHTML += '<div><strong>Search:</strong> ' + data.query + '</div>';
-        if (data.destination) detailsHTML += '<div><strong>Destination:</strong> ' + data.destinationText + '</div>';
-        if (data.tour) detailsHTML += '<div><strong>Tour:</strong> ' + data.query + '</div>';
-        if (data.country) detailsHTML += '<div><strong>Country:</strong> ' + data.countryText + '</div>';
-        if (data.pickup_placeText) {
-            let pickupLine = data.pickup_placeText;
-            if (data.pickup_detail) {
-                pickupLine += ' — ' + data.pickup_detail;
-            }
-            detailsHTML += '<div><strong>Pickup:</strong> ' + pickupLine + '</div>';
-        }
-        if (data.guestsText) detailsHTML += '<div><strong>Guests:</strong> ' + data.guestsText + '</div>';
-        if (data.travel_date) detailsHTML += '<div><strong>Travel Date:</strong> ' + data.travel_date + '</div>';
-
-        if (!detailsHTML) {
-            detailsHTML = '<div style="color: #6c757d; font-style: italic;">No search filters selected</div>';
-        }
-
-        const searchDetailsEl = document.getElementById('searchDetails');
-        if (searchDetailsEl) {
-            searchDetailsEl.innerHTML = detailsHTML;
-        }
-
-        const modal = document.getElementById('phoneModal');
-        if (modal) {
-            modal.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-        }
+        // Phone popup disabled for now — run activity search directly.
+        runActivitySearch();
     }
 
     function closePhoneModal() {
@@ -762,76 +757,7 @@
 
     function submitSearch(event) {
         event.preventDefault();
-
-        const phoneInput = document.getElementById('modalPhone');
-        if (!phoneInput) return false;
-
-        const phone = phoneInput.value;
-        const phonePattern = /^[0-9]{10}$/;
-
-        if (!phonePattern.test(phone)) {
-            alert('Please enter a valid 10-digit phone number');
-            return false;
-        }
-
-        const formData = new FormData();
-        formData.append('phone', phone);
-
-        let redirectUrl = BASE_URL + 'tours';
-
-        if (activeSearchType === 'transfer') {
-            submitCabSearch();
-            return false;
-        }
-
-        const tourData = getTourSearchData();
-        if (!validateActivityPickup()) {
-            return false;
-        }
-        if (tourData.destination) formData.append('destination', tourData.destination);
-        if (tourData.tour) formData.append('tour', tourData.tour);
-        if (tourData.country) formData.append('from', tourData.country);
-        if (tourData.travel_date) formData.append('travel_date', tourData.travel_date);
-        if (tourData.pickup_place) formData.append('pickup_place', tourData.pickup_place);
-        if (tourData.pickup_detail) formData.append('pickup_detail', tourData.pickup_detail);
-        if (tourData.adults) formData.append('adults', tourData.adults);
-        if (tourData.children) formData.append('children', tourData.children);
-        if (tourData.guests) formData.append('guests', tourData.guests);
-
-        fetch(BASE_URL + 'api/save-search-query.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(function(response) {
-            return response.text().then(function(text) {
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    throw new Error('Server returned invalid JSON');
-                }
-            });
-        })
-        .then(function(data) {
-            if (data.success) {
-                if (tourData.tour) {
-                    redirectUrl = BASE_URL + 'tour/' + encodeURIComponent(tourData.tour);
-                } else {
-                    const params = new URLSearchParams();
-                    formData.forEach(function(value, key) {
-                        if (value && key !== 'phone') params.append(key, value);
-                    });
-                    const queryString = params.toString();
-                    redirectUrl = queryString ? BASE_URL + 'tours?' + queryString : BASE_URL + 'tours';
-                }
-                window.location.href = redirectUrl;
-            } else {
-                alert('Error: ' + (data.message || 'Failed to save search query. Please try again.'));
-            }
-        })
-        .catch(function() {
-            alert('Network error. Please check your connection and try again.');
-        });
-
+        runActivitySearch();
         return false;
     }
 

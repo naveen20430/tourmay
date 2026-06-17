@@ -45,6 +45,9 @@ function ensureCheckoutSchema() {
     if (!in_array('pickup_detail', $cols, true)) {
         $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_detail VARCHAR(255) NULL AFTER pickup_place');
     }
+    if (!in_array('pickup_time', $cols, true)) {
+        $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_time VARCHAR(10) NULL AFTER pickup_detail');
+    }
 
     $ready = true;
 }
@@ -121,6 +124,10 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
         $cabType = trim((string) ($item['cab_type'] ?? ''));
         $pickupPlace = trim((string) ($item['pickup_place'] ?? ''));
         $pickupDetail = trim((string) ($item['pickup_detail'] ?? ''));
+        $pickupTime = trim((string) ($item['pickup_time'] ?? ''));
+        if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
+            $pickupTime = '';
+        }
         $cabPrice = 0.0;
 
         if ($cab_functionality_enabled && $cabType !== '' && class_exists('CabOptions')) {
@@ -133,6 +140,10 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
                 $errors[] = 'Please select a pickup point for: ' . $tour['title'];
                 continue;
             }
+            if ($pickupTime === '') {
+                $errors[] = 'Please select a pickup time for: ' . $tour['title'];
+                continue;
+            }
             if (in_array($pickupPlace, ['Hotel', 'Others'], true) && $pickupDetail === '') {
                 $errors[] = 'Please enter pickup details for: ' . $tour['title'];
                 continue;
@@ -141,6 +152,7 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
         } elseif ($cabType !== '') {
             $pickupPlace = '';
             $pickupDetail = '';
+            $pickupTime = '';
         }
 
         $lines[] = [
@@ -151,6 +163,7 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
             'cab_type' => $cabType,
             'pickup_place' => $pickupPlace,
             'pickup_detail' => $pickupDetail,
+            'pickup_time' => $pickupTime,
             'cab_price' => $cabPrice,
             'price_per_person' => $pricePerPerson,
             'line_total' => $lineTotal + $cabPrice,
@@ -226,8 +239,8 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
 
             if ($cab_functionality_enabled && $cabType) {
                 $db->execute(
-                    "INSERT INTO bookings (booking_number, invoice_id, tour_id, user_id, guest_name, guest_email, guest_phone, number_of_people, tour_date, total_amount, cab_type, cab_price, pickup_place, pickup_detail, total_with_cab, special_requirements, booking_status, payment_status, payment_method, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, NOW())",
+                    "INSERT INTO bookings (booking_number, invoice_id, tour_id, user_id, guest_name, guest_email, guest_phone, number_of_people, tour_date, total_amount, cab_type, cab_price, pickup_place, pickup_detail, pickup_time, total_with_cab, special_requirements, booking_status, payment_status, payment_method, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, NOW())",
                     [
                         $bookingNumber,
                         $invoiceId,
@@ -243,6 +256,7 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
                         $line['cab_price'],
                         $line['pickup_place'] !== '' ? $line['pickup_place'] : null,
                         $line['pickup_detail'] !== '' ? $line['pickup_detail'] : null,
+                        $line['pickup_time'] !== '' ? $line['pickup_time'] : null,
                         $line['line_total'],
                         $guest['special_requirements'] ?? '',
                         $paymentMethod,
