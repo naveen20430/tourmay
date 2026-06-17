@@ -4,8 +4,8 @@ require_once '../config/config.php';
 $error = '';
 
 if ($_POST) {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
+    $username = trim($_POST['username'] ?? '');
+    $password = trim($_POST['password'] ?? '');
     
     if ($username && $password) {
         $user = $db->fetch(
@@ -58,13 +58,11 @@ if ($_POST) {
                         <form method="POST">
                             <div class="mb-3">
                                 <label class="form-label">Username</label>
-                                <input type="text" name="username" class="form-control" required value="admin">
-                                <small class="text-muted">Default: admin</small>
+                                <input type="text" name="username" class="form-control" required autocomplete="username">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Password</label>
-                                <input type="password" name="password" class="form-control" required value="password">
-                                <small class="text-muted">Default: password</small>
+                                <input type="password" name="password" class="form-control" required autocomplete="current-password">
                             </div>
                             <button type="submit" class="btn btn-primary w-100">Login</button>
                         </form>
