@@ -1,5 +1,9 @@
 RewriteEngine On
 
+# Deprecated preview host → live site only
+RewriteCond %{HTTP_HOST} ^khaki-goldfish-975552\.hostingersite\.com$ [NC]
+RewriteRule ^ https://theworldjourney.in%{REQUEST_URI} [R=301,L]
+
 # Enable rewrite log for debugging (comment out in production)
 # RewriteLog "logs/rewrite.log"
 # RewriteLogLevel 3
