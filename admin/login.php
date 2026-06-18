@@ -33,6 +33,8 @@ if ($_POST) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - <?php echo getSetting('site_name'); ?></title>
+    <link rel="icon" href="<?php echo BASE_URL; ?>assets/images/favicons/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo BASE_URL; ?>assets/images/favicons/favicon-32x32.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: #1bbc9b; min-height: 100vh; }

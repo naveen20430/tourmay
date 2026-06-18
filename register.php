@@ -71,71 +71,22 @@ if ($_POST) {
 
 $page_title = 'Register - ' . getSetting('site_name');
 $current_page = 'register';
-$extra_css = '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .register-section {
-            padding: 80px 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: calc(100vh - 200px);
-        }
-        .register-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-            overflow: hidden;
-        }
-        .register-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 20px 20px 0 0;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-        .whatsapp-verify-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 18px;
-        }
-        .whatsapp-verified {
-            background: #ecfdf5;
-            border-color: #a7f3d0;
-            color: #065f46;
-        }
-        .otp-input {
-            letter-spacing: 0.35em;
-            text-align: center;
-            font-weight: 700;
-        }
-    </style>';
+$extra_css = cssWithCache('assets/css/auth-pages.css');
 
 include 'includes/header.php';
 ?>
 
-<section class="register-section">
+<section class="auth-section register-section">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-6">
-                <div class="register-card">
-                    <div class="register-header p-4 text-center">
+            <div class="col-lg-6 col-md-8 col-sm-10">
+                <div class="auth-card register-card">
+                    <div class="auth-card__head register-header">
                         <h2><i class="fas fa-user-plus me-2"></i>Create Account</h2>
-                        <p class="mb-0">Verify WhatsApp number and join us for amazing travel experiences</p>
+                        <p>Verify WhatsApp number and join us for amazing travel experiences</p>
                     </div>
 
-                    <div class="p-4">
+                    <div class="auth-card__body">
                         <?php if (!empty($errors)): ?>
                             <div class="alert alert-danger">
                                 <ul class="mb-0">
@@ -147,7 +98,7 @@ include 'includes/header.php';
                         <?php endif; ?>
 
                         <form method="POST" id="registerForm">
-                            <div class="whatsapp-verify-box" id="whatsappVerifyBox">
+                            <div class="auth-verify-box" id="whatsappVerifyBox">
                                 <label class="form-label fw-semibold">
                                     <i class="fab fa-whatsapp text-success me-2"></i>WhatsApp Number *
                                 </label>
@@ -173,7 +124,7 @@ include 'includes/header.php';
                                             OTP sent to <strong id="registerPhoneDisplay"></strong>
                                             <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="registerChangePhone">Change</button>
                                         </p>
-                                        <input type="text" id="registerWhatsappOtp" class="form-control otp-input mb-3"
+                                        <input type="text" id="registerWhatsappOtp" class="form-control auth-otp-input otp-input mb-3"
                                                maxlength="5" pattern="[0-9]{5}" placeholder="5-digit code" inputmode="numeric">
                                         <div class="d-grid gap-2">
                                             <button type="button" class="btn btn-primary" id="registerVerifyOtpBtn">
@@ -240,7 +191,7 @@ include 'includes/header.php';
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="terms" required>
                                     <label class="form-check-label" for="terms">
-                                        I agree to the <a href="<?php echo navUrl('terms-conditions'); ?>" target="_blank" class="text-primary">Terms of Service</a> and <a href="<?php echo navUrl('privacy-policy'); ?>" target="_blank" class="text-primary">Privacy Policy</a>
+                                        I agree to the <a href="<?php echo navUrl('terms-conditions'); ?>" target="_blank" rel="noopener">Terms of Service</a> and <a href="<?php echo navUrl('privacy-policy'); ?>" target="_blank" rel="noopener">Privacy Policy</a>
                                     </label>
                                 </div>
                             </div>
@@ -252,10 +203,10 @@ include 'includes/header.php';
                             </div>
                         </form>
 
-                        <hr class="my-4">
-                        <div class="text-center">
-                            <p class="mb-0">Already have an account? <a href="<?php echo navUrl('login'); ?>" class="text-primary">Login here</a></p>
-                        </div>
+                        <hr class="auth-divider">
+                        <p class="auth-footer-text">
+                            Already have an account? <a href="<?php echo navUrl('login'); ?>">Login here</a>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -265,7 +216,6 @@ include 'includes/header.php';
 
 <?php include 'includes/footer.php'; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const password = document.querySelector('input[name="password"]');
@@ -309,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
             phoneStep.classList.add('d-none');
             otpStep.classList.add('d-none');
             verifiedBadge.classList.remove('d-none');
-            verifyBox.classList.add('whatsapp-verified');
+            verifyBox.classList.add('is-verified');
             submitBtn.disabled = false;
             showAlert('success', 'WhatsApp number verified. You can complete registration.');
         }
@@ -350,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 phoneStep.classList.add('d-none');
                 otpStep.classList.remove('d-none');
                 verifiedBadge.classList.add('d-none');
-                verifyBox.classList.remove('whatsapp-verified');
+                verifyBox.classList.remove('is-verified');
                 submitBtn.disabled = true;
                 showAlert('success', data.message || 'OTP sent on WhatsApp');
                 otpInput.focus();
@@ -402,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
             otpStep.classList.add('d-none');
             phoneStep.classList.remove('d-none');
             verifiedBadge.classList.add('d-none');
-            verifyBox.classList.remove('whatsapp-verified');
+            verifyBox.classList.remove('is-verified');
             submitBtn.disabled = true;
             phoneHidden.value = '';
             activePhone = '';

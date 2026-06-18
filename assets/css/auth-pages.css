@@ -289,10 +289,53 @@ section.auth-section,
 
 .auth-section a:not(.btn) {
     color: var(--auth-primary);
+    text-decoration: none;
 }
 
 .auth-section a:not(.btn):hover {
     color: var(--auth-primary-2);
+    text-decoration: underline;
+}
+
+.auth-section .btn-link {
+    color: var(--auth-primary);
+    font-weight: 700;
+    text-decoration: none !important;
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+    vertical-align: baseline;
+}
+
+.auth-section .btn-link:hover,
+.auth-section .btn-link:focus {
+    color: var(--auth-primary-2);
+    text-decoration: none !important;
+}
+
+.auth-section .form-check-label a {
+    color: var(--auth-primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.auth-section .form-check-label a:hover {
+    color: var(--auth-primary-2);
+    text-decoration: underline;
+}
+
+.auth-verify-box {
+    background: #f8fafc;
+    border: 1px solid var(--auth-border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+}
+
+.auth-verify-box.is-verified {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
 }
 
 @media (max-width: 767px) {
