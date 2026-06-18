@@ -427,3 +427,192 @@ margin-top: 20px;
     transform: translateY(-2px) !important;
     box-shadow: 0 18px 40px rgba(109, 40, 217, 0.33) !important;
 }
+
+/* ==========================================================================
+   CONTACT PAGE - TWO COLUMN LAYOUT
+   ========================================================================== */
+
+.contact-page {
+    background: #f6f7fb;
+    padding: 60px 0 80px;
+}
+
+.contact-page__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 28px;
+    align-items: stretch;
+}
+
+.contact-page__col {
+    min-width: 0;
+}
+
+.contact-page__info,
+.contact-page__form {
+    background: #fff;
+    border: 1px solid #e9edf5;
+    border-radius: 18px;
+    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
+    padding: 32px;
+    height: 100%;
+}
+
+.contact-page .contact-form__inner {
+    border-top: none !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+.contact-page__form {
+    border-top: 3px solid #ff6b35;
+    padding: 32px !important;
+}
+
+.contact-page__title {
+    margin: 10px 0 14px;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1f2937;
+    line-height: 1.2;
+}
+
+.contact-page__intro {
+    color: #6b7280;
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+
+.contact-page__details {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.contact-page__detail {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.contact-page__detail-icon {
+    flex: 0 0 52px;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+}
+
+.contact-page__detail h4 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.contact-page__detail p {
+    margin: 0;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.contact-page__detail p a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.contact-page__detail p a:hover {
+    color: #764ba2;
+}
+
+.contact-page__detail small {
+    display: block;
+    margin-top: 6px;
+    color: #9ca3af;
+}
+
+.contact-page .section-title__tagline {
+    color: #667eea;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.contact-page__info .section-title__tagline {
+    color: #667eea;
+}
+
+.contact-page__form .section-title__title {
+    -webkit-text-fill-color: unset !important;
+    color: #1f2937 !important;
+    background: none !important;
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    text-align: left;
+    margin: 10px 0 12px;
+}
+
+.contact-page__form .section-title__text {
+    text-align: left;
+    margin: 0;
+    max-width: none;
+    color: #6b7280;
+    font-size: 0.98rem;
+    line-height: 1.65;
+}
+
+.contact-page .contact-form__form .row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px 18px !important;
+    margin: 0 !important;
+}
+
+.contact-page .contact-form__form .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.contact-page .contact-form__form .row > [class*="col-"].mb-3 {
+    margin-bottom: 0 !important;
+}
+
+@media (max-width: 991px) {
+    .contact-page__grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .contact-page__info,
+    .contact-page__form {
+        padding: 24px 20px !important;
+    }
+
+    .contact-page__title,
+    .contact-page__form .section-title__title {
+        font-size: 1.75rem !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .contact-page {
+        padding: 40px 0 60px;
+    }
+
+    .contact-page .contact-form__form .row {
+        grid-template-columns: 1fr !important;
+    }
+}

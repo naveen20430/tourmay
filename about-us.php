@@ -9,7 +9,7 @@ $site_name = getSetting('site_name', 'The World Journey');
 include 'includes/header.php';
 ?>
 
-<section class="page-header" style="background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('assets/images/backgrounds/hero-2-1.jpg') center/cover; padding: 120px 0 60px;">
+<section class="page-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 120px 0 60px;">
     <div class="container">
         <div class="row">
             <div class="col-lg-12">
@@ -27,14 +27,8 @@ include 'includes/header.php';
 
 <section class="py-5" style="background: #f8f9fa;">
     <div class="container">
-        <div class="row g-4 align-items-center mb-5">
-            <div class="col-lg-6">
-                <img src="<?php echo BASE_URL; ?>assets/images/backgrounds/hero-2-2.jpg"
-                     alt="<?php echo htmlspecialchars($site_name); ?>"
-                     class="img-fluid rounded-3 shadow"
-                     style="width: 100%; height: 360px; object-fit: cover;">
-            </div>
-            <div class="col-lg-6">
+        <div class="row mb-5">
+            <div class="col-lg-10 mx-auto">
                 <span class="badge bg-primary mb-3">✈️ Premium Travel Experience</span>
                 <h2 class="mb-3" style="color: #0f172a; font-weight: 700;">Welcome to <?php echo htmlspecialchars($site_name); ?></h2>
                 <p style="color: #495057; line-height: 1.8;">

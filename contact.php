@@ -86,6 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+$contact_address = getSetting('site_address') ?: '2nd Floor, Manmohik Building, Chander Lok Street, Mandi (H.P)';
+$contact_phone = getSetting('contact_phone') ?: '+91 9882076600';
+$contact_email = getSetting('contact_email') ?: 'info@travhub.com';
+
 // Include header
 include 'includes/header.php';
 ?>
@@ -108,78 +112,72 @@ include 'includes/header.php';
 </section>
 <!-- Page Header End -->
 
-<!-- Contact Info Section Start -->
-<section class="contact-info section-space">
+<!-- Contact Two Column Section Start -->
+<section class="contact-page section-space">
     <div class="container">
-        <div class="section-title text-center">
-            <span class="section-title__tagline">Get In Touch</span>
-            <h2 class="section-title__title">Contact Information</h2>
-            <p class="section-title__text">
-                We're here to help you plan your perfect journey. Get in touch with us through any of these channels.
-            </p>
-        </div>
-        
-        <div class="row mt-5">
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="contact-info__item text-center h-100 p-4 bg-white shadow-sm rounded">
-                    <div class="contact-info__icon mb-3">
-                        <i class="fas fa-map-marker-alt" style="font-size: 2.5rem; color: #ff6b35;"></i>
-                    </div>
-                    <h4 class="contact-info__title">Our Location</h4>
-                    <p class="contact-info__text">
-                        <?php echo getSetting('site_address') ?: '123 Travel Street, Adventure City, TC 12345'; ?>
+        <div class="contact-page__grid">
+            <div class="contact-page__col contact-page__col--info">
+                <div class="contact-page__info h-100">
+                    <span class="section-title__tagline">Get In Touch</span>
+                    <h2 class="contact-page__title">Contact Information</h2>
+                    <p class="contact-page__intro">
+                        We're here to help you plan your perfect journey. Reach out through any of these channels.
                     </p>
-                </div>
-            </div>
-            
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="contact-info__item text-center h-100 p-4 bg-white shadow-sm rounded">
-                    <div class="contact-info__icon mb-3">
-                        <i class="fas fa-phone" style="font-size: 2.5rem; color: #ff6b35;"></i>
-                    </div>
-                    <h4 class="contact-info__title">Phone Number</h4>
-                    <p class="contact-info__text">
-                        <a href="tel:<?php echo getSetting('contact_phone') ?: '+1-234-567-8900'; ?>" class="text-decoration-none">
-                            <?php echo getSetting('contact_phone') ?: '+1-234-567-8900'; ?>
-                        </a>
-                    </p>
-                    <small class="text-muted">Available 24/7 for emergencies</small>
-                </div>
-            </div>
-            
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="contact-info__item text-center h-100 p-4 bg-white shadow-sm rounded">
-                    <div class="contact-info__icon mb-3">
-                        <i class="fas fa-envelope" style="font-size: 2.5rem; color: #ff6b35;"></i>
-                    </div>
-                    <h4 class="contact-info__title">Email Address</h4>
-                    <p class="contact-info__text">
-                        <a href="mailto:<?php echo getSetting('contact_email') ?: 'info@travhub.com'; ?>" class="text-decoration-none">
-                            <?php echo getSetting('contact_email') ?: 'info@travhub.com'; ?>
-                        </a>
-                    </p>
-                    <small class="text-muted">We respond within 24 hours</small>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-<!-- Contact Info Section End -->
 
-<!-- Contact Form Section Start -->
-<section class="contact-form section-space" style="background: #f8f9fa;">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <div class="contact-form__inner bg-white p-5 rounded shadow-lg">
-                    <div class="section-title text-center mb-4">
+                    <div class="contact-page__details">
+                        <div class="contact-page__detail">
+                            <div class="contact-page__detail-icon">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div>
+                                <h4>Our Location</h4>
+                                <p><?php echo htmlspecialchars($contact_address); ?></p>
+                            </div>
+                        </div>
+
+                        <div class="contact-page__detail">
+                            <div class="contact-page__detail-icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div>
+                                <h4>Phone Number</h4>
+                                <p>
+                                    <a href="tel:<?php echo preg_replace('/\s+/', '', $contact_phone); ?>">
+                                        <?php echo htmlspecialchars($contact_phone); ?>
+                                    </a>
+                                </p>
+                                <small>Available 24/7 for emergencies</small>
+                            </div>
+                        </div>
+
+                        <div class="contact-page__detail">
+                            <div class="contact-page__detail-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div>
+                                <h4>Email Address</h4>
+                                <p>
+                                    <a href="mailto:<?php echo htmlspecialchars($contact_email); ?>">
+                                        <?php echo htmlspecialchars($contact_email); ?>
+                                    </a>
+                                </p>
+                                <small>We respond within 24 hours</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contact-page__col contact-page__col--form">
+                <div class="contact-form__inner contact-page__form h-100">
+                    <div class="section-title mb-4">
                         <span class="section-title__tagline">Send Message</span>
                         <h2 class="section-title__title">Drop Us a Line</h2>
-                        <p class="section-title__text">
-                            Have questions about our tours? Need help planning your trip? Send us a message and we'll get back to you promptly.
+                        <p class="section-title__text mb-0">
+                            Have questions about our tours? Send us a message and we'll get back to you promptly.
                         </p>
                     </div>
-                    
+
                     <?php if (!empty($success_message)): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <i class="fas fa-check-circle me-2"></i>
@@ -187,7 +185,7 @@ include 'includes/header.php';
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     <?php endif; ?>
-                    
+
                     <?php if (!empty($error_message)): ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <i class="fas fa-exclamation-triangle me-2"></i>
@@ -195,29 +193,29 @@ include 'includes/header.php';
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     <?php endif; ?>
-                    
+
                     <form method="POST" action="" class="contact-form__form">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="name" name="name" 
+                                <input type="text" class="form-control" id="name" name="name"
                                        value="<?php echo htmlspecialchars($name ?? ''); ?>" required>
                             </div>
-                            
+
                             <div class="col-md-6 mb-3">
                                 <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="email" name="email" 
+                                <input type="email" class="form-control" id="email" name="email"
                                        value="<?php echo htmlspecialchars($email ?? ''); ?>" required>
                             </div>
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="phone" class="form-label">Phone Number</label>
-                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                <input type="tel" class="form-control" id="phone" name="phone"
                                        value="<?php echo htmlspecialchars($phone ?? ''); ?>">
                             </div>
-                            
+
                             <div class="col-md-6 mb-3">
                                 <label for="subject" class="form-label">Subject <span class="text-danger">*</span></label>
                                 <select class="form-select" id="subject" name="subject" required>
@@ -232,14 +230,14 @@ include 'includes/header.php';
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="message" class="form-label">Your Message <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="message" name="message" rows="6" 
+                            <textarea class="form-control" id="message" name="message" rows="6"
                                       placeholder="Tell us about your travel plans, questions, or how we can help you..." required><?php echo htmlspecialchars($message ?? ''); ?></textarea>
                         </div>
-                        
-                        <div class="text-center">
+
+                        <div>
                             <button type="submit" class="travhub-btn">
                                 <span><i class="fas fa-paper-plane me-2"></i>Send Message</span>
                             </button>
@@ -250,90 +248,6 @@ include 'includes/header.php';
         </div>
     </div>
 </section>
-<!-- Contact Form Section End -->
-
-<!-- Map Section Start -->
-<section class="contact-map">
-    <div class="container-fluid p-0">
-        <div class="row g-0">
-            <div class="col-lg-12">
-                <div class="contact-map__inner" style="height: 450px;">
-                    <!-- Google Maps Embed - Replace with your actual location -->
-                    <iframe 
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.9663095343008!2d-74.00425878459418!3d40.74844097932681!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259bf5c1654f3%3A0xc80f9e7f8a4e36f!2sNew%20York%2C%20NY%2C%20USA!5e0!3m2!1sen!2sus!4v1635959783267!5m2!1sen!2sus" 
-                        width="100%" 
-                        height="450" 
-                        style="border:0;" 
-                        allowfullscreen="" 
-                        loading="lazy" 
-                        referrerpolicy="no-referrer-when-downgrade">
-                    </iframe>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-<!-- Map Section End -->
-
-<!-- Business Hours Section Start -->
-<section class="business-hours section-space">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-6 mx-auto">
-                <div class="business-hours__inner text-center bg-white p-5 rounded shadow">
-                    <div class="section-title mb-4">
-                        <span class="section-title__tagline">Working Hours</span>
-                        <h3 class="section-title__title">When We're Available</h3>
-                    </div>
-                    
-                    <div class="business-hours__list">
-                        <div class="row align-items-center py-2 border-bottom">
-                            <div class="col-6 text-start">
-                                <strong>Monday - Friday</strong>
-                            </div>
-                            <div class="col-6 text-end">
-                                <span class="text-primary">9:00 AM - 6:00 PM</span>
-                            </div>
-                        </div>
-                        
-                        <div class="row align-items-center py-2 border-bottom">
-                            <div class="col-6 text-start">
-                                <strong>Saturday</strong>
-                            </div>
-                            <div class="col-6 text-end">
-                                <span class="text-primary">10:00 AM - 4:00 PM</span>
-                            </div>
-                        </div>
-                        
-                        <div class="row align-items-center py-2 border-bottom">
-                            <div class="col-6 text-start">
-                                <strong>Sunday</strong>
-                            </div>
-                            <div class="col-6 text-end">
-                                <span class="text-muted">Closed</span>
-                            </div>
-                        </div>
-                        
-                        <div class="row align-items-center py-2">
-                            <div class="col-6 text-start">
-                                <strong>Emergency Support</strong>
-                            </div>
-                            <div class="col-6 text-end">
-                                <span class="text-danger">24/7 Available</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4">
-                        <small class="text-muted">
-                            * Emergency support is available 24/7 for travelers currently on tour
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-<!-- Business Hours Section End -->
+<!-- Contact Two Column Section End -->
 
 <?php include 'includes/footer.php'; ?>
