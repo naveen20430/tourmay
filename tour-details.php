@@ -67,6 +67,28 @@ try {
     $cab_functionality_enabled = false;
 }
 
+$tourCabList = [];
+if (!empty($availableCabs)) {
+    foreach ($availableCabs as $cab) {
+        $tourPrice = getCabPriceForTour($tour['title'], $cab['value'], $db);
+        $tourCabList[] = array_merge($cab, [
+            'tour_price' => $tourPrice > 0 ? (float) $tourPrice : (float) ($cab['price'] ?? 0),
+        ]);
+    }
+} else {
+    foreach (getDefaultCabPricing() as $cab) {
+        $tourPrice = getCabPriceForTour($tour['title'], $cab['name'], $db);
+        $tourCabList[] = [
+            'value' => $cab['name'],
+            'display_name' => $cab['display_name'],
+            'max_passengers' => (int) $cab['max_passengers'],
+            'description' => $cab['description'],
+            'image_url' => cabTypeImageUrl($cab),
+            'tour_price' => $tourPrice > 0 ? (float) $tourPrice : (float) $cab['base_price'],
+        ];
+    }
+}
+
 // Set page variables
 $page_title = htmlspecialchars($tour['title']) . ' - ' . getSetting('site_name');
 $current_page = 'tours';
@@ -1014,22 +1036,12 @@ $hero_images = array_slice($hero_images, 0, 6);
                                     <span><i class="far fa-clock"></i> Duration: <?php echo (int) $tour['duration_days']; ?> Days</span>
                                 </div>
                                 <div class="d-flex flex-wrap gap-3 mb-2">
-                                    <span class="badge bg-primary px-3 py-2">
-                                        <i class="fas fa-clock me-1"></i>
-                                        <?php echo $tour['duration_days']; ?> Days / <?php echo $tour['duration_nights']; ?> Nights
-                                    </span>
-                                    <span class="badge bg-success px-3 py-2">
-                                        <i class="fas fa-users me-1"></i>
-                                        Max <?php echo $tour['max_people']; ?> People
-                                    </span>
-                                    <span class="badge bg-info px-3 py-2">
-                                        <i class="fas fa-mountain me-1"></i>
-                                        <?php echo ucfirst($tour['difficulty_level']); ?>
-                                    </span>
-                                    <span class="badge bg-secondary px-3 py-2">
-                                        <i class="fas fa-tag me-1"></i>
-                                        <?php echo ucfirst($tour['tour_type']); ?>
-                                    </span>
+                                    <?php foreach ($tourCabList as $cab): ?>
+                                        <span class="badge bg-primary px-3 py-2">
+                                            <i class="fas fa-car me-1"></i>
+                                            <?php echo htmlspecialchars($cab['display_name'] ?? getCabDisplayName($cab['value'])); ?>
+                                        </span>
+                                    <?php endforeach; ?>
                                 </div>
                                 <div class="tour-flags">
                                     <span><i class="far fa-check-circle"></i> IMPORTANT INFORMATION</span>
