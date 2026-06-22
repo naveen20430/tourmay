@@ -119,8 +119,8 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
             continue;
         }
 
-        $pricePerPerson = $tour['discount_price'] ? (float) $tour['discount_price'] : (float) $tour['price'];
-        $lineTotal = $pricePerPerson * $people;
+        $tourPrice = $tour['discount_price'] ? (float) $tour['discount_price'] : (float) $tour['price'];
+        $lineTotal = $tourPrice;
         $cabType = trim((string) ($item['cab_type'] ?? ''));
         $pickupPlace = trim((string) ($item['pickup_place'] ?? ''));
         $pickupDetail = trim((string) ($item['pickup_detail'] ?? ''));
@@ -165,7 +165,7 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
             'pickup_detail' => $pickupDetail,
             'pickup_time' => $pickupTime,
             'cab_price' => $cabPrice,
-            'price_per_person' => $pricePerPerson,
+            'tour_price' => $tourPrice,
             'line_total' => $lineTotal + $cabPrice,
         ];
 

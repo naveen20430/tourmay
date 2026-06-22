@@ -123,6 +123,7 @@ $minPeople = (int) ($tour['min_people'] ?? 1);
 $maxPeople = (int) ($tour['max_people'] ?? 10);
 $available_tours = $db->fetchAll("SELECT id, title, price, discount_price, duration_days, min_people, max_people FROM tours WHERE status = 'active' ORDER BY title");
 $pricePerPerson = $tour ? (float) ($tour['discount_price'] ?: $tour['price']) : 0;
+$tourPackagePrice = $pricePerPerson;
 $durationDays = $tour ? (int) $tour['duration_days'] : 1;
 
 $page_title = 'Book Your Tour - ' . getSetting('site_name');
@@ -178,7 +179,7 @@ include 'includes/header.php';
                                 <span class="original">₹<?php echo number_format($tour['price'], 0); ?></span>
                             <?php endif; ?>
                             <span class="price">₹<?php echo number_format($tour['discount_price'] ?: $tour['price'], 0); ?></span>
-                            <span class="unit">per person</span>
+                            <span class="unit">per tour</span>
                         </div>
                         <input type="hidden" name="tour_id" value="<?php echo (int) $tour['id']; ?>">
                     <?php else: ?>
@@ -221,6 +222,7 @@ include 'includes/header.php';
                                         </option>
                                     <?php endfor; ?>
                                 </select>
+                                <small class="cart-help mt-1 d-block">For group size information only — does not change the tour price.</small>
                             </div>
                         </div>
                     </div>
@@ -334,7 +336,7 @@ include 'includes/header.php';
 <?php
 $extra_js = '<script>
 (function() {
-    var pricePerPerson = ' . json_encode($pricePerPerson) . ';
+    var tourPackagePrice = ' . json_encode($tourPackagePrice) . ';
     var durationDays = ' . json_encode($durationDays) . ';
     var tourSelect = document.getElementById("bookingTourSelect");
     var peopleSelect = document.getElementById("bookingPeople");
@@ -363,7 +365,7 @@ $extra_js = '<script>
             };
         }
         return {
-            price: parseFloat(pricePerPerson) || 0,
+            price: parseFloat(tourPackagePrice) || 0,
             duration: parseInt(durationDays, 10) || 1,
             min: parseInt(' . json_encode($minPeople) . ', 10) || 1,
             max: parseInt(' . json_encode($maxPeople) . ', 10) || 10
@@ -385,8 +387,8 @@ $extra_js = '<script>
         var totalBox = document.getElementById("totalAmount");
         if (!totalBox) return;
 
-        if (people && pricing.price) {
-            var tourTotal = people * pricing.price;
+        if (pricing.price) {
+            var tourTotal = pricing.price;
             var cabTotal = cabPricePerDay * pricing.duration;
             var grandTotal = tourTotal + cabTotal;
 
@@ -396,7 +398,7 @@ $extra_js = '<script>
             totalBox.style.display = "block";
 
             var warningDiv = document.getElementById("cabWarning");
-            if (cabSelect && cabSelect.value && parseInt(people, 10) > maxPassengers) {
+            if (cabSelect && cabSelect.value && people && parseInt(people, 10) > maxPassengers) {
                 if (!warningDiv) {
                     warningDiv = document.createElement("div");
                     warningDiv.id = "cabWarning";

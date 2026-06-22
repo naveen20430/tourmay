@@ -35,7 +35,7 @@
             html += '<p class="lead">' + escapeHtml(panel.short) + '</p>';
         }
         if (panel.body) {
-            html += '<div>' + escapeHtml(panel.body).replace(/\n/g, '<br>') + '</div>';
+            html += '<div class="tour-info-sidebar__rich">' + panel.body + '</div>';
         }
         return html;
     }
@@ -101,7 +101,7 @@
         if (panel.destination) {
             html += '<p><strong>' + escapeHtml(panel.destination) + '</strong></p>';
         }
-        html += '<div>' + escapeHtml(panel.body).replace(/\n/g, '<br>') + '</div>';
+        html += '<div class="tour-info-sidebar__rich">' + panel.body + '</div>';
         return html;
     }
 

@@ -294,7 +294,7 @@ include 'includes/header.php';
                                 <?php endforeach; ?>
                             </div>
                             <div class="text-center mt-3">
-                                <a href="<?php echo bookingUrl(); ?>" class="btn btn-outline-primary">
+                                <a href="<?php echo userBookingsUrl(); ?>" class="btn btn-outline-primary">
                                     View All Bookings
                                 </a>
                             </div>

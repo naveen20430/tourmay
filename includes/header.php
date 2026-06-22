@@ -197,8 +197,8 @@
             <li class="dropdown">
                 <a href="#">Account</a>
                 <ul>
-                    <li><a href="<?php echo BASE_URL; ?>user-dashboard.php">Dashboard</a></li>
-                    <li><a href="<?php echo bookingUrl(); ?>">My Bookings</a></li>
+                    <li><a href="<?php echo userDashboardUrl(); ?>">Dashboard</a></li>
+                    <li><a href="<?php echo userBookingsUrl(); ?>">My Bookings</a></li>
                     <li><a href="<?php echo BASE_URL; ?>logout.php">Logout</a></li>
                 </ul>
             </li>

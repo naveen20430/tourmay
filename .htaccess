@@ -92,6 +92,7 @@ RewriteRule ^login/?$ login.php [NC,L]
 RewriteRule ^register/?$ register.php [NC,L]
 RewriteRule ^logout/?$ logout.php [NC,L]
 RewriteRule ^profile/?$ profile.php [NC,L]
+RewriteRule ^user-dashboard/?$ user-dashboard.php [NC,L]
 
 # About Us page
 RewriteRule ^about-us/?$ about-us.php [NC,L]

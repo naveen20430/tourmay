@@ -148,6 +148,20 @@ function bookingUrl($tourId = null) {
 }
 
 /**
+ * User dashboard URL
+ */
+function userDashboardUrl() {
+    return navUrl('user-dashboard');
+}
+
+/**
+ * Logged-in user's bookings page
+ */
+function userBookingsUrl() {
+    return navUrl('my-bookings');
+}
+
+/**
  * Generate admin URL
  * @param string $page Admin page
  * @param int $id Optional ID parameter
@@ -197,6 +211,11 @@ function navUrl($page) {
             return BASE_URL . "register";
         case 'profile':
             return BASE_URL . "profile";
+        case 'user-dashboard':
+        case 'dashboard':
+            return BASE_URL . "user-dashboard";
+        case 'my-bookings':
+            return BASE_URL . "user-dashboard#bookings";
         case 'privacy':
         case 'privacy-policy':
             return BASE_URL . "privacy-policy";

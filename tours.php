@@ -1,5 +1,6 @@
 <?php
 require_once 'config/config.php';
+require_once 'includes/html_helpers.php';
 
 // Get search and filter parameters
 $search = $_GET['search'] ?? '';
@@ -109,7 +110,7 @@ foreach ($tours as $tour) {
             'description' => [
                 'title' => 'Description',
                 'short' => $tour['short_description'] ?? '',
-                'body' => $tour['description'] ?? '',
+                'body' => formatTourDescriptionForDisplay($tour['description'] ?? ''),
             ],
             'inclusion' => [
                 'title' => 'Inclusion',
@@ -129,7 +130,7 @@ foreach ($tours as $tour) {
             'useful' => [
                 'title' => 'Useful Info',
                 'destination' => trim(($tour['destination_name'] ?? '') . (!empty($tour['country']) ? ', ' . $tour['country'] : '')),
-                'body' => $tour['destination_description'] ?? '',
+                'body' => formatTourDescriptionForDisplay($tour['destination_description'] ?? ''),
             ],
         ],
     ];
@@ -261,6 +262,10 @@ $extra_css = '
 .tour-info-sidebar__body{flex:1;overflow-y:auto;padding:22px;color:#374151;font-size:0.95rem;line-height:1.65}
 .tour-info-sidebar__body h4{margin:0 0 10px;font-size:1rem;color:#1a202c}
 .tour-info-sidebar__body .lead{color:#6c757d;font-size:1rem;margin-bottom:12px}
+.tour-info-sidebar__rich p{margin:0 0 12px}
+.tour-info-sidebar__rich ul,.tour-info-sidebar__rich ol{margin:0 0 12px;padding-left:1.25rem}
+.tour-info-sidebar__rich strong,.tour-info-sidebar__rich b{font-weight:700;color:#1a202c}
+.tour-info-sidebar__rich h1,.tour-info-sidebar__rich h2,.tour-info-sidebar__rich h3,.tour-info-sidebar__rich h4,.tour-info-sidebar__rich h5,.tour-info-sidebar__rich h6{margin:0 0 10px;font-size:1rem;color:#1a202c}
 .tour-info-sidebar__list{margin:0;padding:0;list-style:none}
 .tour-info-sidebar__list li{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed #f1f3f5}
 .tour-info-sidebar__list li i{margin-top:4px;color:#28a745;flex-shrink:0}

@@ -160,8 +160,14 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
         .image-preview { max-width: 200px; max-height: 150px; object-fit: cover; border-radius: 8px; margin: 5px; }
         .itinerary-item { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; background: #f9f9f9; }
         .remove-btn { background: #dc3545; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; font-size: 12px; }
-        .tour-description-editor-wrap .tox-tinymce {
+        .tour-description-editor-wrap .ck-editor {
             border-radius: 0.375rem;
+            overflow: hidden;
+        }
+        .tour-description-editor-wrap .ck-editor__editable {
+            min-height: 320px;
+        }
+        .tour-description-editor-wrap .ck.ck-editor__main > .ck-editor__editable:not(.ck-focused) {
             border-color: #ced4da;
         }
     </style>
@@ -263,7 +269,7 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
                                     </div>
                                     <div class="col-md-12 mb-3 tour-description-editor-wrap">
                                         <label class="form-label" for="tour-description-editor">Full Description *</label>
-                                        <textarea id="tour-description-editor" name="description" class="form-control" rows="10" required><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                                        <textarea id="tour-description-editor" name="description" class="form-control" rows="10"><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
                                         <small class="text-muted">Use the toolbar for bold text, font size, and lists.</small>
                                     </div>
                                 </div>
@@ -597,7 +603,7 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
             }
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"></script>
-    <script src="assets/js/tour-description-editor.js"></script>
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/super-build/ckeditor.js"></script>
+    <script src="assets/js/tour-description-editor.js?v=2"></script>
 </body>
 </html>

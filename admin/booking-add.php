@@ -339,16 +339,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateTotalAmount() {
         const selectedOption = tourSelect.options[tourSelect.selectedIndex];
         const basePrice = parseFloat(selectedOption.dataset.price) || 0;
-        const people = parseInt(peopleInput.value) || 1;
-        const totalAmount = basePrice * people;
-        
-        if (totalAmount > 0) {
-            totalAmountInput.value = totalAmount.toFixed(2);
+
+        if (basePrice > 0) {
+            totalAmountInput.value = basePrice.toFixed(2);
         }
     }
-    
+
     tourSelect.addEventListener('change', updateTotalAmount);
-    peopleInput.addEventListener('input', updateTotalAmount);
 });
 </script>
 
