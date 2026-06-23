@@ -83,8 +83,7 @@ include 'includes/header.php';
 <!-- Login Section -->
 <section class="auth-section login-section">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-5 col-md-8 col-sm-10">
+        <div class="auth-page-wrap">
                 <div class="auth-card login-card">
                     <div class="auth-card__head login-header">
                         <h2>
@@ -131,7 +130,7 @@ include 'includes/header.php';
                         <!-- Email Login -->
                         <div class="auth-panel login-panel <?php echo $activeLoginTab === 'email' ? 'active' : ''; ?>" id="loginPanelEmail">
                         <form method="POST" novalidate>
-                            <div class="mb-3">
+                            <div class="auth-form-field">
                                 <label class="form-label" for="loginEmail">Email Address</label>
                                 <input type="email" name="email" id="loginEmail" class="form-control" 
                                        value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" 
@@ -139,39 +138,30 @@ include 'includes/header.php';
                                 <div class="invalid-feedback">Please enter a valid email address</div>
                             </div>
                             
-                            <div class="mb-3">
+                            <div class="auth-form-field">
                                 <label class="form-label" for="password">Password</label>
-                                <div class="input-group">
+                                <div class="auth-input-group">
                                     <input type="password" name="password" class="form-control" 
                                            required placeholder="Enter your password" id="password">
-                                    <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                                    <button type="button" class="auth-input-group__btn" id="togglePassword" aria-label="Show password">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
                                 <div class="invalid-feedback">Password is required</div>
                             </div>
                             
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="remember" id="remember">
-                                        <label class="form-check-label" for="remember">
-                                            Remember me
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 text-end">
-                                    <a href="forgot-password.php" class="text-decoration-none">
-                                        <small>Forgot Password?</small>
-                                    </a>
-                                </div>
+                            <div class="auth-form-meta">
+                                <label class="auth-remember-check" for="remember">
+                                    <input class="form-check-input" type="checkbox" name="remember" id="remember"
+                                           <?php echo isset($_POST['remember']) ? 'checked' : ''; ?>>
+                                    <span>Remember me</span>
+                                </label>
+                                <a href="forgot-password.php" class="auth-form-meta__link">Forgot Password?</a>
                             </div>
                             
-                            <div class="d-grid mb-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
-                                </button>
-                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100 auth-submit-btn">
+                                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                            </button>
                         </form>
                         </div>
 
@@ -194,35 +184,33 @@ include 'includes/header.php';
                             <div id="whatsappOtpAlert" class="alert d-none" role="alert"></div>
 
                             <div id="whatsappStepPhone">
-                                <div class="mb-3">
+                                <div class="auth-form-field">
                                     <label class="form-label" for="whatsappPhone">Mobile Number</label>
                                     <input type="tel" id="whatsappPhone" class="form-control"
                                            maxlength="16" placeholder="e.g. +91 9876543210 or 9876543210"
                                            <?php echo $whatsappEnabled ? '' : 'disabled'; ?>>
-                                    <small class="text-muted">Include country code for numbers outside India.</small>
+                                    <small class="auth-field-hint">Include country code for numbers outside India.</small>
                                 </div>
-                                <div class="d-grid mb-2">
-                                    <button type="button" class="btn btn-primary btn-lg" id="sendWhatsappOtpBtn" <?php echo $whatsappEnabled ? '' : 'disabled'; ?>>
-                                        <i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp
-                                    </button>
-                                </div>
+                                <button type="button" class="btn btn-primary btn-lg w-100 auth-submit-btn" id="sendWhatsappOtpBtn" <?php echo $whatsappEnabled ? '' : 'disabled'; ?>>
+                                    <i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp
+                                </button>
                             </div>
 
                             <div id="whatsappStepOtp" class="d-none">
-                                <p class="text-muted mb-3">
+                                <p class="auth-otp-sent">
                                     OTP sent to <strong id="whatsappPhoneDisplay"></strong>
                                     <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="changeWhatsappPhone">Change</button>
                                 </p>
-                                <div class="mb-3">
+                                <div class="auth-form-field">
                                     <label class="form-label" for="whatsappOtp">Enter OTP</label>
                                     <input type="text" id="whatsappOtp" class="form-control auth-otp-input otp-input"
                                            maxlength="5" pattern="[0-9]{5}" placeholder="5-digit code" inputmode="numeric">
                                 </div>
-                                <div class="d-grid gap-2 mb-2">
-                                    <button type="button" class="btn btn-primary btn-lg" id="verifyWhatsappOtpBtn">
+                                <div class="auth-otp-actions">
+                                    <button type="button" class="btn btn-primary btn-lg w-100 auth-submit-btn" id="verifyWhatsappOtpBtn">
                                         <i class="fas fa-check-circle me-2"></i>Verify &amp; Login
                                     </button>
-                                    <button type="button" class="btn btn-outline-secondary" id="resendWhatsappOtpBtn">
+                                    <button type="button" class="btn btn-outline-secondary w-100" id="resendWhatsappOtpBtn">
                                         Resend OTP
                                     </button>
                                 </div>
@@ -242,7 +230,6 @@ include 'includes/header.php';
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 </section>

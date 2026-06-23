@@ -1,7 +1,6 @@
 /* ==========================================================================
    BOOKING FORM THEME (GLOBAL, SCOPED)
    Applies to: cab-route-details.php, booking.php, simple-booking.php, etc.
-   Matches the site's purple/clean global theme + 2-column layout cards.
    ========================================================================== */
 
 :root {
@@ -16,12 +15,124 @@
   --booking-shadow: 0 24px 70px rgba(0, 0, 0, 0.08);
 }
 
-/* Section background */
 .booking-section {
   background: var(--booking-bg) !important;
+  padding: 48px 0 64px !important;
 }
 
-/* Cards */
+.route-info-bar {
+  background: #fff;
+  border-bottom: 1px solid var(--booking-border);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  padding: 20px 0;
+  margin-bottom: 0;
+}
+
+.route-info-bar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.route-info-bar__route {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.route-info-bar__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--booking-primary) 0%, var(--booking-primary-2) 100%);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.route-info-bar__route > i {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.route-info-bar__meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  color: var(--booking-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.route-info-bar__meta i {
+  color: var(--booking-primary);
+  margin-right: 6px;
+}
+
+.cab-booking-alert {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+.cab-booking-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.cab-booking-grid__col {
+  min-width: 0;
+}
+
+.cab-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.cab-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.cab-form-field--terms {
+  margin-bottom: 0;
+}
+
+.cab-terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--booking-border);
+  border-radius: 12px;
+  background: rgba(102, 126, 234, 0.06);
+  cursor: pointer;
+}
+
+.cab-terms-check .form-check-input {
+  float: none !important;
+  position: static !important;
+  margin: 2px 0 0 !important;
+  flex-shrink: 0;
+}
+
+.cab-terms-check span {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
 .route-info-card,
 .booking-card,
 .card.booking-card,
@@ -33,12 +144,15 @@
   background: var(--booking-surface) !important;
   border: 1px solid var(--booking-border) !important;
   box-shadow: var(--booking-shadow) !important;
+  padding: 28px !important;
 }
 
-/* Headings */
 .booking-section .route-info-card h3 {
   color: var(--booking-text) !important;
-  margin-bottom: 20px !important;
+  margin: 0 0 22px !important;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--booking-border);
+  font-size: 1.2rem !important;
   font-weight: 800 !important;
   letter-spacing: -0.01em;
 }
@@ -48,24 +162,36 @@
   margin-right: 8px;
 }
 
-/* Labels and controls */
-.booking-section .form-label {
+.booking-section .form-label,
+.booking-section .cab-form-field > .form-label,
+.booking-section .cab-form-field > span.form-label {
+  position: static !important;
+  display: block !important;
   font-size: 0.78rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.05em !important;
   text-transform: uppercase !important;
   color: #374151 !important;
-  margin-bottom: 8px !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.booking-section .form-label::after,
+.booking-section .form-label::before {
+  display: none !important;
 }
 
 .booking-section .form-control,
 .booking-section .form-select {
   border: 1.5px solid var(--booking-border) !important;
   border-radius: 10px !important;
-  padding: 10px 12px !important;
+  padding: 10px 14px !important;
   min-height: 48px !important;
   box-shadow: none !important;
   background: #fff !important;
+  margin: 0 !important;
+  width: 100%;
+  max-width: 100%;
 }
 
 .booking-section .form-control:focus,
@@ -78,7 +204,6 @@
   min-height: 110px !important;
 }
 
-/* Terms checkbox row */
 .booking-section .form-check {
   background: rgba(102, 126, 234, 0.06) !important;
   border: 1px solid var(--booking-border) !important;
@@ -94,15 +219,36 @@
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.18) !important;
 }
 
-/* Trip type buttons */
 .trip-type-selector {
-  gap: 14px !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .trip-type-option {
+  display: block;
+  padding: 14px 12px !important;
+  cursor: pointer;
   border: 1.5px solid var(--booking-border) !important;
   border-radius: 12px !important;
   background: #fff !important;
+  text-align: center;
+}
+
+.trip-type-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.trip-type-option__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--booking-text);
 }
 
 .trip-type-option:hover {
@@ -116,10 +262,101 @@
   box-shadow: 0 12px 30px rgba(118, 75, 162, 0.14) !important;
 }
 
-/* Cab pricing cards */
+.trip-type-option.active .trip-type-option__label {
+  color: var(--booking-primary);
+}
+
+.cab-pricing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .pricing-card {
+  position: relative;
+  padding: 18px !important;
+  margin: 0 !important;
+  cursor: pointer;
   border: 1.5px solid var(--booking-border) !important;
   border-radius: 14px !important;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.pricing-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pricing-card__title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--booking-text);
+}
+
+.pricing-card__desc {
+  margin: 0 0 12px;
+  color: var(--booking-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.pricing-card__capacity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--booking-muted);
+}
+
+.pricing-card__capacity i {
+  color: var(--booking-primary);
+}
+
+.pricing-card__features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pricing-card__feature {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pricing-card__prices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--booking-border);
+}
+
+.pricing-card__price-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--booking-primary);
+}
+
+.pricing-card .one-way-price,
+.pricing-card .round-trip-price {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--booking-primary) !important;
 }
 
 .pricing-card:hover {
@@ -133,20 +370,14 @@
   box-shadow: 0 16px 40px rgba(118, 75, 162, 0.16) !important;
 }
 
-/* Prices (override inline teal/blue) */
-.pricing-card .one-way-price,
-.pricing-card .round-trip-price {
-  color: var(--booking-primary) !important;
-}
-
-/* Submit button */
 .booking-submit-btn,
 .booking-section button[type="submit"].btn {
+  margin-top: 8px;
   background: linear-gradient(135deg, var(--booking-primary) 0%, var(--booking-primary-2) 100%) !important;
   color: #fff !important;
   border: none !important;
   border-radius: 12px !important;
-  padding: 12px 14px !important;
+  padding: 14px 18px !important;
   font-weight: 800 !important;
   letter-spacing: 0.02em;
   box-shadow: 0 14px 30px rgba(118, 75, 162, 0.25) !important;
@@ -158,12 +389,42 @@
   box-shadow: 0 18px 40px rgba(118, 75, 162, 0.33) !important;
 }
 
-/* Two-column layout like screenshot (cab-route-details booking section) */
-@media (min-width: 992px) {
-  .booking-section #bookingForm > .row {
-    --bs-gutter-x: 24px;
-    --bs-gutter-y: 24px;
+@media (max-width: 991px) {
+  .booking-section {
+    padding: 32px 0 48px !important;
+  }
+
+  .route-info-bar {
+    padding: 16px 0;
+  }
+
+  .route-info-bar__inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .cab-booking-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .cab-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .booking-section .route-info-card {
+    padding: 22px 18px !important;
   }
 }
 
+@media (max-width: 575px) {
+  .trip-type-selector {
+    grid-template-columns: 1fr;
+  }
 
+  .pricing-card__prices {
+    grid-template-columns: 1fr;
+  }
+}

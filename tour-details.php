@@ -813,11 +813,12 @@ $extra_css .= '<style>
 .tour-price{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;padding:15px 20px;color:#6c757d;font-size:0.85rem;font-weight:600;text-transform:uppercase}
 .tour-price b{font-size:1.6rem;color:#1a202c;margin-top:2px;line-height:1}
 .tour-price-note{display:block;margin-top:6px;font-size:0.72rem;font-weight:500;color:#868e96;text-transform:none;letter-spacing:0;line-height:1.35;font-style:italic}
-.tour-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;flex-shrink:0}
-.tour-cart-form{margin:0;display:flex}
-.tour-cart-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid #667eea;border-radius:6px;background:#fff;color:#667eea;font-weight:700;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.3px;cursor:pointer;transition:all .2s ease;white-space:nowrap}
+.tour-actions{display:flex;align-items:stretch;justify-content:flex-end;gap:8px;padding:10px 15px;flex-shrink:0}
+.tour-cart-form{margin:0;display:flex;align-items:stretch;align-self:stretch}
+.tour-cart-btn,.tour-book-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:10px 16px!important;margin:0!important;border-radius:6px;font-weight:700;font-size:0.82rem;line-height:1.2;text-transform:uppercase;letter-spacing:0.3px;transition:all .2s ease;white-space:nowrap;box-sizing:border-box}
+.tour-cart-btn{width:100%;border:1px solid #667eea;background:#fff;color:#667eea;cursor:pointer}
 .tour-cart-btn:hover{background:#eef2ff}
-.tour-book-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border:0;border-radius:6px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;font-weight:700;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.5px;text-decoration:none;transition:all .2s ease;white-space:nowrap}
+.tour-book-btn{border:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-decoration:none}
 .tour-book-btn:hover{background:linear-gradient(135deg,#5a67d8 0%,#6b46c1 100%);color:#fff;box-shadow:0 4px 12px rgba(102,126,234,0.35)}
 .tour-tab-btn.active{background:#fff;color:#667eea;box-shadow:inset 0 -3px 0 #667eea}
 .tour-tab-btn.active i{color:#667eea}
@@ -854,10 +855,11 @@ $extra_css .= '<style>
 .tour-info-sidebar__foot a,.tour-info-sidebar__foot button{text-decoration:none;font-weight:700;border-radius:8px;cursor:pointer;transition:all .2s ease;box-sizing:border-box;font-family:inherit}
 .tour-info-sidebar__foot .btn-view{flex:1 1 100%;text-align:center;padding:8px 12px;font-size:0.82rem;color:#667eea;border:1px solid #e9ecef;background:#f8f9fa}
 .tour-info-sidebar__foot .btn-view:hover{background:#eef2ff;border-color:#667eea}
-.tour-info-sidebar__foot .btn-cart{flex:1 1 auto;min-width:0;width:100%;text-align:center;padding:10px 14px;font-size:0.88rem;border:1px solid #667eea;color:#667eea;background:#fff}
+.tour-info-sidebar__foot .btn-cart,.tour-info-sidebar__foot .btn-book{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 16px!important;margin:0!important;font-size:0.82rem;line-height:1.2;box-sizing:border-box}
+.tour-info-sidebar__foot .btn-cart{flex:1 1 auto;min-width:0;width:100%;text-align:center;border:1px solid #667eea;color:#667eea;background:#fff}
 .tour-info-sidebar__foot .btn-cart i{margin-right:6px;font-size:0.85em}
 .tour-info-sidebar__foot .btn-cart:hover{background:#eef2ff}
-.tour-info-sidebar__foot .btn-book{flex:0 0 auto;padding:8px 16px;font-size:0.8rem;border:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;white-space:nowrap}
+.tour-info-sidebar__foot .btn-book{flex:0 0 auto;border:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;white-space:nowrap}
 .tour-info-sidebar__foot .btn-book:hover{filter:brightness(1.05);box-shadow:0 4px 12px rgba(102,126,234,0.35)}
 .tour-info-sidebar__foot-form{flex:1 1 auto;min-width:0;margin:0;display:flex}
 .tour-info-sidebar__foot-form .btn-cart{width:100%}
@@ -920,7 +922,7 @@ body.tour-sidebar-open{overflow:hidden}
 .tour-info-sidebar__foot{padding:12px 14px 16px}
 .tour-info-sidebar__foot-actions{flex-direction:column;align-items:stretch}
 .tour-info-sidebar__foot-form{order:1;width:100%;max-width:none}
-.tour-info-sidebar__foot .btn-book{order:2;width:100%;text-align:center;padding:10px 14px;font-size:0.85rem}
+.tour-info-sidebar__foot .btn-book{order:2;width:100%;text-align:center}
 .tour-info-sidebar__foot .btn-view{order:3;flex:1 1 auto;margin-top:4px}
 }
 </style>';

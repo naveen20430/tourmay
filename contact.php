@@ -6,7 +6,7 @@ $page_title = getSetting('site_name') . ' || Contact Us';
 $current_page = 'contact';
 
 // Add custom CSS for contact page
-$extra_css = '<link rel="stylesheet" href="' . BASE_URL . 'assets/css/contact.css">';
+$extra_css = cssWithCache('assets/css/contact.css');
 
 // Handle form submission
 $success_message = '';
@@ -195,28 +195,26 @@ include 'includes/header.php';
                     <?php endif; ?>
 
                     <form method="POST" action="" class="contact-form__form">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                        <div class="contact-form-grid">
+                            <div class="contact-form-field">
                                 <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="name" name="name"
                                        value="<?php echo htmlspecialchars($name ?? ''); ?>" required>
                             </div>
 
-                            <div class="col-md-6 mb-3">
+                            <div class="contact-form-field">
                                 <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
                                 <input type="email" class="form-control" id="email" name="email"
                                        value="<?php echo htmlspecialchars($email ?? ''); ?>" required>
                             </div>
-                        </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="contact-form-field">
                                 <label for="phone" class="form-label">Phone Number</label>
                                 <input type="tel" class="form-control" id="phone" name="phone"
                                        value="<?php echo htmlspecialchars($phone ?? ''); ?>">
                             </div>
 
-                            <div class="col-md-6 mb-3">
+                            <div class="contact-form-field">
                                 <label for="subject" class="form-label">Subject <span class="text-danger">*</span></label>
                                 <select class="form-select" id="subject" name="subject" required>
                                     <option value="">Select a subject</option>
@@ -231,13 +229,13 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="contact-form-field contact-form-field--full">
                             <label for="message" class="form-label">Your Message <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="message" name="message" rows="6"
                                       placeholder="Tell us about your travel plans, questions, or how we can help you..." required><?php echo htmlspecialchars($message ?? ''); ?></textarea>
                         </div>
 
-                        <div>
+                        <div class="contact-form-actions">
                             <button type="submit" class="travhub-btn">
                                 <span><i class="fas fa-paper-plane me-2"></i>Send Message</span>
                             </button>
