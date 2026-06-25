@@ -310,7 +310,9 @@ function getInvoiceBookings($invoiceId) {
     global $db;
     return $db->fetchAll("
         SELECT b.*, t.title AS tour_title, t.slug AS tour_slug, t.duration_days, t.duration_nights,
-               t.itinerary, t.description AS tour_description, t.short_description, d.name AS destination_name
+               t.itinerary, t.inclusions, t.exclusions, t.availability_start, t.availability_end,
+               t.description AS tour_description, t.short_description,
+               d.name AS destination_name, d.country, d.description AS destination_description
         FROM bookings b
         JOIN tours t ON b.tour_id = t.id
         LEFT JOIN destinations d ON t.destination_id = d.id
@@ -458,17 +460,139 @@ function decodeTourItinerary($json) {
     return is_array($data) ? $data : [];
 }
 
+function decodeTourListItems($json) {
+    if (empty($json)) {
+        return [];
+    }
+    $data = json_decode($json, true);
+    if (!is_array($data)) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(static function ($item) {
+        $item = trim((string) $item);
+        $item = preg_replace('/^[•\-\*]\s*/u', '', $item);
+        $item = preg_replace('/^o\s+/i', '', $item);
+
+        return trim($item);
+    }, $data), static function ($item) {
+        return $item !== '';
+    }));
+}
+
+function plainTextForPdf($text) {
+    $text = normalizeItinerarySourceText($text);
+    $text = stripSymbolsForPdf($text);
+
+    return trim($text);
+}
+
+function stripSymbolsForPdf($text) {
+    $text = (string) $text;
+    $text = preg_replace('/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{200D}]/u', '', $text);
+    $text = preg_replace('/\?{2,}/', '', $text);
+    $text = preg_replace("/[ \t]+/u", ' ', $text);
+    $text = preg_replace("/\n{3,}/", "\n\n", $text);
+
+    return trim($text);
+}
+
+function formatTourAvailabilityLabel(array $tour) {
+    $start = $tour['availability_start'] ?? null;
+    $end = $tour['availability_end'] ?? null;
+    if (empty($start) && empty($end)) {
+        return '';
+    }
+
+    $startLabel = !empty($start) ? date('d M Y', strtotime($start)) : 'Open';
+    $endLabel = !empty($end) ? date('d M Y', strtotime($end)) : 'Open';
+
+    return $startLabel . ' - ' . $endLabel;
+}
+
+function normalizeItinerarySourceText($text) {
+    $text = html_entity_decode((string) $text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/<\s*br\s*\/?>/i', "\n", $text);
+    $text = preg_replace('/<\/\s*p>/i', "\n\n", $text);
+    $text = preg_replace('/<\/\s*li>/i', "\n", $text);
+    $text = strip_tags($text);
+    $text = str_replace(["\r\n", "\r"], "\n", $text);
+    $text = preg_replace("/\n{3,}/", "\n\n", $text);
+
+    return trim($text);
+}
+
+function getTourDescriptionIntroForPdf($shortDescription, $fullDescription) {
+    $intro = trim((string) $shortDescription);
+
+    $full = normalizeItinerarySourceText($fullDescription);
+    if ($full === '') {
+        return plainTextForPdf($intro);
+    }
+
+    $markers = [
+        'Tour Itinerary',
+        'Duration',
+        'Vehicle Capacity',
+        'Inclusions',
+        'Exclusions',
+        'Perfect For',
+    ];
+
+    $cutAt = null;
+    foreach ($markers as $marker) {
+        $pos = mb_stripos($full, $marker);
+        if ($pos !== false && $pos > 0 && ($cutAt === null || $pos < $cutAt)) {
+            $cutAt = $pos;
+        }
+    }
+
+    if ($cutAt !== null) {
+        $chunk = trim(mb_substr($full, 0, $cutAt));
+        if ($chunk !== '' && mb_strlen($chunk) > mb_strlen($intro)) {
+            $intro = $chunk;
+        }
+    } elseif ($intro === '') {
+        $paragraphs = preg_split('/\n{2,}/', $full) ?: [];
+        $intro = trim((string) ($paragraphs[0] ?? ''));
+    }
+
+    return plainTextForPdf($intro);
+}
+
+function itineraryContentLength(array $items) {
+    $length = 0;
+    foreach ($items as $item) {
+        $length += strlen(trim((string) ($item['title'] ?? '')));
+        $length += strlen(trim((string) ($item['description'] ?? '')));
+    }
+
+    return $length;
+}
+
+function splitItinerarySectionHeader($line) {
+    if (preg_match('/^([^:\n]{2,90}):\s*$/', $line, $match)) {
+        return [trim($match[1]), ''];
+    }
+    if (preg_match('/^([^:\n]{2,90}):\s*(.+)$/', $line, $match)) {
+        return [trim($match[1]), trim($match[2])];
+    }
+
+    return [null, null];
+}
+
 function extractTourItineraryFromDescription($description) {
-    $description = trim((string) $description);
+    $description = normalizeItinerarySourceText($description);
     if ($description === '') {
         return '';
     }
 
-    if (preg_match('/Tour Itinerary\s*\n([\s\S]*)/iu', $description, $matches)) {
+    if (preg_match('/(?:🗓\s*)?Tour Itinerary\s*\n([\s\S]*)/iu', $description, $matches)) {
         $chunk = trim($matches[1]);
-        if (preg_match('/^([\s\S]*?)(?=\n\s*(?:🚗|✅|❌|💼)|\nVehicle Capacity|\n✅ Inclusions|\n❌ Exclusions)/u', $chunk, $section)) {
+        if (preg_match('/^([\s\S]*?)(?=\n\s*(?:⏱|🚗|✅|❌|💼|📸)|\nDuration\b|\nVehicle Capacity|\n✅ Inclusions|\n❌ Exclusions)/u', $chunk, $section)) {
             return trim($section[1]);
         }
+
         return $chunk;
     }
 
@@ -512,17 +636,11 @@ function parseTourItinerarySections($text) {
             continue;
         }
 
-        if (preg_match('/^([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*){0,3}):\s*$/', $trimmed)) {
+        [$headerTitle, $headerBody] = splitItinerarySectionHeader($trimmed);
+        if ($headerTitle !== null) {
             $flush();
-            $currentTitle = rtrim($trimmed, ':');
-            $currentBody = [];
-            continue;
-        }
-
-        if (preg_match('/^([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*){0,3}):\s*(.+)$/', $trimmed, $match)) {
-            $flush();
-            $currentTitle = trim($match[1]);
-            $currentBody = [trim($match[2])];
+            $currentTitle = $headerTitle;
+            $currentBody = $headerBody !== '' ? [$headerBody] : [];
             continue;
         }
 
@@ -539,12 +657,20 @@ function parseTourItinerarySections($text) {
 
 function getInvoiceTourItineraryDays(array $booking) {
     $days = decodeTourItinerary($booking['itinerary'] ?? '');
+    $text = extractTourItineraryFromDescription($booking['tour_description'] ?? '');
+    $sections = parseTourItinerarySections($text);
+
+    $daysLength = itineraryContentLength($days);
+    $sectionsLength = itineraryContentLength($sections);
+
+    if (!empty($sections) && ($sectionsLength > $daysLength + 40 || $daysLength < 80)) {
+        return $sections;
+    }
+
     if (!empty($days)) {
         return $days;
     }
 
-    $text = extractTourItineraryFromDescription($booking['tour_description'] ?? '');
-    $sections = parseTourItinerarySections($text);
     if (!empty($sections)) {
         return $sections;
     }

@@ -36,6 +36,72 @@ function formatPdfMoney($amount) {
     return 'INR ' . number_format((float) $amount, 0);
 }
 
+function drawInvoiceTourDetails(InvoicePdfBuilder $pdf, array $booking): void {
+    $tourTitle = (string) ($booking['tour_title'] ?? 'Tour');
+    $pdf->drawTourName($tourTitle);
+
+    $pdf->drawDetailSection('Description', static function (InvoicePdfBuilder $pdf) use ($booking) {
+        $intro = getTourDescriptionIntroForPdf(
+            $booking['short_description'] ?? '',
+            $booking['tour_description'] ?? ''
+        );
+        if ($intro !== '') {
+            $pdf->drawParagraphs($intro);
+        } else {
+            $pdf->drawEmptyNote('No description available for this tour.');
+        }
+    });
+
+    $pdf->drawDetailSection('Inclusion', static function (InvoicePdfBuilder $pdf) use ($booking) {
+        $pdf->drawBulletList(decodeTourListItems($booking['inclusions'] ?? ''));
+    });
+
+    $pdf->drawDetailSection('Exclusion', static function (InvoicePdfBuilder $pdf) use ($booking) {
+        $pdf->drawBulletList(decodeTourListItems($booking['exclusions'] ?? ''));
+    });
+
+    $pdf->drawDetailSection('Timings', static function (InvoicePdfBuilder $pdf) use ($booking) {
+        $pdf->drawLabelValue(
+            'Duration',
+            (int) ($booking['duration_days'] ?? 0) . ' Days / ' . (int) ($booking['duration_nights'] ?? 0) . ' Nights'
+        );
+
+        $availability = formatTourAvailabilityLabel($booking);
+        if ($availability !== '') {
+            $pdf->drawLabelValue('Availability', $availability);
+        }
+
+        $timingDays = decodeTourItinerary($booking['itinerary'] ?? '');
+        if (!empty($timingDays)) {
+            $pdf->drawSubsectionTitle('Day-wise Schedule');
+            foreach ($timingDays as $day) {
+                $dayLine = 'Day ' . (string) ($day['day'] ?? '') . ': ' . (string) ($day['title'] ?? 'Schedule');
+                $dayDesc = trim((string) ($day['description'] ?? ''));
+                $pdf->drawParagraphs($dayDesc !== '' ? $dayLine . "\n" . $dayDesc : $dayLine);
+            }
+        } elseif ($availability === '') {
+            $pdf->drawEmptyNote('No timing details available.');
+        }
+    });
+
+    $pdf->drawDetailSection('Tour Itinerary', static function (InvoicePdfBuilder $pdf) use ($booking) {
+        $pdf->drawItineraryDays(getInvoiceTourItineraryDays($booking));
+    });
+
+    $pdf->drawDetailSection('Useful Info', static function (InvoicePdfBuilder $pdf) use ($booking) {
+        $destination = trim((string) ($booking['destination_name'] ?? ''));
+        $country = trim((string) ($booking['country'] ?? ''));
+        if ($destination !== '') {
+            $pdf->drawParagraphs($destination . ($country !== '' ? ', ' . $country : ''));
+        }
+        if (!empty($booking['destination_description'])) {
+            $pdf->drawParagraphs(plainTextForPdf($booking['destination_description']));
+        } elseif ($destination === '') {
+            $pdf->drawEmptyNote('No useful information available for this destination.');
+        }
+    });
+}
+
 function generateInvoicePdfFile(array $invoice, array $bookings) {
     $siteName = getSetting('site_name') ?: 'The World Journey';
     $tagline = getSetting('site_tagline') ?: 'Travel & Tour Booking Agency';
@@ -123,15 +189,10 @@ function generateInvoicePdfFile(array $invoice, array $bookings) {
         (float) ($invoice['total_amount'] ?? 0)
     );
 
-    $pdf->drawSectionTitle('Tour Itinerary');
+    $pdf->drawSectionTitle('Tour Details');
 
     foreach ($bookings as $booking) {
-        $itinerary = getInvoiceTourItineraryDays($booking);
-        $pdf->drawItineraryTour(
-            (string) ($booking['tour_title'] ?? 'Tour'),
-            (string) ($booking['short_description'] ?? ''),
-            $itinerary
-        );
+        drawInvoiceTourDetails($pdf, $booking);
     }
 
     $footerParts = ['Thank you for booking with ' . $siteName . '.'];

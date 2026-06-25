@@ -8,6 +8,10 @@ $current_page = 'contact';
 // Add custom CSS for contact page
 $extra_css = cssWithCache('assets/css/contact.css');
 
+$contact_address = getSetting('site_address') ?: '2nd Floor, Manmohik Building, Chander Lok Street, Mandi (H.P)';
+$contact_phone = getSetting('contact_phone') ?: '+91 9882076600';
+$contact_email = 'support@theworldjourney.in';
+
 // Handle form submission
 $success_message = '';
 $error_message = '';
@@ -48,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $success_message = 'Thank you for contacting us! We will get back to you soon.';
                 
                 // Send email notification (if email settings are configured)
-                $admin_email = getSetting('contact_email');
+                $admin_email = $contact_email;
                 if ($admin_email && function_exists('mail')) {
                     $email_subject = "New Contact Form Submission: " . $subject;
                     $email_body = "
@@ -85,10 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error_message = implode('<br>', $errors);
     }
 }
-
-$contact_address = getSetting('site_address') ?: '2nd Floor, Manmohik Building, Chander Lok Street, Mandi (H.P)';
-$contact_phone = getSetting('contact_phone') ?: '+91 9882076600';
-$contact_email = getSetting('contact_email') ?: 'info@travhub.com';
 
 // Include header
 include 'includes/header.php';

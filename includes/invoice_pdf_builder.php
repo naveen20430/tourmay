@@ -48,40 +48,59 @@ class InvoicePdfBuilder {
     }
 
     private function sanitize(string $text): string {
-        $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
-        if ($converted !== false) {
-            $text = $converted;
-        }
-        $text = preg_replace('/[^\x20-\x7E]/', '', (string) $text);
+        $text = (string) $text;
+        $text = preg_replace('/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{200D}]/u', '', $text);
+        $text = preg_replace('/\?{2,}/', '', $text);
+        $text = preg_replace('/[^\x20-\x7E]/', '', $text);
+        $text = preg_replace('/\s+/', ' ', trim($text));
+
         return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);
     }
 
     private function wrap(string $text, int $maxChars): array {
-        $text = preg_replace('/\s+/', ' ', trim($text));
+        $text = trim(str_replace(["\r\n", "\r"], "\n", $text));
         if ($text === '') {
             return [''];
         }
-        if (strlen($text) <= $maxChars) {
-            return [$text];
-        }
-        $words = explode(' ', $text);
+
+        $paragraphs = preg_split('/\n+/', $text) ?: [$text];
         $lines = [];
-        $current = '';
-        foreach ($words as $word) {
-            $candidate = $current === '' ? $word : $current . ' ' . $word;
-            if (strlen($candidate) > $maxChars) {
-                if ($current !== '') {
-                    $lines[] = $current;
+        foreach ($paragraphs as $paragraph) {
+            $paragraph = preg_replace('/[ \t]+/', ' ', trim($paragraph));
+            if ($paragraph === '') {
+                continue;
+            }
+            if (strlen($paragraph) <= $maxChars) {
+                $lines[] = $paragraph;
+                continue;
+            }
+            $words = explode(' ', $paragraph);
+            $current = '';
+            foreach ($words as $word) {
+                $candidate = $current === '' ? $word : $current . ' ' . $word;
+                if (strlen($candidate) > $maxChars) {
+                    if ($current !== '') {
+                        $lines[] = $current;
+                    }
+                    if (strlen($word) > $maxChars) {
+                        while (strlen($word) > $maxChars) {
+                            $lines[] = substr($word, 0, $maxChars);
+                            $word = substr($word, $maxChars);
+                        }
+                        $current = $word;
+                    } else {
+                        $current = $word;
+                    }
+                } else {
+                    $current = $candidate;
                 }
-                $current = $word;
-            } else {
-                $current = $candidate;
+            }
+            if ($current !== '') {
+                $lines[] = $current;
             }
         }
-        if ($current !== '') {
-            $lines[] = $current;
-        }
-        return $lines;
+
+        return $lines !== [] ? $lines : [''];
     }
 
     public function fillRect(float $x, float $y, float $w, float $h, float $r, float $g, float $b): void {
@@ -389,70 +408,180 @@ class InvoicePdfBuilder {
         $this->y -= 24;
     }
 
-    public function drawItineraryTour(string $title, string $description, array $days): void {
-        $this->ensureSpace(50);
+    public function drawTourName(string $title): void {
+        $this->ensureSpace(30);
+        $left = self::MARGIN;
+        $width = self::PAGE_W - (self::MARGIN * 2);
+        $boxH = 28;
+
+        $this->fillRect($left, $this->y - $boxH, $width, $boxH, 0.96, 0.97, 1);
+        $this->fillRect($left, $this->y - $boxH, 4, $boxH, $this->primaryR, $this->primaryG, $this->primaryB);
+        $this->drawLine($left, $this->y - $boxH, $left + $width, $this->y - $boxH, 0.88, 0.9, 0.95, 0.8);
+        $this->drawLine($left, $this->y, $left + $width, $this->y, 0.88, 0.9, 0.95, 0.8);
+        $this->text($left + 14, $this->y - 11, $title, 11, true, $this->secondaryR, $this->secondaryG, $this->secondaryB);
+        $this->y -= $boxH + 12;
+    }
+
+    public function drawDetailSection(string $title, callable $drawContent): void {
+        $left = self::MARGIN;
+        $width = self::PAGE_W - (self::MARGIN * 2);
+        $headerH = 24;
+
+        $this->ensureSpace($headerH + 24);
+        $this->fillRect($left, $this->y - $headerH, $width, $headerH, 0.93, 0.95, 0.99);
+        $this->fillRect($left, $this->y - $headerH, 4, $headerH, $this->primaryR, $this->primaryG, $this->primaryB);
+        $this->text($left + 14, $this->y - 9, strtoupper($title), 8, true, $this->secondaryR, $this->secondaryG, $this->secondaryB);
+        $this->y -= $headerH + 10;
+
+        $drawContent($this);
+
+        $this->drawLine($left, $this->y - 2, $left + $width, $this->y - 2, 0.9, 0.92, 0.96, 0.8);
+        $this->y -= 12;
+    }
+
+    public function drawSubsectionTitle(string $title): void {
+        $this->ensureSpace(18);
+        $left = self::MARGIN + 14;
+        $this->text($left, $this->y, $title, 8, true, 0.25, 0.3, 0.38);
+        $this->y -= 12;
+    }
+
+    public function drawParagraphs(string $text, int $maxChars = 88): void {
+        $text = trim($text);
+        if ($text === '') {
+            return;
+        }
+
+        $left = self::MARGIN + 16;
+        foreach ($this->wrap($text, $maxChars) as $line) {
+            $this->ensureSpace(14);
+            $this->text($left, $this->y, $line, 9, false, 0.28, 0.33, 0.4);
+            $this->y -= 12;
+        }
+        $this->y -= 4;
+    }
+
+    public function drawEmptyNote(string $text): void {
+        $this->ensureSpace(14);
+        $this->text(self::MARGIN + 16, $this->y, $text, 8, false, 0.5, 0.54, 0.6);
+        $this->y -= 14;
+    }
+
+    public function drawBulletList(array $items): void {
+        $left = self::MARGIN + 16;
+        if (empty($items)) {
+            $this->drawEmptyNote('No details added yet.');
+            return;
+        }
+
+        foreach ($items as $item) {
+            $item = trim((string) $item);
+            if ($item === '') {
+                continue;
+            }
+            foreach ($this->wrap($item, 82) as $index => $line) {
+                $this->ensureSpace(14);
+                if ($index === 0) {
+                    $this->fillRect($left, $this->y - 3, 3, 3, $this->primaryR, $this->primaryG, $this->primaryB);
+                    $this->text($left + 10, $this->y, $line, 9, false, 0.28, 0.33, 0.4);
+                } else {
+                    $this->text($left + 10, $this->y, $line, 9, false, 0.28, 0.33, 0.4);
+                }
+                $this->y -= 12;
+            }
+        }
+        $this->y -= 2;
+    }
+
+    public function drawLabelValue(string $label, string $value): void {
+        $value = trim($value);
+        if ($value === '') {
+            return;
+        }
+
+        $left = self::MARGIN + 16;
+        foreach ($this->wrap($value, 78) as $index => $line) {
+            $this->ensureSpace(14);
+            if ($index === 0) {
+                $this->text($left, $this->y, $label, 8, true, 0.35, 0.4, 0.48);
+                $this->text($left + 72, $this->y, $line, 9, false, 0.28, 0.33, 0.4);
+            } else {
+                $this->text($left + 72, $this->y, $line, 9, false, 0.28, 0.33, 0.4);
+            }
+            $this->y -= 12;
+        }
+        $this->y -= 2;
+    }
+
+    public function drawItineraryDays(array $days): void {
         $left = self::MARGIN;
         $right = self::PAGE_W - self::MARGIN;
         $w = $right - $left;
 
-        $descLines = $description !== '' ? $this->wrap($description, 90) : [];
-        $dayBlocks = max(1, count($days));
-        $estH = 36 + (count($descLines) * 11) + ($dayBlocks * 34);
-        if ($this->y - $estH < self::MARGIN + 20) {
-            $this->newPage();
-        }
-
-        $boxY = $this->y - $estH + 10;
-        $this->fillRect($left, $boxY, $w, $estH, 0.98, 0.99, 1);
-        $this->drawLine($left, $boxY, $left + $w, $boxY, 0.88, 0.9, 0.95, 0.8);
-        $this->drawLine($left, $boxY + $estH, $left + $w, $boxY + $estH, 0.88, 0.9, 0.95, 0.8);
-
-        $contentY = $boxY + $estH - 16;
-        $this->text($left + 12, $contentY, $title, 11, true, $this->secondaryR, $this->secondaryG, $this->secondaryB);
-        $contentY -= 16;
-
-        foreach ($descLines as $line) {
-            $this->text($left + 12, $contentY, $line, 8, false, 0.45, 0.5, 0.58);
-            $contentY -= 11;
-        }
-
         if (empty($days)) {
-            $this->text($left + 12, $contentY, 'Itinerary details will be shared before departure.', 8, false, 0.45, 0.5, 0.58);
-        } else {
-            foreach ($days as $day) {
-                if ($contentY < $boxY + 30) {
-                    break;
-                }
-                $isSection = !empty($day['is_section']);
-                $dayNo = (string) ($day['day'] ?? '');
-                $dayTitle = (string) ($day['title'] ?? 'Schedule');
-                $dayDesc = (string) ($day['description'] ?? '');
-
-                $textLeft = $left + 12;
-                if (!$isSection) {
-                    $this->fillRect($left + 12, $contentY - 24, 52, 28, $this->primaryR, $this->primaryG, $this->primaryB);
-                    $this->text($left + 20, $contentY - 8, 'DAY', 6, true, 1, 1, 1);
-                    $this->text($left + 28, $contentY - 18, $dayNo, 11, true, 1, 1, 1);
-                    $textLeft = $left + 74;
-                }
-
-                $this->text($textLeft, $contentY - 8, $dayTitle, 9, true);
-                $descY = $contentY - 20;
-                $wrapWidth = $isSection ? 90 : 72;
-                foreach ($this->wrap($dayDesc, $wrapWidth) as $line) {
-                    if ($descY < $boxY + 20) {
-                        break;
-                    }
-                    $this->text($textLeft, $descY, $line, 7, false, 0.45, 0.5, 0.58);
-                    $descY -= 10;
-                }
-
-                $contentY = min($descY, $contentY) - 16;
-                $this->drawLine($left + 12, $contentY + 8, $left + $w - 12, $contentY + 8, 0.9, 0.92, 0.96, 0.4);
-            }
+            $this->drawEmptyNote('Itinerary details will be shared before departure.');
+            return;
         }
 
-        $this->y = $boxY - 14;
+        foreach ($days as $dayIndex => $day) {
+            $isSection = !empty($day['is_section']);
+            $dayNo = (string) ($day['day'] ?? '');
+            $dayTitle = (string) ($day['title'] ?? 'Schedule');
+            $dayDesc = (string) ($day['description'] ?? '');
+            $wrapWidth = $isSection ? 86 : 70;
+            $descLines = $dayDesc !== '' ? $this->wrap($dayDesc, $wrapWidth) : [];
+
+            if ($dayIndex > 0) {
+                $this->ensureSpace(8);
+                $this->y -= 4;
+            }
+
+            $this->ensureSpace($isSection ? 22 : 36);
+            $textLeft = $left + 16;
+
+            if (!$isSection) {
+                $badgeBottom = $this->y - 30;
+                $this->fillRect($left + 16, $badgeBottom, 54, 30, $this->primaryR, $this->primaryG, $this->primaryB);
+                $this->text($left + 24, $this->y - 12, 'DAY', 6, true, 1, 1, 1);
+                $this->text($left + 31, $this->y - 23, $dayNo, 11, true, 1, 1, 1);
+                $textLeft = $left + 78;
+                $this->text($textLeft, $this->y - 12, $dayTitle, 9, true, 0.2, 0.25, 0.33);
+                $this->y -= 30;
+            } else {
+                $this->fillRect($left + 16, $this->y - 16, $w - 32, 16, 0.96, 0.97, 1);
+                $this->text($textLeft, $this->y - 5, $dayTitle, 9, true, $this->secondaryR, $this->secondaryG, $this->secondaryB);
+                $this->y -= 20;
+            }
+
+            foreach ($descLines as $line) {
+                $this->ensureSpace(14);
+                $this->text($textLeft, $this->y, $line, 8, false, 0.35, 0.4, 0.48);
+                $this->y -= 12;
+            }
+
+            $this->y -= 4;
+        }
+
+        $this->y -= 4;
+    }
+
+    public function drawItineraryTour(string $title, string $description, array $days): void {
+        $left = self::MARGIN;
+        $right = self::PAGE_W - self::MARGIN;
+        $w = $right - $left;
+
+        $this->ensureSpace(28);
+        $this->fillRect($left, $this->y - 4, $w, 4, $this->primaryR, $this->primaryG, $this->primaryB);
+        $this->text($left + 12, $this->y - 16, $title, 11, true, $this->secondaryR, $this->secondaryG, $this->secondaryB);
+        $this->y -= 28;
+
+        if ($description !== '') {
+            $this->drawParagraphs($description);
+        }
+
+        $this->drawItineraryDays($days);
+        $this->drawLine($left, $this->y + 4, $left + $w, $this->y + 4, 0.88, 0.9, 0.95, 0.8);
+        $this->y -= 12;
     }
 
     public function drawFooter(string $text): void {
