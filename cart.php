@@ -46,6 +46,29 @@ $redirectTo = function ($default) {
     exit;
 };
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['add_tour'])) {
+    $tourId = filter_var($_GET['add_tour'], FILTER_VALIDATE_INT);
+    if (!$tourId) {
+        $_SESSION['cart_flash'] = ['type' => 'error', 'message' => 'Invalid tour selection'];
+        header('Location: ' . navUrl('cart'));
+        exit;
+    }
+
+    $cartAddUrl = navUrl('cart') . '?add_tour=' . $tourId;
+    if (!isUserLoggedIn()) {
+        header('Location: ' . loginUrl($cartAddUrl));
+        exit;
+    }
+
+    $result = addTourToSessionCart((int) $tourId);
+    $_SESSION['cart_flash'] = [
+        'type' => $result['ok'] ? 'success' : 'error',
+        'message' => $result['message'],
+    ];
+    header('Location: ' . navUrl('cart'));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
 
@@ -67,56 +90,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $redirectTo(navUrl('cart'));
         }
 
-        $tour = $db->fetch("SELECT id, min_people, max_people FROM tours WHERE id = ? AND status = 'active'", [$tourId]);
-        if (!$tour) {
-            $_SESSION['cart_flash'] = ['type' => 'error', 'message' => 'Tour not found'];
-            $redirectTo(navUrl('cart'));
-        }
+        $result = addTourToSessionCart((int) $tourId, [
+            'tour_date' => $_POST['tour_date'] ?? '',
+            'people' => $_POST['people'] ?? null,
+            'cab_type' => $cab_functionality_enabled ? ($_POST['cab_type'] ?? '') : '',
+            'pickup_place' => $_POST['pickup_place'] ?? '',
+            'pickup_detail' => $_POST['pickup_detail'] ?? '',
+            'pickup_time' => $_POST['pickup_time'] ?? '',
+        ]);
 
-        $tourDate = trim((string)($_POST['tour_date'] ?? ''));
-        if ($tourDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tourDate)) {
-            $tourDate = '';
-        }
-        $tomorrow = date('Y-m-d', strtotime('+1 day'));
-        if ($tourDate === '' || $tourDate <= date('Y-m-d')) {
-            $tourDate = $tomorrow;
-        }
-
-        $people = trim((string)($_POST['people'] ?? ''));
-        $peopleInt = null;
-        if ($people !== '') {
-            $peopleInt = filter_var($people, FILTER_VALIDATE_INT);
-            if ($peopleInt === false) {
-                $peopleInt = null;
-            }
-        }
-
-        $cabType = trim((string)($_POST['cab_type'] ?? ''));
-        if (!$cab_functionality_enabled) {
-            $cabType = '';
-        }
-        $pickupPlace = trim((string)($_POST['pickup_place'] ?? ''));
-        $pickupDetail = trim((string)($_POST['pickup_detail'] ?? ''));
-        $pickupTime = trim((string)($_POST['pickup_time'] ?? ''));
-        if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
-            $pickupTime = '';
-        }
-        if ($cabType === '') {
-            $pickupPlace = '';
-            $pickupDetail = '';
-            $pickupTime = '';
-        }
-
-        $_SESSION['tour_cart'][(string)$tourId] = [
-            'tour_date' => $tourDate,
-            'people' => $peopleInt,
-            'cab_type' => $cabType,
-            'pickup_place' => $pickupPlace,
-            'pickup_detail' => $pickupDetail,
-            'pickup_time' => $pickupTime,
+        $_SESSION['cart_flash'] = [
+            'type' => $result['ok'] ? 'success' : 'error',
+            'message' => $result['message'],
         ];
-
-        $_SESSION['cart_flash'] = ['type' => 'success', 'message' => 'Added to cart'];
         $redirectTo(navUrl('cart'));
     }
 

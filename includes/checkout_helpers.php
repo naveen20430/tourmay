@@ -60,6 +60,59 @@ function generateBookingNumber() {
     return 'TH' . date('Y') . str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT);
 }
 
+function addTourToSessionCart(int $tourId, array $options = []) {
+    global $db;
+
+    if (!isset($_SESSION['tour_cart']) || !is_array($_SESSION['tour_cart'])) {
+        $_SESSION['tour_cart'] = [];
+    }
+
+    $tour = $db->fetch("SELECT id, min_people, max_people FROM tours WHERE id = ? AND status = 'active'", [$tourId]);
+    if (!$tour) {
+        return ['ok' => false, 'message' => 'Tour not found'];
+    }
+
+    $tomorrow = date('Y-m-d', strtotime('+1 day'));
+    $tourDate = trim((string) ($options['tour_date'] ?? ''));
+    if ($tourDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tourDate) || $tourDate <= date('Y-m-d')) {
+        $tourDate = $tomorrow;
+    }
+
+    $people = $options['people'] ?? null;
+    if ($people === null || $people === '') {
+        $people = max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8)));
+    } else {
+        $people = filter_var($people, FILTER_VALIDATE_INT);
+        if ($people === false) {
+            $people = max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8)));
+        }
+    }
+
+    $cabType = trim((string) ($options['cab_type'] ?? ''));
+    $pickupPlace = trim((string) ($options['pickup_place'] ?? ''));
+    $pickupDetail = trim((string) ($options['pickup_detail'] ?? ''));
+    $pickupTime = trim((string) ($options['pickup_time'] ?? ''));
+    if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
+        $pickupTime = '';
+    }
+    if ($cabType === '') {
+        $pickupPlace = '';
+        $pickupDetail = '';
+        $pickupTime = '';
+    }
+
+    $_SESSION['tour_cart'][(string) $tourId] = [
+        'tour_date' => $tourDate,
+        'people' => $people,
+        'cab_type' => $cabType,
+        'pickup_place' => $pickupPlace,
+        'pickup_detail' => $pickupDetail,
+        'pickup_time' => $pickupTime,
+    ];
+
+    return ['ok' => true, 'message' => 'Added to cart'];
+}
+
 function validateCartForCheckout($cartItems, $cab_functionality_enabled = false) {
     global $db;
 

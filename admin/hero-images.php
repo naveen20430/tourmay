@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = intval($_POST['id'] ?? 0);
                 $title = trim($_POST['title'] ?? '');
                 $subtitle = trim($_POST['subtitle'] ?? '');
+                $description = trim($_POST['description'] ?? '');
 
                 if (!$id) {
                     $errors[] = 'Invalid hero image.';
@@ -65,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (empty($errors)) {
                     $db->execute(
-                        "UPDATE hero_images SET title = ?, subtitle = ?, image_path = ? WHERE id = ?",
-                        [$title, $subtitle, $image_path, $id]
+                        "UPDATE hero_images SET title = ?, subtitle = ?, description = ?, image_path = ? WHERE id = ?",
+                        [$title, $subtitle, $description, $image_path, $id]
                     );
                     $success = 'Hero image updated successfully!';
                 }
@@ -123,7 +124,8 @@ include 'includes/header.php';
                 </div>
                 <div class="card-body">
                     <p class="text-muted mb-4">
-                        Upload images here to show behind the homepage search section (“Luxury Options”).
+                        Upload images for the homepage search hero slideshow. <strong>Title</strong> is the main heading;
+                        <strong>Description</strong> is the paragraph below it (text comes from the first image by sort order).
                         All images rotate automatically. Recommended size: 1920×1080px landscape.
                     </p>
                     <?php if ($success): ?>
@@ -224,6 +226,7 @@ include 'includes/header.php';
                                                             <input type="hidden" name="id" value="<?php echo $hero['id']; ?>">
                                                             <input type="text" name="title" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hero['title'] ?: ''); ?>" placeholder="Title">
                                                             <input type="text" name="subtitle" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hero['subtitle'] ?: ''); ?>" placeholder="Subtitle">
+                                                            <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Description"><?php echo htmlspecialchars($hero['description'] ?: ''); ?></textarea>
                                                             <input type="file" name="hero_image" class="form-control form-control-sm" accept="image/*">
                                                             <button type="submit" class="btn btn-sm btn-primary">Save / Replace Image</button>
                                                         </form>

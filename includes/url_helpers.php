@@ -142,9 +142,9 @@ function blogUrl($filters = []) {
  */
 function bookingUrl($tourId = null) {
     if ($tourId) {
-        return BASE_URL . "book/" . intval($tourId);
+        return navUrl('cart') . '?add_tour=' . intval($tourId);
     }
-    return BASE_URL . "booking";
+    return navUrl('cart');
 }
 
 /**

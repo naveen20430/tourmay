@@ -87,6 +87,44 @@ function getHeroSearchBackgrounds() {
 }
 
 /**
+ * Title and copy for the homepage search hero (from first hero_images row by sort order).
+ * @return array{title: string, subtitle: string, description: string}
+ */
+function getHeroSearchText() {
+    global $db;
+
+    $defaults = [
+        'title' => 'Luxury Options',
+        'subtitle' => '',
+        'description' => 'Search for best available hotel options, events, tours, activities and create various easy to book holiday packages.',
+    ];
+
+    try {
+        $hero = $db->fetch("
+            SELECT title, subtitle, description
+            FROM hero_images
+            ORDER BY sort_order ASC, created_at DESC
+            LIMIT 1
+        ");
+        if ($hero) {
+            $title = trim((string) ($hero['title'] ?? ''));
+            $subtitle = trim((string) ($hero['subtitle'] ?? ''));
+            $description = trim((string) ($hero['description'] ?? ''));
+
+            return [
+                'title' => $title !== '' ? $title : $defaults['title'],
+                'subtitle' => $subtitle,
+                'description' => $description !== '' ? $description : ($subtitle !== '' ? $subtitle : $defaults['description']),
+            ];
+        }
+    } catch (Exception $e) {
+        // hero_images table may not exist yet
+    }
+
+    return $defaults;
+}
+
+/**
  * Check if current page should have hero section
  * @param string $page Current page identifier
  * @return bool True if page should have hero

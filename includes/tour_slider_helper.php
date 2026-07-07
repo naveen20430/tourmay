@@ -192,7 +192,7 @@ function renderTourSlider($tours) {
                                                     <a href="<?php echo BASE_URL; ?>tour-details.php?id=<?php echo $tour['id']; ?>" class="travhub-btn travhub-btn--primary">
                                                         <span>View Details</span>
                                                     </a>
-                                                    <a href="<?php echo BASE_URL; ?>booking.php?tour_id=<?php echo $tour['id']; ?>" class="travhub-btn travhub-btn--outline">
+                                                    <a href="<?php echo bookingUrl((int) $tour['id']); ?>" class="travhub-btn travhub-btn--outline">
                                                         <span>Book Now</span>
                                                     </a>
                                                 </div>

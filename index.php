@@ -50,6 +50,7 @@ $all_destinations = $db->fetchAll("
 
 // Hero background slideshow for search section (managed in Admin → Hero Images)
 $hero_search_backgrounds = getHeroSearchBackgrounds();
+$hero_search_text = getHeroSearchText();
 
 // Cab routes for Transfer (cab) search
 $cab_routes = $db->fetchAll("
@@ -163,8 +164,8 @@ include 'includes/header.php';
 
     <div class="container">
         <div class="hero-search-header text-center">
-            <h2 class="hero-search-title">Luxury Options</h2>
-            <p class="hero-search-subtitle">Search for best available hotel options, events, tours, activities and create various easy to book holiday packages.</p>
+            <h2 class="hero-search-title"><?php echo htmlspecialchars($hero_search_text['title']); ?></h2>
+            <p class="hero-search-subtitle"><?php echo htmlspecialchars($hero_search_text['description']); ?></p>
         </div>
 
         <div class="search-category-tabs" role="tablist" aria-label="Search type">

@@ -2,6 +2,16 @@
 require_once 'config/config.php';
 require_once 'includes/checkout_helpers.php';
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $tourId = filter_var($_GET['tour_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($tourId) {
+        header('Location: ' . navUrl('cart') . '?add_tour=' . $tourId);
+        exit;
+    }
+    header('Location: ' . navUrl('cart'));
+    exit;
+}
+
 // Try to include cab options, but handle gracefully if not available
 $cab_functionality_enabled = false;
 try {

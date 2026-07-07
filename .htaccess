@@ -80,8 +80,8 @@ RewriteRule ^booking/?$ booking.php [NC,L,QSA]
 # Cart page
 RewriteRule ^cart/?$ cart.php [NC,L,QSA]
 
-# Book with tour ID: /book/123
-RewriteRule ^book/([0-9]+)/?$ booking.php?tour_id=$1 [NC,L,QSA]
+# Book with tour ID: /book/123 → add to cart
+RewriteRule ^book/([0-9]+)/?$ cart.php?add_tour=$1 [NC,L,QSA]
 
 # Invoice pages
 RewriteRule ^invoice/([A-Za-z0-9\-]+)/?$ invoice.php?number=$1 [NC,L,QSA]
