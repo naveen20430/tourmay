@@ -28,9 +28,9 @@ if ($_POST) {
     }
 
     if ($phone === '') {
-        $errors[] = 'WhatsApp number is required';
+        $errors[] = 'Mobile number is required';
     } elseif (!isVerifiedPhoneSession('register', $phone)) {
-        $errors[] = 'Please verify your WhatsApp number with OTP before creating an account';
+        $errors[] = 'Please verify your mobile number with OTP before creating an account';
     }
 
     if (empty($errors)) {
@@ -41,7 +41,7 @@ if ($_POST) {
     }
 
     if (empty($errors) && phoneBelongsToAnotherUser($phone)) {
-        $errors[] = 'This WhatsApp number is already registered. Please login instead.';
+        $errors[] = 'This mobile number is already registered. Please login instead.';
     }
 
     if (empty($errors)) {
@@ -83,7 +83,7 @@ include 'includes/header.php';
                 <div class="auth-card register-card">
                     <div class="auth-card__head register-header">
                         <h2><i class="fas fa-user-plus me-2"></i>Create Account</h2>
-                        <p>Verify WhatsApp number and join us for amazing travel experiences</p>
+                        <p>Verify your mobile number and join us for amazing travel experiences</p>
                     </div>
 
                     <div class="auth-card__body">
@@ -100,23 +100,20 @@ include 'includes/header.php';
                         <form method="POST" id="registerForm">
                             <div class="auth-verify-box" id="whatsappVerifyBox">
                                 <label class="form-label fw-semibold">
-                                    <i class="fab fa-whatsapp text-success me-2"></i>WhatsApp Number *
+                                    <i class="fas fa-mobile-alt text-primary me-2"></i>Mobile Number *
                                 </label>
                                 <?php if (!$whatsappEnabled): ?>
                                     <div class="alert alert-warning mb-0">
-                                        WhatsApp OTP verification is not configured yet. Please contact support.
+                                        Mobile OTP verification is not configured yet. Please contact support.
                                     </div>
                                 <?php else: ?>
-                                    <?php if ($whatsappSandboxNotice): ?>
-                                        <div class="alert alert-info" style="font-size:.9rem;"><?php echo $whatsappSandboxNotice; ?></div>
-                                    <?php endif; ?>
                                     <div id="registerOtpAlert" class="alert d-none" role="alert"></div>
                                     <div id="registerPhoneStep">
                                         <input type="tel" id="registerWhatsappPhone" class="form-control mb-2"
                                                maxlength="16" placeholder="e.g. +91 9876543210 or 9876543210" required>
                                         <small class="text-muted d-block mb-3">Include country code for numbers outside India.</small>
                                         <button type="button" class="btn btn-success w-100" id="registerSendOtpBtn">
-                                            <i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp
+                                            <i class="fas fa-mobile-alt me-2"></i>Send OTP
                                         </button>
                                     </div>
                                     <div id="registerOtpStep" class="d-none">
@@ -128,7 +125,7 @@ include 'includes/header.php';
                                                maxlength="5" pattern="[0-9]{5}" placeholder="5-digit code" inputmode="numeric">
                                         <div class="d-grid gap-2">
                                             <button type="button" class="btn btn-primary" id="registerVerifyOtpBtn">
-                                                <i class="fas fa-check-circle me-2"></i>Verify WhatsApp Number
+                                                <i class="fas fa-check-circle me-2"></i>Verify Mobile Number
                                             </button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm" id="registerResendOtpBtn">
                                                 Resend OTP
@@ -136,7 +133,7 @@ include 'includes/header.php';
                                         </div>
                                     </div>
                                     <div id="registerVerifiedBadge" class="d-none mt-2">
-                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i> WhatsApp verified</span>
+                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i> Mobile verified</span>
                                     </div>
                                 <?php endif; ?>
                                 <input type="hidden" name="phone" id="registerPhoneHidden" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>">
@@ -261,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
             verifiedBadge.classList.remove('d-none');
             verifyBox.classList.add('is-verified');
             submitBtn.disabled = false;
-            showAlert('success', 'WhatsApp number verified. You can complete registration.');
+            showAlert('success', 'Mobile number verified. You can complete registration.');
         }
 
         if (activePhone) {
@@ -279,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hideAlert();
             const phone = normalizeWhatsappPhone(phoneInput.value || '');
             if (!phone || phone.replace(/\D/g, '').length < 10) {
-                showAlert('danger', 'Please enter a valid WhatsApp number with country code');
+                showAlert('danger', 'Please enter a valid mobile number with country code');
                 return;
             }
 
@@ -302,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 verifiedBadge.classList.add('d-none');
                 verifyBox.classList.remove('is-verified');
                 submitBtn.disabled = true;
-                showAlert('success', data.message || 'OTP sent on WhatsApp');
+                showAlert('success', data.message || 'OTP sent to your mobile');
                 otpInput.focus();
             })
             .catch(function(err) {
@@ -310,7 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .finally(function() {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp';
+                btn.innerHTML = '<i class="fas fa-mobile-alt me-2"></i>Send OTP';
             });
         }
 
@@ -341,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .finally(function() {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Verify WhatsApp Number';
+                btn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Verify Mobile Number';
             });
         }
 
@@ -363,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             if (!phoneHidden.value) {
                 e.preventDefault();
-                showAlert('danger', 'Please verify your WhatsApp number before creating an account');
+                showAlert('danger', 'Please verify your mobile number before creating an account');
             }
         });
     })();

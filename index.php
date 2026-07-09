@@ -171,11 +171,11 @@ include 'includes/header.php';
         <div class="search-category-tabs" role="tablist" aria-label="Search type">
             <button type="button" class="search-category-tab active" data-search-tab="activity" role="tab" aria-selected="true" aria-controls="activitySearchPanel">
                 <i class="fas fa-camera"></i>
-                <span>Activity</span>
+                <span>Tours</span>
             </button>
             <button type="button" class="search-category-tab" data-search-tab="transfer" role="tab" aria-selected="false" aria-controls="transferSearchPanel">
                 <i class="fas fa-car"></i>
-                <span>Travel</span>
+                <span>Transfers</span>
             </button>
         </div>
 

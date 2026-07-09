@@ -120,7 +120,7 @@ include 'includes/header.php';
                         <!-- Login Tabs -->
                         <div class="auth-tabs login-tabs">
                             <button type="button" class="auth-tab-btn login-tab-btn <?php echo $activeLoginTab === 'whatsapp' ? 'active' : ''; ?>" data-login-tab="whatsapp">
-                                <i class="fab fa-whatsapp"></i> WhatsApp OTP
+                                <i class="fas fa-mobile-alt"></i> Mobile OTP
                             </button>
                             <button type="button" class="auth-tab-btn login-tab-btn <?php echo $activeLoginTab === 'email' ? 'active' : ''; ?>" data-login-tab="email">
                                 <i class="fas fa-envelope"></i> Email
@@ -165,19 +165,16 @@ include 'includes/header.php';
                         </form>
                         </div>
 
-                        <!-- WhatsApp OTP Login -->
+                        <!-- Mobile OTP Login -->
                         <div class="auth-panel login-panel <?php echo $activeLoginTab === 'whatsapp' ? 'active' : ''; ?>" id="loginPanelWhatsapp">
                             <?php if ($whatsappEnabled): ?>
                                 <div class="auth-note whatsapp-note">
-                                    <i class="fab fa-whatsapp me-1"></i>
-                                    We will send a 5-digit verification code to your WhatsApp number.
+                                    <i class="fas fa-mobile-alt me-1"></i>
+                                    We will send a 5-digit verification code to your mobile number.
                                 </div>
-                                <?php if ($whatsappSandboxNotice): ?>
-                                    <div class="alert alert-info" style="font-size:.9rem;"><?php echo $whatsappSandboxNotice; ?></div>
-                                <?php endif; ?>
                             <?php else: ?>
                                 <div class="alert alert-warning">
-                                    WhatsApp OTP login is not configured yet. Please use email login or contact support.
+                                    Mobile OTP login is not configured yet. Please use email login or contact support.
                                 </div>
                             <?php endif; ?>
 
@@ -192,7 +189,7 @@ include 'includes/header.php';
                                     <small class="auth-field-hint">Include country code for numbers outside India.</small>
                                 </div>
                                 <button type="button" class="btn btn-primary btn-lg w-100 auth-submit-btn" id="sendWhatsappOtpBtn" <?php echo $whatsappEnabled ? '' : 'disabled'; ?>>
-                                    <i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp
+                                    <i class="fas fa-mobile-alt me-2"></i>Send OTP
                                 </button>
                             </div>
 
@@ -332,7 +329,7 @@ include 'includes/header.php';
             hideAlert();
             const phone = getPhoneValue();
             if (!phone || phone.replace(/\D/g, '').length < 10) {
-                showAlert('danger', 'Please enter a valid WhatsApp number with country code');
+                showAlert('danger', 'Please enter a valid mobile number with country code');
                 return;
             }
 
@@ -356,7 +353,7 @@ include 'includes/header.php';
                 if (phoneDisplay) phoneDisplay.textContent = activePhone;
                 stepPhone.classList.add('d-none');
                 stepOtp.classList.remove('d-none');
-                showAlert('success', data.message || 'OTP sent on WhatsApp');
+                showAlert('success', data.message || 'OTP sent to your mobile');
                 if (otpInput) otpInput.focus();
             })
             .catch(function(err) {
@@ -365,7 +362,7 @@ include 'includes/header.php';
             .finally(function() {
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp';
+                    btn.innerHTML = '<i class="fas fa-mobile-alt me-2"></i>Send OTP';
                 }
             });
         }

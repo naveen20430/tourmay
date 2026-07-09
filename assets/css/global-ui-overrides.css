@@ -60,6 +60,10 @@ button.btn-outline-primary:hover {
   background: var(--site-primary-gradient) !important;
 }
 
+.badge.bg-primary {
+  color: #fff !important;
+}
+
 /* --------------------------------------------------------------------------
    ICONS
    -------------------------------------------------------------------------- */
@@ -82,7 +86,7 @@ button.btn-outline-primary:hover {
 }
 
 /* Icons inside buttons should follow button text color (white for primary) */
-:where(.btn, .travhub-btn, .booking-submit-btn) :where(
+:where(.btn, .travhub-btn, .booking-submit-btn, .badge.bg-primary) :where(
   i[class^="fa"],
   i[class*=" fa-"],
   i[class^="flaticon"],

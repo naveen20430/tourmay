@@ -693,6 +693,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.25s ease;
+    white-space: nowrap;
 }
 
 .search-category-tab i {
