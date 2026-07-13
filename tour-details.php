@@ -55,6 +55,7 @@ $cab_functionality_enabled = false;
 
 try {
     if (file_exists('includes/cab_options.php')) {
+        require_once 'includes/cab_options.php';
         // Test if cab_types table exists
         $db->fetch("SELECT COUNT(*) as count FROM cab_types LIMIT 1");
         $cabOptions = new CabOptions($db);
@@ -68,23 +69,23 @@ try {
 }
 
 $tourCabList = [];
-if (!empty($availableCabs)) {
-    foreach ($availableCabs as $cab) {
-        $tourPrice = getCabPriceForTour($tour['title'], $cab['value'], $db);
-        $tourCabList[] = array_merge($cab, [
-            'tour_price' => $tourPrice > 0 ? (float) $tourPrice : (float) ($cab['price'] ?? 0),
-        ]);
+if ($cab_functionality_enabled) {
+    $tourCabList = getCabOptionsForTour((int) $tour['id'], $db);
+    foreach ($tourCabList as &$cabRow) {
+        $cabRow['tour_price'] = (float) ($cabRow['price'] ?? 0);
     }
+    unset($cabRow);
 } else {
     foreach (getDefaultCabPricing() as $cab) {
-        $tourPrice = getCabPriceForTour($tour['title'], $cab['name'], $db);
+        $tourPrice = getCabPriceForTour((int) $tour['id'], $cab['name'], $db, 1);
         $tourCabList[] = [
             'value' => $cab['name'],
             'display_name' => $cab['display_name'],
             'max_passengers' => (int) $cab['max_passengers'],
             'description' => $cab['description'],
             'image_url' => cabTypeImageUrl($cab),
-            'tour_price' => $tourPrice > 0 ? (float) $tourPrice : (float) $cab['base_price'],
+            'price' => (float) $tourPrice,
+            'tour_price' => (float) $tourPrice,
         ];
     }
 }

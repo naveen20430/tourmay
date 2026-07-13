@@ -3,6 +3,53 @@
  * Checkout, invoice, and Razorpay payment helpers
  */
 
+require_once __DIR__ . '/cab_options.php';
+
+/**
+ * Allowed pickup times: 9:00 AM – 6:00 PM (30-minute steps).
+ * @return array<int, array{value: string, label: string}>
+ */
+function getPickupTimeOptions() {
+    $options = [];
+    for ($hour = 9; $hour <= 18; $hour++) {
+        foreach ([0, 30] as $minute) {
+            if ($hour === 18 && $minute > 0) {
+                break;
+            }
+            $value = sprintf('%02d:%02d', $hour, $minute);
+            $labelHour = $hour % 12;
+            if ($labelHour === 0) {
+                $labelHour = 12;
+            }
+            $ampm = $hour < 12 ? 'AM' : 'PM';
+            $options[] = [
+                'value' => $value,
+                'label' => sprintf('%d:%02d %s', $labelHour, $minute, $ampm),
+            ];
+        }
+    }
+    return $options;
+}
+
+/**
+ * @return string[]
+ */
+function getAllowedPickupTimes() {
+    return array_column(getPickupTimeOptions(), 'value');
+}
+
+function isValidPickupTime($time) {
+    $time = trim((string) $time);
+    if ($time === '') {
+        return false;
+    }
+    // Accept HH:MM or HH:MM:SS from older browsers
+    if (preg_match('/^(\d{2}:\d{2})/', $time, $m)) {
+        $time = $m[1];
+    }
+    return in_array($time, getAllowedPickupTimes(), true);
+}
+
 function ensureCheckoutSchema() {
     global $db;
     static $ready = false;
@@ -43,7 +90,13 @@ function ensureCheckoutSchema() {
         $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_place VARCHAR(100) NULL AFTER cab_price');
     }
     if (!in_array('pickup_detail', $cols, true)) {
-        $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_detail VARCHAR(255) NULL AFTER pickup_place');
+        $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_detail TEXT NULL AFTER pickup_place');
+    } else {
+        try {
+            $pdo->exec('ALTER TABLE bookings MODIFY COLUMN pickup_detail TEXT NULL');
+        } catch (Exception $e) {
+            // Column may already be TEXT
+        }
     }
     if (!in_array('pickup_time', $cols, true)) {
         $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_time VARCHAR(10) NULL AFTER pickup_detail');
@@ -172,18 +225,32 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
             continue;
         }
 
-        $tourPrice = $tour['discount_price'] ? (float) $tour['discount_price'] : (float) $tour['price'];
-        $lineTotal = $tourPrice;
+        // Tour listing price is display-only ("starts from"). Charge comes from cab selection.
+        $startsFromPrice = $tour['discount_price'] ? (float) $tour['discount_price'] : (float) $tour['price'];
+        $tourPrice = 0.0;
+        $lineTotal = 0.0;
         $cabType = trim((string) ($item['cab_type'] ?? ''));
         $pickupPlace = trim((string) ($item['pickup_place'] ?? ''));
         $pickupDetail = trim((string) ($item['pickup_detail'] ?? ''));
+        $pickupAddress = trim((string) ($item['pickup_address'] ?? ''));
         $pickupTime = trim((string) ($item['pickup_time'] ?? ''));
-        if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
+        if (preg_match('/^(\d{2}:\d{2})/', $pickupTime, $m)) {
+            $pickupTime = $m[1];
+        }
+        if ($pickupTime !== '' && !isValidPickupTime($pickupTime)) {
             $pickupTime = '';
         }
         $cabPrice = 0.0;
 
-        if ($cab_functionality_enabled && $cabType !== '' && class_exists('CabOptions')) {
+        if ($cab_functionality_enabled) {
+            if ($cabType === '') {
+                $errors[] = 'Please select a cab option for: ' . $tour['title'];
+                continue;
+            }
+            if (!class_exists('CabOptions')) {
+                $errors[] = 'Cab options are not available right now.';
+                continue;
+            }
             $cabOptions = new CabOptions($db);
             if (!$cabOptions->canAccommodate($cabType, $people)) {
                 $errors[] = 'Selected cab type cannot accommodate ' . $people . ' people for: ' . $tour['title'];
@@ -193,18 +260,24 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
                 $errors[] = 'Please select a pickup point for: ' . $tour['title'];
                 continue;
             }
-            if ($pickupTime === '') {
-                $errors[] = 'Please select a pickup time for: ' . $tour['title'];
+            if ($pickupTime === '' || !isValidPickupTime($pickupTime)) {
+                $errors[] = 'Please select a pickup time between 9:00 AM and 6:00 PM for: ' . $tour['title'];
                 continue;
             }
             if (in_array($pickupPlace, ['Hotel', 'Others'], true) && $pickupDetail === '') {
                 $errors[] = 'Please enter pickup details for: ' . $tour['title'];
                 continue;
             }
-            $cabPrice = (float) $cabOptions->calculateCabPrice($cabType, (int) $tour['duration_days']);
+            $cabPrice = (float) getCabPriceForTour((int) $tour['id'], $cabType, $db);
+            if ($cabPrice <= 0) {
+                $errors[] = 'Cab price is not configured for: ' . $tour['title'];
+                continue;
+            }
+            $lineTotal = $cabPrice;
         } elseif ($cabType !== '') {
             $pickupPlace = '';
             $pickupDetail = '';
+            $pickupAddress = '';
             $pickupTime = '';
         }
 
@@ -216,13 +289,15 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
             'cab_type' => $cabType,
             'pickup_place' => $pickupPlace,
             'pickup_detail' => $pickupDetail,
+            'pickup_address' => $pickupAddress,
             'pickup_time' => $pickupTime,
             'cab_price' => $cabPrice,
             'tour_price' => $tourPrice,
-            'line_total' => $lineTotal + $cabPrice,
+            'starts_from_price' => $startsFromPrice,
+            'line_total' => $lineTotal,
         ];
 
-        $subtotal += $lineTotal;
+        $subtotal += $tourPrice;
         $cabTotal += $cabPrice;
     }
 
@@ -287,7 +362,8 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
         foreach ($validated['lines'] as $line) {
             $tour = $line['tour'];
             $bookingNumber = generateBookingNumber();
-            $totalAmount = $line['line_total'] - $line['cab_price'];
+            // Tour listing price is not charged; payable amount is the cab total.
+            $totalAmount = 0.0;
             $cabType = $line['cab_type'] !== '' ? $line['cab_type'] : null;
 
             if ($cab_functionality_enabled && $cabType) {

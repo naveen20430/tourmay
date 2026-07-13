@@ -1,6 +1,7 @@
 <?php
 require_once '../config/config.php';
 require_once '../includes/html_helpers.php';
+require_once '../includes/cab_options.php';
 requireLogin();
 
 $tour_id = $_GET['id'] ?? 0;
@@ -11,6 +12,19 @@ $tour = $db->fetch("SELECT * FROM tours WHERE id = ?", [$tour_id]);
 if (!$tour) {
     header('Location: tours.php');
     exit;
+}
+
+ensureTourCabPricesSchema();
+$cabTypesForPricing = [];
+$tourCabPriceValues = [];
+try {
+    $cabTypesForPricing = $db->fetchAll("SELECT id, name, display_name, base_price FROM cab_types WHERE status = 'active' ORDER BY base_price ASC");
+    $existingTourCabPrices = $db->fetchAll("SELECT cab_type_id, price FROM tour_cab_prices WHERE tour_id = ?", [(int) $tour_id]);
+    foreach ($existingTourCabPrices as $row) {
+        $tourCabPriceValues[(int) $row['cab_type_id']] = (float) $row['price'];
+    }
+} catch (Exception $e) {
+    $cabTypesForPricing = [];
 }
 
 // Parse JSON fields
@@ -150,6 +164,10 @@ if ($_POST) {
             );
             
             if ($updated) {
+                $cabPriceInput = $_POST['cab_prices'] ?? [];
+                if (is_array($cabPriceInput)) {
+                    saveTourCabPrices((int) $tour_id, $cabPriceInput, $db);
+                }
                 header('Location: tours.php?msg=updated');
                 exit;
             } else {
@@ -539,6 +557,41 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
                                     </div>
                                 </div>
                                 
+                                <!-- Cab Pricing (per tour) -->
+                                <?php if (!empty($cabTypesForPricing)): ?>
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="card-title border-bottom pb-2">
+                                            <i class="fas fa-car me-2"></i>Cab Prices for This Tour
+                                        </h5>
+                                        <p class="text-muted small">
+                                            Set flat cab prices for this tour (₹). Leave blank or 0 to use the default base price.
+                                            Manage all tours in <a href="cab_pricing.php">Cab Pricing</a>.
+                                        </p>
+                                    </div>
+                                    <?php foreach ($cabTypesForPricing as $cab): ?>
+                                        <?php
+                                        $cid = (int) $cab['id'];
+                                        $posted = $_POST['cab_prices'][$cid] ?? null;
+                                        $value = $posted !== null ? $posted : ($tourCabPriceValues[$cid] ?? '');
+                                        ?>
+                                        <div class="col-md-4 col-lg-3 mb-3">
+                                            <label class="form-label">
+                                                <?php echo htmlspecialchars($cab['display_name']); ?>
+                                                <span class="text-muted small">(default ₹<?php echo number_format((float)$cab['base_price'], 0); ?>)</span>
+                                            </label>
+                                            <input type="number"
+                                                   step="0.01"
+                                                   min="0"
+                                                   name="cab_prices[<?php echo $cid; ?>]"
+                                                   class="form-control"
+                                                   value="<?php echo $value !== '' && $value !== null ? htmlspecialchars((string)$value) : ''; ?>"
+                                                   placeholder="<?php echo number_format((float)$cab['base_price'], 0); ?>">
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php endif; ?>
+
                                 <!-- Availability -->
                                 <div class="row mb-4">
                                     <div class="col-12">

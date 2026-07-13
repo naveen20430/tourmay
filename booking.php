@@ -52,7 +52,7 @@ if ($_POST) {
     $guest_phone = trim($_POST['guest_phone'] ?? '');
     $special_requirements = trim($_POST['special_requirements'] ?? '');
     $cab_type = trim($_POST['cab_type'] ?? '');
-    $paymentMethod = trim($_POST['payment_method'] ?? 'cash');
+    $paymentMethod = trim($_POST['payment_method'] ?? 'razorpay');
 
     if (empty($tour_id)) $errors[] = 'Tour selection is required';
     if (empty($tour_date)) $errors[] = 'Tour date is required';
@@ -63,11 +63,11 @@ if ($_POST) {
     if ($guest_name === '') $errors[] = 'Your name is required';
     if ($guest_email === '' || !filter_var($guest_email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required';
     if ($guest_phone === '') $errors[] = 'Your phone number is required';
-    if (!in_array($paymentMethod, ['cash', 'razorpay'], true)) {
-        $errors[] = 'Please select a valid payment method';
+    if ($paymentMethod !== 'razorpay') {
+        $errors[] = 'Please select online payment';
     }
-    if ($paymentMethod === 'razorpay' && !razorpayIsConfigured()) {
-        $errors[] = 'Online payment is not available right now. Please choose cash payment.';
+    if (!razorpayIsConfigured()) {
+        $errors[] = 'Online payment is not available right now. Please try again later.';
     }
     if (empty($_POST['accept_terms'])) {
         $errors[] = 'You must accept the Terms of Service and Privacy Policy to continue';
@@ -303,15 +303,8 @@ include 'includes/header.php';
                     <div class="cart-field cart-payment-block">
                         <label class="cart-form-label"><i class="fas fa-credit-card"></i> Payment Method</label>
                         <div class="payment-options">
-                            <label class="payment-option is-active">
-                                <input type="radio" name="payment_method" value="cash" checked>
-                                <div>
-                                    <strong>Cash / Manual Payment</strong>
-                                    <span>Pay in cash at our office or to the tour guide. Invoice will be generated instantly.</span>
-                                </div>
-                            </label>
-                            <label class="payment-option<?php echo $razorpayEnabled ? '' : ' is-disabled'; ?>">
-                                <input type="radio" name="payment_method" value="razorpay"<?php echo $razorpayEnabled ? '' : ' disabled'; ?>>
+                            <label class="payment-option<?php echo $razorpayEnabled ? ' is-active' : ' is-disabled'; ?>">
+                                <input type="radio" name="payment_method" value="razorpay"<?php echo $razorpayEnabled ? ' checked' : ' disabled'; ?>>
                                 <div>
                                     <strong>Pay Online with Razorpay</strong>
                                     <span class="razorpay-badge">

@@ -78,49 +78,30 @@ if ($_POST) {
             $success_message = "Base cab pricing updated successfully!";
             
         } elseif ($action === 'update_tour_pricing') {
-            // Update tour-specific pricing
-            $tour_updates = $_POST['tours'] ?? [];
-            
-            foreach ($tour_updates as $tour_id => $tour_data) {
-                $db->execute("
-                    UPDATE tour_cab_pricing 
-                    SET sedan_price = ?, ertiga_price = ?, innova_price = ?, tempo_traveller_price = ?
-                    WHERE id = ?
-                ", [
-                    $tour_data['sedan_price'],
-                    $tour_data['ertiga_price'],
-                    $tour_data['innova_price'],
-                    $tour_data['tempo_traveller_price'],
-                    $tour_id
-                ]);
+            require_once '../includes/cab_options.php';
+            ensureTourCabPricesSchema();
+
+            $tourUpdates = $_POST['tour_prices'] ?? [];
+            $savedCount = 0;
+            foreach ($tourUpdates as $tourId => $cabPrices) {
+                $tourId = (int) $tourId;
+                if ($tourId <= 0 || !is_array($cabPrices)) {
+                    continue;
+                }
+                saveTourCabPrices($tourId, $cabPrices, $db);
+                $savedCount++;
             }
-            $success_message = "Tour-specific pricing updated successfully!";
-            
-        } elseif ($action === 'add_tour_pricing') {
-            // Add new tour pricing
-            $tour_name = $_POST['new_tour_name'] ?? '';
-            $sedan_price = $_POST['new_sedan_price'] ?? 0;
-            $ertiga_price = $_POST['new_ertiga_price'] ?? 0;
-            $innova_price = $_POST['new_innova_price'] ?? 0;
-            $tempo_price = $_POST['new_tempo_price'] ?? 0;
-            
-            if ($tour_name) {
-                $db->execute("
-                    INSERT INTO tour_cab_pricing (tour_name, sedan_price, ertiga_price, innova_price, tempo_traveller_price)
-                    VALUES (?, ?, ?, ?, ?)
-                ", [$tour_name, $sedan_price, $ertiga_price, $innova_price, $tempo_price]);
-                
-                $success_message = "New tour pricing added successfully!";
-            } else {
-                $error_message = "Tour name is required!";
-            }
-            
-        } elseif ($action === 'delete_tour_pricing') {
-            // Delete tour pricing
-            $tour_id = $_POST['tour_id'] ?? 0;
-            if ($tour_id) {
-                $db->execute("DELETE FROM tour_cab_pricing WHERE id = ?", [$tour_id]);
-                $success_message = "Tour pricing deleted successfully!";
+            $success_message = $savedCount > 0
+                ? 'Tour cab pricing updated successfully!'
+                : 'No tour cab prices were updated.';
+
+        } elseif ($action === 'clear_tour_pricing') {
+            require_once '../includes/cab_options.php';
+            ensureTourCabPricesSchema();
+            $tourId = (int) ($_POST['tour_id'] ?? 0);
+            if ($tourId > 0) {
+                $db->execute("DELETE FROM tour_cab_prices WHERE tour_id = ?", [$tourId]);
+                $success_message = 'Tour cab prices cleared. Default base prices will be used.';
             }
         }
         
@@ -129,19 +110,21 @@ if ($_POST) {
     }
 }
 
+require_once '../includes/cab_options.php';
+ensureTourCabPricesSchema();
+
 // Fetch current cab types
-$cab_types = $db->fetchAll("SELECT * FROM cab_types ORDER BY base_price ASC");
+$cab_types = $db->fetchAll("SELECT * FROM cab_types WHERE status = 'active' ORDER BY base_price ASC");
 
-// Fetch all tours for dropdown
-$available_tours = $db->fetchAll("SELECT id, title FROM tours ORDER BY title ASC");
+// Fetch all tours for tour-specific pricing grid
+$available_tours = $db->fetchAll("SELECT id, title, duration_days, status FROM tours ORDER BY title ASC");
 
-// Fetch tour-specific pricing with tour details
-$tour_pricing = $db->fetchAll("
-    SELECT tcp.*, t.title as tour_title 
-    FROM tour_cab_pricing tcp 
-    LEFT JOIN tours t ON tcp.tour_name = t.title 
-    ORDER BY tcp.tour_name ASC
-");
+// Build price map: tour_id => cab_type_id => price
+$tourPriceRows = $db->fetchAll("SELECT tour_id, cab_type_id, price FROM tour_cab_prices");
+$tourPricesByTour = [];
+foreach ($tourPriceRows as $row) {
+    $tourPricesByTour[(int) $row['tour_id']][(int) $row['cab_type_id']] = (float) $row['price'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -259,7 +242,7 @@ $tour_pricing = $db->fetchAll("
                                                     </div>
                                                     
                                                     <div class="mb-3">
-                                                        <label class="form-label">Base Price (₹/day)</label>
+                                                        <label class="form-label">Base Price (₹)</label>
                                                         <input type="number" step="0.01" class="form-control price-input" 
                                                                name="cabs[<?php echo $cab['id']; ?>][base_price]" 
                                                                value="<?php echo $cab['base_price']; ?>">
@@ -302,110 +285,86 @@ $tour_pricing = $db->fetchAll("
                     <!-- Tour-Specific Pricing Management -->
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h4><i class="fas fa-map-signs me-2"></i>Tour-Specific Pricing</h4>
-                            <div>
-                                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addTourModal">
-                                    <i class="fas fa-plus me-1"></i> Add Tour Pricing
-                                </button>
-                                <span class="badge bg-info ms-2"><?php echo count($available_tours); ?> Tours Available</span>
-                            </div>
+                            <h4 class="mb-0"><i class="fas fa-map-signs me-2"></i>Tour-Specific Cab Pricing</h4>
+                            <span class="badge bg-info"><?php echo count($available_tours); ?> Tours</span>
                         </div>
                         <div class="card-body">
-                            <!-- Quick Info -->
-                            <?php 
-                            $configured_tours = array_column($tour_pricing, 'tour_name');
-                            $unconfigured_tours = array_filter($available_tours, function($tour) use ($configured_tours) {
-                                return !in_array($tour['title'], $configured_tours);
-                            });
-                            ?>
-                            
-                            <?php if (!empty($unconfigured_tours)): ?>
-                                <div class="alert alert-info">
-                                    <h6><i class="fas fa-info-circle me-2"></i>Tours without cab pricing:</h6>
-                                    <div class="row">
-                                        <?php foreach ($unconfigured_tours as $tour): ?>
-                                            <div class="col-md-4 mb-1">
-                                                <small>• <?php echo htmlspecialchars($tour['title']); ?></small>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                    <small class="text-muted">Click "Add Tour Pricing" to configure pricing for these tours.</small>
+                            <div class="alert alert-info">
+                                Set a flat cab price for each tour (fetched directly on cart/checkout). Leave blank or <strong>0</strong> to use the default base price above.
+                                You can also edit these from <strong>Tours → Edit Tour</strong>.
+                            </div>
+
+                            <?php if (empty($available_tours)): ?>
+                                <div class="text-center py-5">
+                                    <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                                    <h5>No tours found</h5>
+                                    <p class="text-muted">Add tours first, then set cab prices here.</p>
                                 </div>
-                            <?php endif; ?>
-                            
-                            <?php if (!empty($tour_pricing)): ?>
+                            <?php elseif (empty($cab_types)): ?>
+                                <div class="alert alert-warning">No active cab types found. Add cab types in Base Cab Types above.</div>
+                            <?php else: ?>
                                 <form method="POST">
                                     <input type="hidden" name="action" value="update_tour_pricing">
-                                    
                                     <div class="table-responsive">
-                                        <table class="table table-hover tour-pricing-table">
+                                        <table class="table table-hover tour-pricing-table align-middle">
                                             <thead>
                                                 <tr>
-                                                    <th>Tour Name</th>
-                                                    <th>Sedan (₹)</th>
-                                                    <th>Ertiga (₹)</th>
-                                                    <th>Innova (₹)</th>
-                                                    <th>Tempo Traveller (₹)</th>
-                                                    <th>Actions</th>
+                                                    <th style="min-width:220px;">Tour</th>
+                                                    <?php foreach ($cab_types as $cab): ?>
+                                                        <th>
+                                                            <?php echo htmlspecialchars($cab['display_name']); ?>
+                                                            <div class="small text-muted fw-normal">Default ₹<?php echo number_format((float)$cab['base_price'], 0); ?></div>
+                                                        </th>
+                                                    <?php endforeach; ?>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($tour_pricing as $tour): ?>
+                                                <?php foreach ($available_tours as $tour): ?>
+                                                    <?php
+                                                    $tid = (int) $tour['id'];
+                                                    $hasCustom = !empty($tourPricesByTour[$tid]);
+                                                    ?>
                                                     <tr>
                                                         <td>
-                                                            <strong><?php echo htmlspecialchars($tour['tour_name']); ?></strong>
-                                                            <?php if ($tour['tour_title'] && $tour['tour_title'] !== $tour['tour_name']): ?>
-                                                                <br><small class="text-muted">Database: <?php echo htmlspecialchars($tour['tour_title']); ?></small>
-                                                            <?php endif; ?>
+                                                            <strong><?php echo htmlspecialchars($tour['title']); ?></strong>
+                                                            <div class="small text-muted">
+                                                                <?php echo (int) $tour['duration_days']; ?> day(s)
+                                                                · <?php echo htmlspecialchars($tour['status']); ?>
+                                                                <?php if ($hasCustom): ?>
+                                                                    · <span class="text-success">Custom prices set</span>
+                                                                <?php else: ?>
+                                                                    · Using defaults
+                                                                <?php endif; ?>
+                                                            </div>
+                                                            <a class="small" href="tour-edit.php?id=<?php echo $tid; ?>">Edit tour</a>
                                                         </td>
-                                                        <td>
-                                                            <input type="number" step="0.01" class="form-control price-input" 
-                                                                   name="tours[<?php echo $tour['id']; ?>][sedan_price]" 
-                                                                   value="<?php echo $tour['sedan_price']; ?>">
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" step="0.01" class="form-control price-input" 
-                                                                   name="tours[<?php echo $tour['id']; ?>][ertiga_price]" 
-                                                                   value="<?php echo $tour['ertiga_price']; ?>">
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" step="0.01" class="form-control price-input" 
-                                                                   name="tours[<?php echo $tour['id']; ?>][innova_price]" 
-                                                                   value="<?php echo $tour['innova_price']; ?>">
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" step="0.01" class="form-control price-input" 
-                                                                   name="tours[<?php echo $tour['id']; ?>][tempo_traveller_price]" 
-                                                                   value="<?php echo $tour['tempo_traveller_price']; ?>">
-                                                        </td>
-                                                        <td>
-                                                            <form method="POST" style="display: inline;" 
-                                                                  onsubmit="return confirm('Are you sure you want to delete this tour pricing?')">
-                                                                <input type="hidden" name="action" value="delete_tour_pricing">
-                                                                <input type="hidden" name="tour_id" value="<?php echo $tour['id']; ?>">
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        </td>
+                                                        <?php foreach ($cab_types as $cab): ?>
+                                                            <?php
+                                                            $cid = (int) $cab['id'];
+                                                            $value = $tourPricesByTour[$tid][$cid] ?? '';
+                                                            ?>
+                                                            <td>
+                                                                <input type="number"
+                                                                       step="0.01"
+                                                                       min="0"
+                                                                       class="form-control price-input"
+                                                                       name="tour_prices[<?php echo $tid; ?>][<?php echo $cid; ?>]"
+                                                                       value="<?php echo $value !== '' ? htmlspecialchars((string)$value) : ''; ?>"
+                                                                       placeholder="<?php echo number_format((float)$cab['base_price'], 0); ?>">
+                                                            </td>
+                                                        <?php endforeach; ?>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
                                     </div>
-                                    
+                                    <p class="text-muted small mt-2 mb-0">Tip: leave blank or enter 0 and save to use the default base price for that cab.</p>
                                     <div class="text-end mt-3">
                                         <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save me-1"></i> Update Tour Pricing
+                                            <i class="fas fa-save me-1"></i> Save Tour Cab Prices
                                         </button>
                                     </div>
                                 </form>
-                            <?php else: ?>
-                                <div class="text-center py-5">
-                                    <i class="fas fa-car fa-3x text-muted mb-3"></i>
-                                    <h5>No tour-specific pricing configured</h5>
-                                    <p class="text-muted">Click "Add Tour Pricing" to set up specific pricing for different tours.</p>
-                                </div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -413,82 +372,8 @@ $tour_pricing = $db->fetchAll("
             </div>
         </div>
     </div>
-
-    <!-- Add Tour Pricing Modal -->
-    <div class="modal fade" id="addTourModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST">
-                    <input type="hidden" name="action" value="add_tour_pricing">
-                    
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add New Tour Pricing</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Select Tour *</label>
-                            <select class="form-select" name="new_tour_name" required>
-                                <option value="">Choose a tour...</option>
-                                <?php foreach ($available_tours as $tour): ?>
-                                    <?php 
-                                    // Check if this tour already has pricing configured
-                                    $has_pricing = false;
-                                    foreach ($tour_pricing as $existing) {
-                                        if ($existing['tour_name'] === $tour['title']) {
-                                            $has_pricing = true;
-                                            break;
-                                        }
-                                    }
-                                    ?>
-                                    <option value="<?php echo htmlspecialchars($tour['title']); ?>" 
-                                            <?php echo $has_pricing ? 'disabled' : ''; ?>>
-                                        <?php echo htmlspecialchars($tour['title']); ?>
-                                        <?php echo $has_pricing ? ' (Already configured)' : ''; ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <small class="form-text text-muted">Select from existing tours in your system</small>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Sedan Price (₹)</label>
-                                <input type="number" step="0.01" class="form-control" name="new_sedan_price" value="0">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Ertiga Price (₹)</label>
-                                <input type="number" step="0.01" class="form-control" name="new_ertiga_price" value="0">
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Innova Price (₹)</label>
-                                <input type="number" step="0.01" class="form-control" name="new_innova_price" value="0">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tempo Traveller Price (₹)</label>
-                                <input type="number" step="0.01" class="form-control" name="new_tempo_price" value="0">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-plus me-1"></i> Add Tour Pricing
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto-save indication
         document.querySelectorAll('input[type="number"]').forEach(function(input) {
             input.addEventListener('change', function() {
                 this.style.backgroundColor = '#fff3cd';
@@ -496,54 +381,6 @@ $tour_pricing = $db->fetchAll("
                     this.style.backgroundColor = '';
                 }, 1000);
             });
-        });
-        
-        // Tour selection enhancement
-        document.addEventListener('DOMContentLoaded', function() {
-            const tourSelect = document.querySelector('select[name="new_tour_name"]');
-            if (tourSelect) {
-                tourSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    if (selectedOption.disabled) {
-                        this.value = '';
-                        alert('This tour already has pricing configured. Please select a different tour.');
-                    }
-                });
-            }
-            
-            // Highlight unconfigured tours in the alert
-            const unconfiguredAlert = document.querySelector('.alert-info');
-            if (unconfiguredAlert) {
-                unconfiguredAlert.addEventListener('click', function(e) {
-                    if (e.target.tagName === 'SMALL') {
-                        // Open modal and pre-select the clicked tour
-                        const tourName = e.target.textContent.replace('• ', '');
-                        const modal = new bootstrap.Modal(document.getElementById('addTourModal'));
-                        modal.show();
-                        
-                        // Pre-select the tour in dropdown
-                        setTimeout(() => {
-                            const tourSelect = document.querySelector('select[name="new_tour_name"]');
-                            if (tourSelect) {
-                                for (let option of tourSelect.options) {
-                                    if (option.value === tourName) {
-                                        option.selected = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }, 100);
-                    }
-                });
-                
-                // Add pointer cursor to tour names
-                const tourNames = unconfiguredAlert.querySelectorAll('small');
-                tourNames.forEach(name => {
-                    name.style.cursor = 'pointer';
-                    name.style.textDecoration = 'underline';
-                    name.title = 'Click to add pricing for this tour';
-                });
-            }
         });
     </script>
 </body>

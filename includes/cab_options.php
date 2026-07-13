@@ -62,7 +62,7 @@ class CabOptions {
             
             $options[] = [
                 'value' => $cab['name'],
-                'text' => $cab['display_name'] . ' - ₹' . number_format($cab['base_price'], 0) . '/day' . $feature_text,
+                'text' => $cab['display_name'] . ' - ₹' . number_format($cab['base_price'], 0) . $feature_text,
                 'price' => $cab['base_price'],
                 'max_passengers' => $cab['max_passengers'],
                 'description' => $cab['description'],
@@ -156,12 +156,158 @@ function getCabDisplayName($cab_type) {
 }
 
 /**
- * Get tour-specific cab pricing
+ * Ensure per-tour cab price table exists (tour_id × cab_type_id).
+ */
+function ensureTourCabPricesSchema() {
+    global $db;
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    try {
+        $db->getConnection()->exec("CREATE TABLE IF NOT EXISTS tour_cab_prices (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tour_id INT NOT NULL,
+            cab_type_id INT NOT NULL,
+            price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_tour_cab (tour_id, cab_type_id),
+            INDEX idx_tour_id (tour_id),
+            INDEX idx_cab_type_id (cab_type_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $ready = true;
+    } catch (Exception $e) {
+        // Table may already exist or DB may be unavailable
+    }
+}
+
+/**
+ * Get map of cab_type name => price for a tour.
+ * Missing cab types fall back to cab_types.base_price.
+ *
+ * @return array<string,float>
+ */
+function getTourCabPriceMap($tourId, $db = null) {
+    if ($db === null) {
+        global $db;
+    }
+    ensureTourCabPricesSchema();
+
+    $tourId = (int) $tourId;
+    $map = [];
+
+    try {
+        $cabTypes = $db->fetchAll("SELECT id, name, base_price FROM cab_types WHERE status = 'active'");
+        foreach ($cabTypes as $cab) {
+            $map[$cab['name']] = (float) $cab['base_price'];
+        }
+
+        if ($tourId > 0) {
+            $rows = $db->fetchAll("
+                SELECT ct.name, tcp.price
+                FROM tour_cab_prices tcp
+                INNER JOIN cab_types ct ON ct.id = tcp.cab_type_id
+                WHERE tcp.tour_id = ? AND ct.status = 'active'
+            ", [$tourId]);
+            foreach ($rows as $row) {
+                $price = (float) $row['price'];
+                if ($price > 0) {
+                    $map[$row['name']] = $price;
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // Fall back to whatever we already have
+    }
+
+    return $map;
+}
+
+/**
+ * Get cab options for a specific tour (uses tour price when set).
+ */
+function getCabOptionsForTour($tourId, $db = null) {
+    if ($db === null) {
+        global $db;
+    }
+    $cabOptions = new CabOptions($db);
+    $options = $cabOptions->getCabOptionsForDropdown();
+    $priceMap = getTourCabPriceMap($tourId, $db);
+
+    foreach ($options as &$option) {
+        $name = $option['value'];
+        $basePrice = (float) $option['price'];
+        $price = isset($priceMap[$name]) ? (float) $priceMap[$name] : $basePrice;
+        $option['price'] = $price;
+        $option['is_tour_price'] = $price !== $basePrice;
+        $featureSuffix = '';
+        if (preg_match('/\s(\([^)]*\))$/', (string) $option['text'], $m)) {
+            $featureSuffix = ' ' . $m[1];
+        }
+        $option['text'] = ($option['display_name'] ?? $name) . ' - ₹' . number_format($price, 0) . $featureSuffix;
+    }
+    unset($option);
+
+    return $options;
+}
+
+/**
+ * Save cab prices for a tour.
+ * $pricesByCabTypeId = [cab_type_id => price]
+ * Empty/zero prices remove the override (fall back to base).
+ */
+function saveTourCabPrices($tourId, array $pricesByCabTypeId, $db = null) {
+    if ($db === null) {
+        global $db;
+    }
+    ensureTourCabPricesSchema();
+
+    $tourId = (int) $tourId;
+    if ($tourId <= 0) {
+        return false;
+    }
+
+    foreach ($pricesByCabTypeId as $cabTypeId => $price) {
+        $cabTypeId = (int) $cabTypeId;
+        $price = is_numeric($price) ? (float) $price : 0.0;
+        if ($cabTypeId <= 0) {
+            continue;
+        }
+
+        if ($price <= 0) {
+            $db->execute("DELETE FROM tour_cab_prices WHERE tour_id = ? AND cab_type_id = ?", [$tourId, $cabTypeId]);
+            continue;
+        }
+
+        $existing = $db->fetch(
+            "SELECT id FROM tour_cab_prices WHERE tour_id = ? AND cab_type_id = ?",
+            [$tourId, $cabTypeId]
+        );
+        if ($existing) {
+            $db->execute(
+                "UPDATE tour_cab_prices SET price = ? WHERE tour_id = ? AND cab_type_id = ?",
+                [$price, $tourId, $cabTypeId]
+            );
+        } else {
+            $db->execute(
+                "INSERT INTO tour_cab_prices (tour_id, cab_type_id, price) VALUES (?, ?, ?)",
+                [$tourId, $cabTypeId, $price]
+            );
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Get tour-specific cab pricing (legacy title-based table).
  */
 function getTourSpecificPricing($tour_name, $db) {
     try {
         $pricing = $db->fetch(
-            "SELECT * FROM tour_cab_pricing WHERE tour_name = ? LIMIT 1", 
+            "SELECT * FROM tour_cab_pricing WHERE tour_name = ? LIMIT 1",
             [$tour_name]
         );
         return $pricing;
@@ -171,28 +317,63 @@ function getTourSpecificPricing($tour_name, $db) {
 }
 
 /**
- * Get cab price for specific tour and cab type
+ * Get cab price for a tour (flat amount from backend — not per day).
+ * Prefers tour_id-based tour_cab_prices, then legacy title table, then cab base price.
  */
-function getCabPriceForTour($tour_name, $cab_type, $db) {
-    $tour_pricing = getTourSpecificPricing($tour_name, $db);
-    
-    if ($tour_pricing) {
-        switch ($cab_type) {
-            case 'sedan':
-                return $tour_pricing['sedan_price'];
-            case 'ertiga':
-                return $tour_pricing['ertiga_price'];
-            case 'innova':
-                return $tour_pricing['innova_price'];
-            case 'tempo_traveller':
-                return $tour_pricing['tempo_traveller_price'];
+function getCabPriceForTour($tour_name_or_id, $cab_type, $db, $duration_days = 1) {
+    $cab_type = trim((string) $cab_type);
+    $price = 0.0;
+
+    if (is_numeric($tour_name_or_id)) {
+        $map = getTourCabPriceMap((int) $tour_name_or_id, $db);
+        if (isset($map[$cab_type])) {
+            $price = (float) $map[$cab_type];
+        }
+    } else {
+        // Try resolve tour id from title for new table
+        try {
+            $tour = $db->fetch("SELECT id FROM tours WHERE title = ? LIMIT 1", [(string) $tour_name_or_id]);
+            if ($tour) {
+                $map = getTourCabPriceMap((int) $tour['id'], $db);
+                if (isset($map[$cab_type])) {
+                    $price = (float) $map[$cab_type];
+                }
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+
+        if ($price <= 0) {
+            $tour_pricing = getTourSpecificPricing($tour_name_or_id, $db);
+            if ($tour_pricing) {
+                switch ($cab_type) {
+                    case 'sedan':
+                        $price = (float) $tour_pricing['sedan_price'];
+                        break;
+                    case 'ertiga':
+                        $price = (float) $tour_pricing['ertiga_price'];
+                        break;
+                    case 'innova':
+                        $price = (float) $tour_pricing['innova_price'];
+                        break;
+                    case 'tempo_traveller':
+                        $price = (float) $tour_pricing['tempo_traveller_price'];
+                        break;
+                    case 'xuv_tavera':
+                        $price = (float) ($tour_pricing['xuv_tavera_price'] ?? 0);
+                        break;
+                }
+            }
         }
     }
-    
-    // Fallback to base pricing
-    $cab_options = new CabOptions($db);
-    $cab_type_data = $cab_options->getCabTypeByName($cab_type);
-    return $cab_type_data ? $cab_type_data['base_price'] : 0;
+
+    if ($price <= 0) {
+        $cab_options = new CabOptions($db);
+        $cab_type_data = $cab_options->getCabTypeByName($cab_type);
+        $price = $cab_type_data ? (float) $cab_type_data['base_price'] : 0.0;
+    }
+
+    return $price;
 }
 
 /**

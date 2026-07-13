@@ -92,7 +92,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'add') {
         $tourId = filter_var($_POST['tour_id'] ?? null, FILTER_VALIDATE_INT);
+        $isAjax = (
+            (isset($_POST['ajax']) && (string)$_POST['ajax'] === '1')
+            || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || (isset($_SERVER['HTTP_ACCEPT']) && str_contains((string)$_SERVER['HTTP_ACCEPT'], 'application/json'))
+        );
+
         if (!$tourId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid tour selection']);
+                exit;
+            }
             $_SESSION['cart_flash'] = ['type' => 'error', 'message' => 'Invalid tour selection'];
             $redirectTo(navUrl('cart'));
         }
@@ -106,6 +118,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'pickup_address' => $_POST['pickup_address'] ?? '',
             'pickup_time' => $_POST['pickup_time'] ?? '',
         ]);
+
+        if ($isAjax) {
+            $summary = validateCartForCheckout($_SESSION['tour_cart'] ?? [], $cab_functionality_enabled);
+            $lineTotal = 0.0;
+            foreach (($summary['lines'] ?? []) as $line) {
+                if ((int) ($line['tour_id'] ?? 0) === (int) $tourId) {
+                    $lineTotal = (float) ($line['line_total'] ?? 0);
+                    break;
+                }
+            }
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => !empty($result['ok']),
+                'message' => $result['message'] ?? '',
+                'tour_id' => (int) $tourId,
+                'line_total' => $lineTotal,
+                'order_total' => (float) ($summary['total'] ?? 0),
+                'errors' => $summary['errors'] ?? [],
+            ]);
+            exit;
+        }
 
         $_SESSION['cart_flash'] = [
             'type' => $result['ok'] ? 'success' : 'error',
@@ -140,17 +173,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $guestEmail = trim((string)($_POST['guest_email'] ?? ''));
         $guestPhone = trim((string)($_POST['guest_phone'] ?? ''));
         $specialRequirements = trim((string)($_POST['special_requirements'] ?? ''));
-        $paymentMethod = trim((string)($_POST['payment_method'] ?? 'cash'));
+        $paymentMethod = trim((string)($_POST['payment_method'] ?? 'razorpay'));
 
         $errors = [];
         if ($guestName === '') $errors[] = 'Your name is required';
         if ($guestEmail === '' || !filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required';
         if ($guestPhone === '') $errors[] = 'Your phone number is required';
-        if (!in_array($paymentMethod, ['cash', 'razorpay'], true)) {
-            $errors[] = 'Please select a valid payment method';
+        if ($paymentMethod !== 'razorpay') {
+            $errors[] = 'Please select online payment';
         }
-        if ($paymentMethod === 'razorpay' && !razorpayIsConfigured()) {
-            $errors[] = 'Online payment is not available right now. Please choose cash payment.';
+        if (!razorpayIsConfigured()) {
+            $errors[] = 'Online payment is not available right now. Please try again later.';
         }
         if (empty($_POST['accept_terms'])) {
             $errors[] = 'You must accept the Terms of Service and Privacy Policy to continue';
@@ -218,6 +251,32 @@ if (!empty($tourIds)) {
     }
 }
 
+// Default to first cab when none selected so cart always has a payable price.
+if ($cab_functionality_enabled && !empty($cartItems)) {
+    foreach ($cartItems as $tourIdStr => $item) {
+        $tourId = (int) $tourIdStr;
+        if ($tourId <= 0 || empty($toursById[$tourIdStr])) {
+            continue;
+        }
+        $tourCabs = getCabOptionsForTour($tourId, $db);
+        if (empty($tourCabs)) {
+            continue;
+        }
+        $currentCab = (string) ($item['cab_type'] ?? '');
+        $valid = false;
+        foreach ($tourCabs as $cab) {
+            if ($currentCab === (string) $cab['value']) {
+                $valid = true;
+                break;
+            }
+        }
+        if (!$valid) {
+            $_SESSION['tour_cart'][$tourIdStr]['cab_type'] = (string) ($tourCabs[0]['value'] ?? '');
+        }
+    }
+    $cartItems = $_SESSION['tour_cart'];
+}
+
 $cartSummary = validateCartForCheckout($cartItems, $cab_functionality_enabled);
 $cartLinesByTourId = [];
 foreach ($cartSummary['lines'] ?? [] as $line) {
@@ -243,9 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isUserLoggedIn() && !empty($_SESSIO
             throw new Exception('Your cart is empty');
         }
 
-        $paymentMethod = in_array($pendingCheckout['payment_method'] ?? '', ['cash', 'razorpay'], true)
-            ? $pendingCheckout['payment_method']
-            : 'cash';
+        $paymentMethod = 'razorpay';
 
         $result = createInvoiceFromCart($pendingCartItems, [
             'name' => (string) ($pendingCheckout['name'] ?? ''),
@@ -274,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isUserLoggedIn() && !empty($_SESSIO
             'guest_email' => (string) ($pendingCheckout['email'] ?? ''),
             'guest_phone' => (string) ($pendingCheckout['phone'] ?? ''),
             'special_requirements' => (string) ($pendingCheckout['special_requirements'] ?? ''),
-            'payment_method' => (string) ($pendingCheckout['payment_method'] ?? 'cash'),
+            'payment_method' => (string) ($pendingCheckout['payment_method'] ?? 'razorpay'),
             'accept_terms' => true,
         ];
         $_SESSION['cart_flash'] = ['type' => 'error', 'message' => $e->getMessage()];
@@ -295,15 +352,12 @@ if ($prefillPhone === '' && !empty($checkoutDraft['guest_phone'])) {
     $prefillPhone = (string) $checkoutDraft['guest_phone'];
 }
 $prefillSpecialRequirements = (string) ($checkoutDraft['special_requirements'] ?? '');
-$prefillPaymentMethod = in_array($checkoutDraft['payment_method'] ?? '', ['cash', 'razorpay'], true)
-    ? $checkoutDraft['payment_method']
-    : 'cash';
 $prefillAcceptTerms = !empty($checkoutDraft['accept_terms']);
 $razorpayEnabled = razorpayIsConfigured();
 $isLoggedIn = isUserLoggedIn();
 $checkoutButtonLabel = $isLoggedIn ? 'Book Now' : 'Proceed to Payment';
 $checkoutHelpText = $isLoggedIn
-    ? 'Choose payment method and complete your booking details.'
+    ? 'Complete your booking details and pay online.'
     : 'Fill your details below. You will be asked to log in only when you proceed to payment.';
 
 include 'includes/header.php';
@@ -347,23 +401,31 @@ include 'includes/header.php';
             <div class="cart-grid">
                 <div class="cart-card">
                     <div class="cart-actions" style="justify-content:space-between;align-items:center;margin-bottom:12px;">
-                        <div class="cart-help">Update dates/people, then checkout once for all tours.</div>
+                        <div class="cart-help">Changes save automatically. Checkout once for all tours.</div>
                         <form method="POST" action="<?php echo navUrl('cart'); ?>">
                             <input type="hidden" name="action" value="clear">
                             <button type="submit" class="btn btn-outline-danger">Clear Cart</button>
                         </form>
                     </div>
 
-                    <?php $cartHasCabs = $cab_functionality_enabled && !empty($availableCabs); ?>
+                    <?php $cartHasCabs = $cab_functionality_enabled; ?>
                     <div class="cart-tour-cards">
                         <?php foreach ($cartItems as $tourIdStr => $item): ?>
                             <?php $tour = $toursById[$tourIdStr] ?? null; ?>
                             <?php if (!$tour) continue; ?>
                             <?php
+                            $tourCabs = $cab_functionality_enabled ? getCabOptionsForTour((int) $tour['id'], $db) : [];
                             $selectedCab = (string)($item['cab_type'] ?? '');
                             $selectedPickup = (string)($item['pickup_place'] ?? '');
                             $selectedPickupDetail = (string)($item['pickup_detail'] ?? '');
                             $selectedPickupTime = (string)($item['pickup_time'] ?? '');
+                            if (preg_match('/^(\d{2}:\d{2})/', $selectedPickupTime, $m)) {
+                                $selectedPickupTime = $m[1];
+                            }
+                            $pickupTimeOptions = getPickupTimeOptions();
+                            if ($selectedPickupTime !== '' && !isValidPickupTime($selectedPickupTime)) {
+                                $selectedPickupTime = '';
+                            }
                             $showPickup = $selectedCab !== '';
                             $needsPickupDetail = in_array($selectedPickup, ['Hotel', 'Others'], true);
                             $line = $cartLinesByTourId[$tourIdStr] ?? null;
@@ -373,15 +435,28 @@ include 'includes/header.php';
                             }
                             $durationDays = (int)($tour['duration_days'] ?? 0);
                             $durationLabel = $durationDays === 1 ? '1 day' : $durationDays . ' days';
-                            $totalStatusText = 'No cab selected';
+                            $startsFrom = $tour['discount_price'] ? (float)$tour['discount_price'] : (float)$tour['price'];
+                            $totalStatusText = 'Select a cab to see price';
+                            $displayCabTotal = 0.0;
                             if ($selectedCab !== '') {
                                 $cabLabel = function_exists('getCabDisplayName') ? getCabDisplayName($selectedCab) : $selectedCab;
-                                $totalStatusText = $cabLabel . ' · ' . formatPriceINR((float)($line['cab_price'] ?? 0));
+                                $displayCabTotal = (float)($line['cab_price'] ?? $line['line_total'] ?? 0);
+                                if ($displayCabTotal <= 0) {
+                                    foreach ($tourCabs as $cabOpt) {
+                                        if ((string)$cabOpt['value'] === $selectedCab) {
+                                            $displayCabTotal = (float)($cabOpt['price'] ?? 0);
+                                            break;
+                                        }
+                                    }
+                                }
+                                $totalStatusText = $cabLabel;
                             }
                             ?>
-                            <article class="cart-tour-item" data-cart-tour-item>
-                                <form method="POST" action="<?php echo navUrl('cart'); ?>" class="cart-tour-item__form">
+                            <article class="cart-tour-item" data-cart-tour-item data-duration-days="<?php echo max(1, $durationDays); ?>">
+                                <form method="POST" action="<?php echo navUrl('cart'); ?>" class="cart-tour-item__form" data-cart-tour-form>
                                     <input type="hidden" name="tour_id" value="<?php echo (int)$tour['id']; ?>">
+                                    <input type="hidden" name="action" value="add" data-cart-action>
+                                    <input type="hidden" name="ajax" value="1" data-cart-ajax>
 
                                     <header class="cart-tour-item__header">
                                         <div class="cart-tour-item__icon" aria-hidden="true">
@@ -397,6 +472,9 @@ include 'includes/header.php';
                                                 <?php echo htmlspecialchars($tour['destination_name'] ?? ''); ?>
                                                 <?php if ($durationDays > 0): ?>
                                                     · <?php echo $durationLabel; ?>
+                                                <?php endif; ?>
+                                                <?php if ($startsFrom > 0): ?>
+                                                    · Starts from <?php echo formatPriceINR($startsFrom); ?>
                                                 <?php endif; ?>
                                             </p>
                                         </div>
@@ -437,29 +515,18 @@ include 'includes/header.php';
                                         </div>
                                     </div>
 
-                                    <?php if ($cartHasCabs): ?>
+                                    <?php if ($cartHasCabs && !empty($tourCabs)): ?>
                                         <div class="cart-field-group cart-field-group--cab">
                                             <label class="cart-field-label">Cab</label>
                                             <div class="cart-cab-grid" data-cart-cab-picker>
-                                                <label class="cart-cab-option">
-                                                    <input type="radio" name="cab_type" value="" <?php echo $selectedCab === '' ? 'checked' : ''; ?>>
-                                                    <span class="cart-cab-option__body cart-cab-option__body--none">
-                                                        <span class="cart-cab-option__thumb">
-                                                            <i class="fas fa-ban" aria-hidden="true"></i>
-                                                        </span>
-                                                        <span class="cart-cab-option__text">
-                                                            <span class="cart-cab-option__name">No cab</span>
-                                                            <span class="cart-cab-option__price">Own transport</span>
-                                                        </span>
-                                                    </span>
-                                                </label>
-                                                <?php foreach ($availableCabs as $cab): ?>
+                                                <?php foreach ($tourCabs as $cab): ?>
                                                     <label class="cart-cab-option" title="<?php echo htmlspecialchars($cab['text']); ?>">
                                                         <input type="radio"
                                                                name="cab_type"
                                                                value="<?php echo htmlspecialchars($cab['value']); ?>"
                                                                data-cab-label="<?php echo htmlspecialchars($cab['display_name'] ?? $cab['value']); ?>"
                                                                data-cab-price="<?php echo (float)($cab['price'] ?? 0); ?>"
+                                                               data-cab-capacity="<?php echo (int)($cab['max_passengers'] ?? 0); ?>"
                                                                <?php echo $selectedCab === (string)$cab['value'] ? 'checked' : ''; ?>>
                                                         <span class="cart-cab-option__body">
                                                             <span class="cart-cab-option__thumb">
@@ -469,7 +536,7 @@ include 'includes/header.php';
                                                             </span>
                                                             <span class="cart-cab-option__text">
                                                                 <span class="cart-cab-option__name"><?php echo htmlspecialchars($cab['display_name'] ?? $cab['value']); ?></span>
-                                                                <span class="cart-cab-option__price">₹<?php echo number_format((float)($cab['price'] ?? 0), 0); ?>/day</span>
+                                                                <span class="cart-cab-option__price">₹<?php echo number_format((float)($cab['price'] ?? 0), 0); ?></span>
                                                             </span>
                                                         </span>
                                                     </label>
@@ -490,44 +557,47 @@ include 'includes/header.php';
                                                     <?php endforeach; ?>
                                                 </select>
                                                 <div class="cart-pickup-detail-wrap" data-cart-pickup-detail-wrap <?php echo $needsPickupDetail ? '' : 'hidden'; ?>>
-                                                    <input type="text"
+                                                    <textarea
                                                            name="pickup_detail"
                                                            class="form-control cart-pickup-detail"
                                                            data-cart-pickup-detail
-                                                           value="<?php echo htmlspecialchars($selectedPickupDetail); ?>"
-                                                           placeholder="<?php echo $selectedPickup === 'Hotel' ? 'Enter hotel name' : ($selectedPickup === 'Others' ? 'Enter location details' : 'Enter details'); ?>"
-                                                           <?php echo $needsPickupDetail ? 'required' : ''; ?>>
+                                                           rows="3"
+                                                           placeholder="<?php echo $selectedPickup === 'Hotel' ? 'Enter hotel name with full address with location' : ($selectedPickup === 'Others' ? 'Enter location details' : 'Enter details'); ?>"
+                                                           <?php echo $needsPickupDetail ? 'required' : ''; ?>><?php echo htmlspecialchars($selectedPickupDetail); ?></textarea>
                                                 </div>
                                                 <label class="cart-field-label" for="pickup_time_<?php echo (int)$tour['id']; ?>">Pickup time</label>
-                                                <input type="time"
-                                                       name="pickup_time"
-                                                       id="pickup_time_<?php echo (int)$tour['id']; ?>"
-                                                       class="form-control cart-pickup-time"
-                                                       data-cart-pickup-time
-                                                       value="<?php echo htmlspecialchars($selectedPickupTime); ?>">
+                                                <select name="pickup_time"
+                                                        id="pickup_time_<?php echo (int)$tour['id']; ?>"
+                                                        class="form-control cart-pickup-time"
+                                                        data-cart-pickup-time>
+                                                    <option value="">Select time (9 AM – 6 PM)</option>
+                                                    <?php foreach ($pickupTimeOptions as $timeOpt): ?>
+                                                        <option value="<?php echo htmlspecialchars($timeOpt['value']); ?>"
+                                                            <?php echo $selectedPickupTime === $timeOpt['value'] ? 'selected' : ''; ?>>
+                                                            <?php echo htmlspecialchars($timeOpt['label']); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
                                             </div>
                                         </div>
                                     <?php endif; ?>
 
                                     <footer class="cart-tour-item__footer">
                                         <div class="cart-tour-item__total">
-                                            <span class="cart-tour-item__total-label">Total for this tour</span>
+                                            <span class="cart-tour-item__total-label">Price (from cab)</span>
                                             <strong class="cart-tour-item__total-value" data-cart-total-status>
                                                 <?php echo htmlspecialchars($totalStatusText); ?>
                                             </strong>
-                                            <?php if ($line && $selectedCab !== ''): ?>
+                                            <?php if ($selectedCab !== '' && $displayCabTotal > 0): ?>
                                                 <span class="cart-tour-item__total-amount" data-cart-total-amount>
-                                                    <?php echo formatPriceINR($line['line_total']); ?>
+                                                    <?php echo formatPriceINR($displayCabTotal); ?>
                                                 </span>
-                                            <?php elseif ($line): ?>
+                                            <?php else: ?>
                                                 <span class="cart-tour-item__total-amount" data-cart-total-amount hidden></span>
                                             <?php endif; ?>
                                         </div>
                                         <div class="cart-tour-item__footer-actions">
-                                            <button type="submit" name="action" value="add" class="btn btn-outline-primary cart-update-btn">
-                                                <i class="fas fa-check" aria-hidden="true"></i> Update
-                                            </button>
-                                            <button type="submit" name="action" value="remove" class="cart-delete-btn" title="Remove from cart" aria-label="Remove from cart">
+                                            <button type="submit" class="cart-delete-btn" data-cart-remove title="Remove from cart" aria-label="Remove from cart">
                                                 <i class="fas fa-trash" aria-hidden="true"></i>
                                             </button>
                                         </div>
@@ -543,8 +613,8 @@ include 'includes/header.php';
                     <p class="cart-help" style="margin-bottom:18px;"><?php echo htmlspecialchars($checkoutHelpText); ?></p>
 
                     <div class="cart-total-box">
-                        <div class="cart-help">Order total</div>
-                        <div class="amount"><?php echo formatPriceINR($cartSummary['total']); ?></div>
+                        <div class="cart-help">Order total (cab pricing)</div>
+                        <div class="amount" data-cart-order-total><?php echo formatPriceINR($cartSummary['total']); ?></div>
                     </div>
 
                     <form method="POST" action="<?php echo navUrl('cart'); ?>" id="cartCheckoutForm">
@@ -574,15 +644,8 @@ include 'includes/header.php';
                         <div class="cart-field cart-payment-block">
                             <label class="cart-form-label"><i class="fas fa-credit-card"></i> Payment Method</label>
                             <div class="payment-options">
-                                <label class="payment-option<?php echo $prefillPaymentMethod === 'cash' ? ' is-active' : ''; ?>">
-                                    <input type="radio" name="payment_method" value="cash" <?php echo $prefillPaymentMethod === 'cash' ? 'checked' : ''; ?>>
-                                    <div>
-                                        <strong>Cash / Manual Payment</strong>
-                                        <span>Pay in cash at our office or to the tour guide. Invoice will be generated instantly.</span>
-                                    </div>
-                                </label>
-                                <label class="payment-option<?php echo $razorpayEnabled ? '' : ' is-disabled'; ?><?php echo $prefillPaymentMethod === 'razorpay' ? ' is-active' : ''; ?>">
-                                    <input type="radio" name="payment_method" value="razorpay"<?php echo $razorpayEnabled ? '' : ' disabled'; ?> <?php echo ($razorpayEnabled && $prefillPaymentMethod === 'razorpay') ? 'checked' : ''; ?>>
+                                <label class="payment-option<?php echo $razorpayEnabled ? ' is-active' : ' is-disabled'; ?>">
+                                    <input type="radio" name="payment_method" value="razorpay"<?php echo $razorpayEnabled ? ' checked' : ' disabled'; ?>>
                                     <div>
                                         <strong>Pay Online with Razorpay</strong>
                                         <span class="razorpay-badge">
@@ -627,6 +690,31 @@ document.querySelectorAll('.payment-option input[type="radio"]').forEach(functio
     });
 });
 
+function formatInr(amount) {
+    try {
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+    } catch (e) {
+        return '₹' + Math.round(amount).toLocaleString('en-IN');
+    }
+}
+
+function updateOrderTotalDisplay(total) {
+    const el = document.querySelector('[data-cart-order-total]');
+    if (!el) return;
+    el.textContent = formatInr(Number(total) || 0);
+}
+
+function recalculateOrderTotalFromCards() {
+    let total = 0;
+    document.querySelectorAll('[data-cart-tour-item]').forEach(function(card) {
+        const selected = card.querySelector('input[name="cab_type"]:checked');
+        if (selected && selected.value !== '') {
+            total += parseFloat(selected.getAttribute('data-cab-price') || '0') || 0;
+        }
+    });
+    updateOrderTotalDisplay(total);
+}
+
 document.querySelectorAll('[data-people-stepper]').forEach(function(stepper) {
     const select = stepper.querySelector('[data-people-select]');
     const display = stepper.querySelector('[data-people-display]');
@@ -643,6 +731,7 @@ document.querySelectorAll('[data-people-stepper]').forEach(function(stepper) {
         const next = Math.min(max, Math.max(min, value));
         select.value = String(next);
         syncPeopleDisplay();
+        select.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     stepper.querySelectorAll('[data-step]').forEach(function(btn) {
@@ -658,14 +747,6 @@ document.querySelectorAll('[data-people-stepper]').forEach(function(stepper) {
     syncPeopleDisplay();
 });
 
-function formatInr(amount) {
-    try {
-        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-    } catch (e) {
-        return '₹' + Math.round(amount).toLocaleString('en-IN');
-    }
-}
-
 document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
     const card = picker.closest('[data-cart-tour-item]');
     const pickupWrap = card ? card.querySelector('[data-cart-pickup-wrap]') : null;
@@ -680,14 +761,22 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         const selected = picker.querySelector('input[name="cab_type"]:checked');
         if (!totalStatus) return;
         if (!selected || selected.value === '') {
-            totalStatus.textContent = 'No cab selected';
-            if (totalAmount) totalAmount.setAttribute('hidden', '');
+            totalStatus.textContent = 'Select a cab to see price';
+            if (totalAmount) {
+                totalAmount.textContent = '';
+                totalAmount.setAttribute('hidden', '');
+            }
+            recalculateOrderTotalFromCards();
             return;
         }
         const label = selected.getAttribute('data-cab-label') || 'Cab selected';
         const price = parseFloat(selected.getAttribute('data-cab-price') || '0');
-        totalStatus.textContent = label + ' · ' + formatInr(price) + '/day';
-        if (totalAmount) totalAmount.removeAttribute('hidden');
+        totalStatus.textContent = label;
+        if (totalAmount) {
+            totalAmount.textContent = formatInr(price);
+            totalAmount.removeAttribute('hidden');
+        }
+        recalculateOrderTotalFromCards();
     }
 
     function syncPickupDetail() {
@@ -696,7 +785,7 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         const needsDetail = place === 'Hotel' || place === 'Others';
         if (needsDetail) {
             detailWrap.removeAttribute('hidden');
-            detailInp.placeholder = place === 'Hotel' ? 'Enter hotel name' : 'Enter location details';
+            detailInp.placeholder = place === 'Hotel' ? 'Enter hotel name with full address with location' : 'Enter location details';
             detailInp.setAttribute('required', 'required');
         } else {
             detailWrap.setAttribute('hidden', '');
@@ -739,4 +828,91 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
     syncCabSelection();
     syncTotalStatus();
 });
+
+document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
+    let saveTimer = null;
+    const actionInput = form.querySelector('[data-cart-action]');
+    const ajaxInput = form.querySelector('[data-cart-ajax]');
+    const removeBtn = form.querySelector('[data-cart-remove]');
+    const card = form.closest('[data-cart-tour-item]');
+    const totalAmount = card ? card.querySelector('[data-cart-total-amount]') : null;
+
+    function saveCartItem() {
+        if (saveTimer) {
+            clearTimeout(saveTimer);
+            saveTimer = null;
+        }
+        if (actionInput) actionInput.value = 'add';
+        if (ajaxInput) ajaxInput.value = '1';
+
+        const body = new FormData(form);
+        fetch(form.action, {
+            method: 'POST',
+            body: body,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (!data || !data.success) {
+                return;
+            }
+            if (typeof data.line_total === 'number' && totalAmount) {
+                if (data.line_total > 0) {
+                    totalAmount.textContent = formatInr(data.line_total);
+                    totalAmount.removeAttribute('hidden');
+                } else {
+                    totalAmount.textContent = '';
+                    totalAmount.setAttribute('hidden', '');
+                }
+            }
+            if (typeof data.order_total === 'number') {
+                updateOrderTotalDisplay(data.order_total);
+            } else {
+                recalculateOrderTotalFromCards();
+            }
+        })
+        .catch(function() {
+            recalculateOrderTotalFromCards();
+        });
+    }
+
+    function saveCartItemDebounced() {
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveCartItem, 500);
+    }
+
+    const dateInput = form.querySelector('[name="tour_date"]');
+    if (dateInput) dateInput.addEventListener('change', saveCartItem);
+
+    const peopleSelect = form.querySelector('[data-people-select]');
+    if (peopleSelect) peopleSelect.addEventListener('change', saveCartItem);
+
+    form.querySelectorAll('input[name="cab_type"]').forEach(function(radio) {
+        radio.addEventListener('change', saveCartItem);
+    });
+
+    const pickupPlace = form.querySelector('[data-cart-pickup-place]');
+    if (pickupPlace) pickupPlace.addEventListener('change', saveCartItem);
+
+    const pickupTime = form.querySelector('[data-cart-pickup-time]');
+    if (pickupTime) pickupTime.addEventListener('change', saveCartItem);
+
+    form.querySelectorAll('[data-cart-pickup-detail], [data-cart-pickup-address]').forEach(function(input) {
+        input.addEventListener('input', saveCartItemDebounced);
+        input.addEventListener('blur', saveCartItem);
+    });
+
+    if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+            if (actionInput) actionInput.value = 'remove';
+            if (ajaxInput) ajaxInput.value = '0';
+        });
+    }
+});
+
+recalculateOrderTotalFromCards();
 </script>
