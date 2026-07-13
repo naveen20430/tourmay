@@ -14,6 +14,7 @@
       let tomorrow = moment().add(1, "day").startOf("day");
       self.daterangepicker({
         autoUpdateInput: false,
+        autoApply: true,
         singleDatePicker: true,
         minDate: tomorrow,
         startDate: tomorrow

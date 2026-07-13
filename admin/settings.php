@@ -83,6 +83,7 @@ $default_settings = [
     'razorpay_key_secret' => '',
     'cash_payment_note' => 'Pay in cash at our office or to the tour guide before departure.',
     'twilio_account_sid' => '',
+    'twilio_api_key_sid' => '',
     'twilio_auth_token' => '',
     'twilio_whatsapp_from' => 'whatsapp:+14155238886',
     'twilio_whatsapp_content_sid' => 'HXb5b62575e6e4ff6129ad7c8efe1f983e',
@@ -489,19 +490,30 @@ include 'includes/header.php';
                                            name="settings[twilio_account_sid]"
                                            value="<?php echo htmlspecialchars($settings_array['twilio_account_sid']); ?>"
                                            placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                                    <small class="form-text text-muted">Must start with AC (used in API URL).</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="twilio_auth_token">Twilio Auth Token</label>
-                                    <input type="password" class="form-control" id="twilio_auth_token"
-                                           name="settings[twilio_auth_token]"
-                                           value="<?php echo htmlspecialchars($settings_array['twilio_auth_token']); ?>"
-                                           placeholder="Enter Twilio auth token">
+                                    <label for="twilio_api_key_sid">Twilio API Key SID</label>
+                                    <input type="text" class="form-control" id="twilio_api_key_sid"
+                                           name="settings[twilio_api_key_sid]"
+                                           value="<?php echo htmlspecialchars($settings_array['twilio_api_key_sid'] ?? ''); ?>"
+                                           placeholder="SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                                    <small class="form-text text-muted">Optional. Starts with SK. When set, Secret below is the API Key Secret.</small>
                                 </div>
                             </div>
                         </div>
                         <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="twilio_auth_token">Twilio Auth Token / API Key Secret</label>
+                                    <input type="password" class="form-control" id="twilio_auth_token"
+                                           name="settings[twilio_auth_token]"
+                                           value="<?php echo htmlspecialchars($settings_array['twilio_auth_token']); ?>"
+                                           placeholder="Auth token or API key secret">
+                                </div>
+                            </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="twilio_whatsapp_from">WhatsApp From Number</label>
@@ -511,6 +523,8 @@ include 'includes/header.php';
                                            placeholder="whatsapp:+14155238886">
                                 </div>
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="twilio_whatsapp_content_sid">WhatsApp Content Template SID</label>

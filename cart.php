@@ -54,12 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['add_tour'])) {
         exit;
     }
 
-    $cartAddUrl = navUrl('cart') . '?add_tour=' . $tourId;
-    if (!isUserLoggedIn()) {
-        header('Location: ' . loginUrl($cartAddUrl));
-        exit;
-    }
-
     $result = addTourToSessionCart((int) $tourId);
     $_SESSION['cart_flash'] = [
         'type' => $result['ok'] ? 'success' : 'error',
@@ -72,16 +66,29 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['add_tour'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
 
-    if (in_array($action, ['add', 'update', 'remove', 'checkout'], true) && !isUserLoggedIn()) {
-        $_SESSION['cart_flash'] = ['type' => 'error', 'message' => 'Please log in to manage your cart.'];
-        $returnTo = $_POST['return_url'] ?? (navUrl('cart'));
-        if (is_string($returnTo) && $returnTo !== '' && (strpos($returnTo, BASE_URL) === 0 || (strpos($returnTo, '/') === 0 && strpos($returnTo, '//') !== 0))) {
-            header('Location: ' . loginUrl($returnTo));
-        } else {
-            header('Location: ' . loginUrl(navUrl('cart')));
+    $processCartCheckout = function (array $guest, string $paymentMethod) use ($cab_functionality_enabled) {
+        $cartItems = $_SESSION['tour_cart'] ?? [];
+        if (empty($cartItems)) {
+            throw new Exception('Your cart is empty');
         }
+
+        $result = createInvoiceFromCart($cartItems, $guest, $paymentMethod, $cab_functionality_enabled);
+
+        $_SESSION['tour_cart'] = [];
+        unset($_SESSION['cart_checkout_draft'], $_SESSION['cart_checkout_pending']);
+
+        if ($paymentMethod === 'razorpay') {
+            header('Location: ' . payInvoiceUrl($result['invoice_number']));
+            exit;
+        }
+
+        require_once 'includes/invoice_pdf_helpers.php';
+        notifyInvoiceViaWhatsApp($result['invoice_number']);
+
+        $_SESSION['cart_flash'] = ['type' => 'success', 'message' => 'Invoice generated. Your tour PDF has been sent on WhatsApp. Please pay cash as per instructions on the invoice.'];
+        header('Location: ' . invoiceUrl($result['invoice_number']));
         exit;
-    }
+    };
 
     if ($action === 'add') {
         $tourId = filter_var($_POST['tour_id'] ?? null, FILTER_VALIDATE_INT);
@@ -96,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'cab_type' => $cab_functionality_enabled ? ($_POST['cab_type'] ?? '') : '',
             'pickup_place' => $_POST['pickup_place'] ?? '',
             'pickup_detail' => $_POST['pickup_detail'] ?? '',
+            'pickup_address' => $_POST['pickup_address'] ?? '',
             'pickup_time' => $_POST['pickup_time'] ?? '',
         ]);
 
@@ -149,31 +157,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!empty($errors)) {
+            $_SESSION['cart_checkout_draft'] = [
+                'guest_name' => $guestName,
+                'guest_email' => $guestEmail,
+                'guest_phone' => $guestPhone,
+                'special_requirements' => $specialRequirements,
+                'payment_method' => $paymentMethod,
+                'accept_terms' => !empty($_POST['accept_terms']),
+            ];
             $_SESSION['cart_flash'] = ['type' => 'error', 'message' => implode(' | ', $errors)];
             $redirectTo(navUrl('cart'));
         }
 
-        try {
-            $result = createInvoiceFromCart($cartItems, [
+        // Guests can fill checkout details; login is required only to proceed with payment.
+        if (!isUserLoggedIn()) {
+            $_SESSION['cart_checkout_pending'] = [
                 'name' => $guestName,
                 'email' => $guestEmail,
                 'phone' => $guestPhone,
                 'special_requirements' => $specialRequirements,
-            ], $paymentMethod, $cab_functionality_enabled);
-
-            $_SESSION['tour_cart'] = [];
-
-            if ($paymentMethod === 'razorpay') {
-                header('Location: ' . payInvoiceUrl($result['invoice_number']));
-                exit;
-            }
-
-            require_once 'includes/invoice_pdf_helpers.php';
-            notifyInvoiceViaWhatsApp($result['invoice_number']);
-
-            $_SESSION['cart_flash'] = ['type' => 'success', 'message' => 'Invoice generated. Your tour PDF has been sent on WhatsApp. Please pay cash as per instructions on the invoice.'];
-            header('Location: ' . invoiceUrl($result['invoice_number']));
+                'payment_method' => $paymentMethod,
+            ];
+            unset($_SESSION['cart_checkout_draft']);
+            $_SESSION['cart_flash'] = ['type' => 'info', 'message' => 'Please log in to proceed with payment. Your booking details have been saved.'];
+            header('Location: ' . loginUrl(navUrl('cart')));
             exit;
+        }
+
+        try {
+            $processCartCheckout([
+                'name' => $guestName,
+                'email' => $guestEmail,
+                'phone' => $guestPhone,
+                'special_requirements' => $specialRequirements,
+            ], $paymentMethod);
         } catch (Exception $e) {
             $_SESSION['cart_flash'] = ['type' => 'error', 'message' => $e->getMessage()];
             $redirectTo(navUrl('cart'));
@@ -214,10 +231,80 @@ if (isUserLoggedIn()) {
         $checkoutUser = null;
     }
 }
+
+// After login, complete any pending guest checkout automatically.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isUserLoggedIn() && !empty($_SESSION['cart_checkout_pending'])) {
+    $pendingCheckout = $_SESSION['cart_checkout_pending'];
+    unset($_SESSION['cart_checkout_pending']);
+
+    try {
+        $pendingCartItems = $_SESSION['tour_cart'] ?? [];
+        if (empty($pendingCartItems)) {
+            throw new Exception('Your cart is empty');
+        }
+
+        $paymentMethod = in_array($pendingCheckout['payment_method'] ?? '', ['cash', 'razorpay'], true)
+            ? $pendingCheckout['payment_method']
+            : 'cash';
+
+        $result = createInvoiceFromCart($pendingCartItems, [
+            'name' => (string) ($pendingCheckout['name'] ?? ''),
+            'email' => (string) ($pendingCheckout['email'] ?? ''),
+            'phone' => (string) ($pendingCheckout['phone'] ?? ''),
+            'special_requirements' => (string) ($pendingCheckout['special_requirements'] ?? ''),
+        ], $paymentMethod, $cab_functionality_enabled);
+
+        $_SESSION['tour_cart'] = [];
+        unset($_SESSION['cart_checkout_draft']);
+
+        if ($paymentMethod === 'razorpay') {
+            header('Location: ' . payInvoiceUrl($result['invoice_number']));
+            exit;
+        }
+
+        require_once 'includes/invoice_pdf_helpers.php';
+        notifyInvoiceViaWhatsApp($result['invoice_number']);
+
+        $_SESSION['cart_flash'] = ['type' => 'success', 'message' => 'Invoice generated. Your tour PDF has been sent on WhatsApp. Please pay cash as per instructions on the invoice.'];
+        header('Location: ' . invoiceUrl($result['invoice_number']));
+        exit;
+    } catch (Exception $e) {
+        $_SESSION['cart_checkout_draft'] = [
+            'guest_name' => (string) ($pendingCheckout['name'] ?? ''),
+            'guest_email' => (string) ($pendingCheckout['email'] ?? ''),
+            'guest_phone' => (string) ($pendingCheckout['phone'] ?? ''),
+            'special_requirements' => (string) ($pendingCheckout['special_requirements'] ?? ''),
+            'payment_method' => (string) ($pendingCheckout['payment_method'] ?? 'cash'),
+            'accept_terms' => true,
+        ];
+        $_SESSION['cart_flash'] = ['type' => 'error', 'message' => $e->getMessage()];
+    }
+}
+
+$checkoutDraft = $_SESSION['cart_checkout_draft'] ?? [];
 $prefillName = trim(($checkoutUser['first_name'] ?? '') . ' ' . ($checkoutUser['last_name'] ?? ''));
+if ($prefillName === '' && !empty($checkoutDraft['guest_name'])) {
+    $prefillName = (string) $checkoutDraft['guest_name'];
+}
 $prefillEmail = $checkoutUser['email'] ?? ($_SESSION['user_email'] ?? '');
+if ($prefillEmail === '' && !empty($checkoutDraft['guest_email'])) {
+    $prefillEmail = (string) $checkoutDraft['guest_email'];
+}
 $prefillPhone = $checkoutUser['phone'] ?? '';
+if ($prefillPhone === '' && !empty($checkoutDraft['guest_phone'])) {
+    $prefillPhone = (string) $checkoutDraft['guest_phone'];
+}
+$prefillSpecialRequirements = (string) ($checkoutDraft['special_requirements'] ?? '');
+$prefillPaymentMethod = in_array($checkoutDraft['payment_method'] ?? '', ['cash', 'razorpay'], true)
+    ? $checkoutDraft['payment_method']
+    : 'cash';
+$prefillAcceptTerms = !empty($checkoutDraft['accept_terms']);
 $razorpayEnabled = razorpayIsConfigured();
+$isLoggedIn = isUserLoggedIn();
+$checkoutButtonLabel = $isLoggedIn ? 'Book Now' : 'Proceed to Payment';
+$checkoutHelpText = $isLoggedIn
+    ? 'Choose payment method and complete your booking details.'
+    : 'Fill your details below. You will be asked to log in only when you proceed to payment.';
 
 include 'includes/header.php';
 ?>
@@ -235,7 +322,11 @@ include 'includes/header.php';
 <section class="cart-wrapper">
     <div class="container">
         <?php if ($flash && isset($flash['message'])): ?>
-            <div class="alert <?php echo ($flash['type'] ?? '') === 'success' ? 'alert-success' : 'alert-danger'; ?>" style="margin-bottom: 20px;">
+            <?php
+            $flashType = (string) ($flash['type'] ?? 'error');
+            $flashClass = $flashType === 'success' ? 'alert-success' : ($flashType === 'info' ? 'alert-info' : 'alert-danger');
+            ?>
+            <div class="alert <?php echo $flashClass; ?>" style="margin-bottom: 20px;">
                 <?php echo htmlspecialchars((string)$flash['message']); ?>
             </div>
         <?php endif; ?>
@@ -449,7 +540,7 @@ include 'includes/header.php';
 
                 <div class="cart-form-card">
                     <h3 style="margin-bottom:14px;">Checkout</h3>
-                    <p class="cart-help" style="margin-bottom:18px;">Choose payment method and complete your booking details.</p>
+                    <p class="cart-help" style="margin-bottom:18px;"><?php echo htmlspecialchars($checkoutHelpText); ?></p>
 
                     <div class="cart-total-box">
                         <div class="cart-help">Order total</div>
@@ -477,21 +568,21 @@ include 'includes/header.php';
 
                         <div class="cart-field">
                             <label class="cart-form-label" for="cartSpecialRequirements"><i class="fas fa-comment-dots"></i> Special Requirements</label>
-                            <textarea name="special_requirements" id="cartSpecialRequirements" class="form-control" rows="3" placeholder="Optional"></textarea>
+                            <textarea name="special_requirements" id="cartSpecialRequirements" class="form-control" rows="3" placeholder="Optional"><?php echo htmlspecialchars($prefillSpecialRequirements); ?></textarea>
                         </div>
 
                         <div class="cart-field cart-payment-block">
                             <label class="cart-form-label"><i class="fas fa-credit-card"></i> Payment Method</label>
                             <div class="payment-options">
-                                <label class="payment-option is-active">
-                                    <input type="radio" name="payment_method" value="cash" checked>
+                                <label class="payment-option<?php echo $prefillPaymentMethod === 'cash' ? ' is-active' : ''; ?>">
+                                    <input type="radio" name="payment_method" value="cash" <?php echo $prefillPaymentMethod === 'cash' ? 'checked' : ''; ?>>
                                     <div>
                                         <strong>Cash / Manual Payment</strong>
                                         <span>Pay in cash at our office or to the tour guide. Invoice will be generated instantly.</span>
                                     </div>
                                 </label>
-                                <label class="payment-option<?php echo $razorpayEnabled ? '' : ' is-disabled'; ?>">
-                                    <input type="radio" name="payment_method" value="razorpay"<?php echo $razorpayEnabled ? '' : ' disabled'; ?>>
+                                <label class="payment-option<?php echo $razorpayEnabled ? '' : ' is-disabled'; ?><?php echo $prefillPaymentMethod === 'razorpay' ? ' is-active' : ''; ?>">
+                                    <input type="radio" name="payment_method" value="razorpay"<?php echo $razorpayEnabled ? '' : ' disabled'; ?> <?php echo ($razorpayEnabled && $prefillPaymentMethod === 'razorpay') ? 'checked' : ''; ?>>
                                     <div>
                                         <strong>Pay Online with Razorpay</strong>
                                         <span class="razorpay-badge">
@@ -508,14 +599,14 @@ include 'includes/header.php';
 
                         <div class="cart-terms-check">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="accept_terms" id="cartAcceptTerms" value="1" required>
+                                <input class="form-check-input" type="checkbox" name="accept_terms" id="cartAcceptTerms" value="1" <?php echo $prefillAcceptTerms ? 'checked' : ''; ?> required>
                                 <label class="form-check-label" for="cartAcceptTerms">
                                     I agree to the <a href="<?php echo navUrl('terms-conditions'); ?>" target="_blank" rel="noopener">Terms of Service</a> and <a href="<?php echo navUrl('privacy-policy'); ?>" target="_blank" rel="noopener">Privacy Policy</a>
                                 </label>
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100">Book Now</button>
+                        <button type="submit" class="btn btn-primary w-100"><?php echo htmlspecialchars($checkoutButtonLabel); ?></button>
                     </form>
                 </div>
             </div>

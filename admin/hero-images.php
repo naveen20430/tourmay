@@ -125,7 +125,8 @@ include 'includes/header.php';
                 <div class="card-body">
                     <p class="text-muted mb-4">
                         Upload images for the homepage search hero slideshow. <strong>Title</strong> is the main heading;
-                        <strong>Description</strong> is the paragraph below it (text comes from the first image by sort order).
+                        <strong>Description</strong> is the paragraph below it. Homepage text uses the first image (by sort order)
+                        that has a title or description filled in — background-only uploads with empty text are skipped.
                         All images rotate automatically. Recommended size: 1920×1080px landscape.
                     </p>
                     <?php if ($success): ?>

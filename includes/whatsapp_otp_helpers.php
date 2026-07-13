@@ -26,10 +26,28 @@ function ensureWhatsAppOtpSchema() {
 }
 
 function twilioIsConfigured() {
-    $sid = trim((string) getSetting('twilio_account_sid'));
-    $token = trim((string) getSetting('twilio_auth_token'));
+    $creds = twilioGetCredentials();
     $from = trim((string) getSetting('twilio_whatsapp_from'));
-    return $sid !== '' && $token !== '' && $from !== '';
+    return $creds['account_sid'] !== '' && $creds['auth_user'] !== '' && $creds['auth_pass'] !== '' && $from !== '';
+}
+
+/**
+ * Resolve Twilio Account SID (for API URL) and auth username/password.
+ * Supports Account SID + Auth Token, or Account SID + API Key SID + Secret.
+ */
+function twilioGetCredentials() {
+    $accountSid = trim((string) getSetting('twilio_account_sid'));
+    $apiKeySid = trim((string) getSetting('twilio_api_key_sid'));
+    $authPass = trim((string) getSetting('twilio_auth_token'));
+
+    // API Key SID (SK...) authenticates; Account SID (AC...) is still required in the URL.
+    $authUser = $apiKeySid !== '' ? $apiKeySid : $accountSid;
+
+    return [
+        'account_sid' => $accountSid,
+        'auth_user' => $authUser,
+        'auth_pass' => $authPass,
+    ];
 }
 
 function twilioIsSandboxMode() {
@@ -343,11 +361,10 @@ function twilioHttpPost($url, array $postFields, $sid, $token) {
 }
 
 function sendWhatsAppTextMessage($phone, $body) {
-    $sid = trim((string) getSetting('twilio_account_sid'));
-    $token = trim((string) getSetting('twilio_auth_token'));
+    $creds = twilioGetCredentials();
     $from = trim((string) getSetting('twilio_whatsapp_from'));
 
-    if ($sid === '' || $token === '' || $from === '') {
+    if ($creds['account_sid'] === '' || $creds['auth_user'] === '' || $creds['auth_pass'] === '' || $from === '') {
         throw new Exception('WhatsApp login is not configured. Please contact support.');
     }
 
@@ -364,8 +381,8 @@ function sendWhatsAppTextMessage($phone, $body) {
         'Body' => trim((string) $body),
     ];
 
-    $url = 'https://' . twilioApiHost() . '/2010-04-01/Accounts/' . rawurlencode($sid) . '/Messages.json';
-    $result = twilioHttpPost($url, $postFields, $sid, $token);
+    $url = 'https://' . twilioApiHost() . '/2010-04-01/Accounts/' . rawurlencode($creds['account_sid']) . '/Messages.json';
+    $result = twilioHttpPost($url, $postFields, $creds['auth_user'], $creds['auth_pass']);
     $response = $result['response'];
     $httpCode = (int) $result['http_code'];
 
@@ -390,8 +407,7 @@ function sendWhatsAppOtpMessage($phone, $otp) {
     $useTemplate = trim((string) getSetting('twilio_whatsapp_use_template')) === '1';
 
     if ($contentSid !== '' && $useTemplate) {
-        $sid = trim((string) getSetting('twilio_account_sid'));
-        $token = trim((string) getSetting('twilio_auth_token'));
+        $creds = twilioGetCredentials();
         $from = trim((string) getSetting('twilio_whatsapp_from'));
         $to = 'whatsapp:' . normalizePhoneE164($phone);
 
@@ -410,8 +426,8 @@ function sendWhatsAppOtpMessage($phone, $otp) {
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         ];
 
-        $url = 'https://' . twilioApiHost() . '/2010-04-01/Accounts/' . rawurlencode($sid) . '/Messages.json';
-        $result = twilioHttpPost($url, $postFields, $sid, $token);
+        $url = 'https://' . twilioApiHost() . '/2010-04-01/Accounts/' . rawurlencode($creds['account_sid']) . '/Messages.json';
+        $result = twilioHttpPost($url, $postFields, $creds['auth_user'], $creds['auth_pass']);
         $data = json_decode($result['response'], true);
         if (!is_array($data)) {
             $data = [];
@@ -431,11 +447,10 @@ function sendWhatsAppOtpMessage($phone, $otp) {
 }
 
 function sendWhatsAppMediaMessage($phone, $body, $mediaUrl) {
-    $sid = trim((string) getSetting('twilio_account_sid'));
-    $token = trim((string) getSetting('twilio_auth_token'));
+    $creds = twilioGetCredentials();
     $from = trim((string) getSetting('twilio_whatsapp_from'));
 
-    if ($sid === '' || $token === '' || $from === '') {
+    if ($creds['account_sid'] === '' || $creds['auth_user'] === '' || $creds['auth_pass'] === '' || $from === '') {
         throw new Exception('WhatsApp is not configured. Please contact support.');
     }
 
@@ -458,8 +473,8 @@ function sendWhatsAppMediaMessage($phone, $body, $mediaUrl) {
         'MediaUrl' => $mediaUrl,
     ];
 
-    $url = 'https://' . twilioApiHost() . '/2010-04-01/Accounts/' . rawurlencode($sid) . '/Messages.json';
-    $result = twilioHttpPost($url, $postFields, $sid, $token);
+    $url = 'https://' . twilioApiHost() . '/2010-04-01/Accounts/' . rawurlencode($creds['account_sid']) . '/Messages.json';
+    $result = twilioHttpPost($url, $postFields, $creds['auth_user'], $creds['auth_pass']);
     $response = $result['response'];
     $httpCode = (int) $result['http_code'];
 

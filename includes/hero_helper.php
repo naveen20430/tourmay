@@ -87,7 +87,9 @@ function getHeroSearchBackgrounds() {
 }
 
 /**
- * Title and copy for the homepage search hero (from first hero_images row by sort order).
+ * Title and copy for the homepage search hero.
+ * Uses the first hero_images row (by sort order) that has a title or description set.
+ * Newer background-only uploads with empty text are skipped so they do not force the fallback.
  * @return array{title: string, subtitle: string, description: string}
  */
 function getHeroSearchText() {
@@ -103,6 +105,9 @@ function getHeroSearchText() {
         $hero = $db->fetch("
             SELECT title, subtitle, description
             FROM hero_images
+            WHERE TRIM(COALESCE(title, '')) != ''
+               OR TRIM(COALESCE(description, '')) != ''
+               OR TRIM(COALESCE(subtitle, '')) != ''
             ORDER BY sort_order ASC, created_at DESC
             LIMIT 1
         ");
