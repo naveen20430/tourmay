@@ -117,7 +117,6 @@ function cabTypeImageUrl(array $cab) {
     $slug = strtolower((string) ($cab['name'] ?? ''));
     $candidates = [
         'sedan' => 'assets/images/cabs/sedan.jpg',
-        'xuv_tavera' => 'assets/images/cabs/suv.jpg',
         'innova' => 'assets/images/cabs/innova.jpg',
         'ertiga' => 'assets/images/cabs/ertiga.jpg',
         'tempo_traveller' => 'assets/images/cabs/tempo.jpg',

@@ -476,12 +476,12 @@ function displayTourCarousel($limit = 9) {
                                 <!-- Enhanced gradient overlay -->
                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(transparent, rgba(0,0,0,0.4));"></div>
                                 
-                                <!-- Price badge -->
-                                <div class="position-absolute top-0 end-0 m-3" style="z-index: 3;">
-                                    <div class="badge px-3 py-2" style="border-radius: 20px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); color: white; font-weight: 600; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);">
+                                <!-- Price badge (always visible) -->
+                                <div class="position-absolute top-0 end-0 m-3 tour-card-price-badge" style="z-index: 20; opacity: 1; visibility: visible;">
+                                    <div class="badge px-3 py-2" style="border-radius: 20px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); color: white; font-weight: 600; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);">
                                         <?php if ($discount_price): ?>
                                             <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.2;">
-                                                <span style="text-decoration: line-through; opacity: 0.6; font-size: 0.75rem;"><?php echo $price; ?></span>
+                                                <span style="text-decoration: line-through; color: rgba(255,255,255,0.7); font-size: 0.75rem;"><?php echo $price; ?></span>
                                                 <span style="font-size: 1rem; font-weight: 700; color: #4ade80;"><?php echo $discount_price; ?></span>
                                             </div>
                                         <?php else: ?>

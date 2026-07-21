@@ -251,7 +251,7 @@ if (!empty($tourIds)) {
     }
 }
 
-// Default to first cab when none selected so cart always has a payable price.
+// Default / fix cab so it exists and can fit the selected people count.
 if ($cab_functionality_enabled && !empty($cartItems)) {
     foreach ($cartItems as $tourIdStr => $item) {
         $tourId = (int) $tourIdStr;
@@ -262,16 +262,32 @@ if ($cab_functionality_enabled && !empty($cartItems)) {
         if (empty($tourCabs)) {
             continue;
         }
+        $peopleCount = (int) ($item['people'] ?? 0);
+        $tourRow = $toursById[$tourIdStr];
+        if ($peopleCount < (int) ($tourRow['min_people'] ?? 1)) {
+            $peopleCount = (int) ($tourRow['min_people'] ?? 1);
+        }
         $currentCab = (string) ($item['cab_type'] ?? '');
-        $valid = false;
+        $currentFits = false;
         foreach ($tourCabs as $cab) {
-            if ($currentCab === (string) $cab['value']) {
-                $valid = true;
+            if ($currentCab === (string) $cab['value']
+                && (int) ($cab['max_passengers'] ?? 0) >= $peopleCount) {
+                $currentFits = true;
                 break;
             }
         }
-        if (!$valid) {
-            $_SESSION['tour_cart'][$tourIdStr]['cab_type'] = (string) ($tourCabs[0]['value'] ?? '');
+        if (!$currentFits) {
+            $fallbackCab = '';
+            foreach ($tourCabs as $cab) {
+                if ((int) ($cab['max_passengers'] ?? 0) >= $peopleCount) {
+                    $fallbackCab = (string) ($cab['value'] ?? '');
+                    break;
+                }
+            }
+            if ($fallbackCab === '') {
+                $fallbackCab = (string) ($tourCabs[0]['value'] ?? '');
+            }
+            $_SESSION['tour_cart'][$tourIdStr]['cab_type'] = $fallbackCab;
         }
     }
     $cartItems = $_SESSION['tour_cart'];
@@ -418,6 +434,7 @@ include 'includes/header.php';
                             $selectedCab = (string)($item['cab_type'] ?? '');
                             $selectedPickup = (string)($item['pickup_place'] ?? '');
                             $selectedPickupDetail = (string)($item['pickup_detail'] ?? '');
+                            $selectedPickupAddress = (string)($item['pickup_address'] ?? '');
                             $selectedPickupTime = (string)($item['pickup_time'] ?? '');
                             if (preg_match('/^(\d{2}:\d{2})/', $selectedPickupTime, $m)) {
                                 $selectedPickupTime = $m[1];
@@ -428,6 +445,7 @@ include 'includes/header.php';
                             }
                             $showPickup = $selectedCab !== '';
                             $needsPickupDetail = in_array($selectedPickup, ['Hotel', 'Others'], true);
+                            $needsHotelAddress = $selectedPickup === 'Hotel';
                             $line = $cartLinesByTourId[$tourIdStr] ?? null;
                             $peopleValue = (int)($item['people'] ?? 0);
                             if ($peopleValue < (int)$tour['min_people'] || $peopleValue === 0) {
@@ -520,14 +538,20 @@ include 'includes/header.php';
                                             <label class="cart-field-label">Cab</label>
                                             <div class="cart-cab-grid" data-cart-cab-picker>
                                                 <?php foreach ($tourCabs as $cab): ?>
-                                                    <label class="cart-cab-option" title="<?php echo htmlspecialchars($cab['text']); ?>">
+                                                    <?php
+                                                    $cabCapacity = (int) ($cab['max_passengers'] ?? 0);
+                                                    $cabFitsPeople = $cabCapacity <= 0 || $cabCapacity >= $peopleValue;
+                                                    ?>
+                                                    <label class="cart-cab-option<?php echo $cabFitsPeople ? '' : ' is-unavailable'; ?>"
+                                                           title="<?php echo htmlspecialchars($cab['text'] . ($cabCapacity > 0 ? ' · up to ' . $cabCapacity . ' people' : '')); ?>">
                                                         <input type="radio"
                                                                name="cab_type"
                                                                value="<?php echo htmlspecialchars($cab['value']); ?>"
                                                                data-cab-label="<?php echo htmlspecialchars($cab['display_name'] ?? $cab['value']); ?>"
                                                                data-cab-price="<?php echo (float)($cab['price'] ?? 0); ?>"
-                                                               data-cab-capacity="<?php echo (int)($cab['max_passengers'] ?? 0); ?>"
-                                                               <?php echo $selectedCab === (string)$cab['value'] ? 'checked' : ''; ?>>
+                                                               data-cab-capacity="<?php echo $cabCapacity; ?>"
+                                                               <?php echo !$cabFitsPeople ? 'disabled' : ''; ?>
+                                                               <?php echo ($cabFitsPeople && $selectedCab === (string)$cab['value']) ? 'checked' : ''; ?>>
                                                         <span class="cart-cab-option__body">
                                                             <span class="cart-cab-option__thumb">
                                                                 <img src="<?php echo htmlspecialchars($cab['image_url']); ?>"
@@ -537,6 +561,9 @@ include 'includes/header.php';
                                                             <span class="cart-cab-option__text">
                                                                 <span class="cart-cab-option__name"><?php echo htmlspecialchars($cab['display_name'] ?? $cab['value']); ?></span>
                                                                 <span class="cart-cab-option__price">₹<?php echo number_format((float)($cab['price'] ?? 0), 0); ?></span>
+                                                                <?php if ($cabCapacity > 0): ?>
+                                                                    <span class="cart-cab-option__capacity">Up to <?php echo $cabCapacity; ?> people</span>
+                                                                <?php endif; ?>
                                                             </span>
                                                         </span>
                                                     </label>
@@ -557,13 +584,21 @@ include 'includes/header.php';
                                                     <?php endforeach; ?>
                                                 </select>
                                                 <div class="cart-pickup-detail-wrap" data-cart-pickup-detail-wrap <?php echo $needsPickupDetail ? '' : 'hidden'; ?>>
-                                                    <textarea
+                                                    <input type="text"
                                                            name="pickup_detail"
                                                            class="form-control cart-pickup-detail"
                                                            data-cart-pickup-detail
+                                                           value="<?php echo htmlspecialchars($selectedPickupDetail); ?>"
+                                                           placeholder="<?php echo $selectedPickup === 'Hotel' ? 'Hotel name' : ($selectedPickup === 'Others' ? 'Enter location details' : 'Enter details'); ?>"
+                                                           <?php echo $needsPickupDetail ? 'required' : ''; ?>>
+                                                    <textarea
+                                                           name="pickup_address"
+                                                           class="form-control cart-pickup-address"
+                                                           data-cart-pickup-address
                                                            rows="3"
-                                                           placeholder="<?php echo $selectedPickup === 'Hotel' ? 'Enter hotel name with full address with location' : ($selectedPickup === 'Others' ? 'Enter location details' : 'Enter details'); ?>"
-                                                           <?php echo $needsPickupDetail ? 'required' : ''; ?>><?php echo htmlspecialchars($selectedPickupDetail); ?></textarea>
+                                                           placeholder="Full address with location"
+                                                           <?php echo $needsHotelAddress ? '' : 'hidden'; ?>
+                                                           <?php echo $needsHotelAddress ? 'required' : ''; ?>><?php echo htmlspecialchars($selectedPickupAddress); ?></textarea>
                                                 </div>
                                                 <label class="cart-field-label" for="pickup_time_<?php echo (int)$tour['id']; ?>">Pickup time</label>
                                                 <select name="pickup_time"
@@ -753,14 +788,17 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
     const pickupSel = card ? card.querySelector('[data-cart-pickup-place]') : null;
     const detailWrap = card ? card.querySelector('[data-cart-pickup-detail-wrap]') : null;
     const detailInp = card ? card.querySelector('[data-cart-pickup-detail]') : null;
+    const addressInp = card ? card.querySelector('[data-cart-pickup-address]') : null;
     const pickupTimeInp = card ? card.querySelector('[data-cart-pickup-time]') : null;
     const totalStatus = card ? card.querySelector('[data-cart-total-status]') : null;
     const totalAmount = card ? card.querySelector('[data-cart-total-amount]') : null;
+    const peopleSelect = card ? card.querySelector('[data-people-select]') : null;
+    const form = card ? card.querySelector('[data-cart-tour-form]') : null;
 
     function syncTotalStatus() {
         const selected = picker.querySelector('input[name="cab_type"]:checked');
         if (!totalStatus) return;
-        if (!selected || selected.value === '') {
+        if (!selected || selected.value === '' || selected.disabled) {
             totalStatus.textContent = 'Select a cab to see price';
             if (totalAmount) {
                 totalAmount.textContent = '';
@@ -783,9 +821,10 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         if (!pickupSel || !detailWrap || !detailInp) return;
         const place = pickupSel.value;
         const needsDetail = place === 'Hotel' || place === 'Others';
+        const needsAddress = place === 'Hotel';
         if (needsDetail) {
             detailWrap.removeAttribute('hidden');
-            detailInp.placeholder = place === 'Hotel' ? 'Enter hotel name with full address with location' : 'Enter location details';
+            detailInp.placeholder = place === 'Hotel' ? 'Hotel name' : 'Enter location details';
             detailInp.setAttribute('required', 'required');
         } else {
             detailWrap.setAttribute('hidden', '');
@@ -793,11 +832,21 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
             detailInp.removeAttribute('required');
             detailInp.placeholder = '';
         }
+        if (addressInp) {
+            if (needsAddress) {
+                addressInp.removeAttribute('hidden');
+                addressInp.setAttribute('required', 'required');
+            } else {
+                addressInp.setAttribute('hidden', '');
+                addressInp.value = '';
+                addressInp.removeAttribute('required');
+            }
+        }
     }
 
     function syncCabSelection() {
         const selected = picker.querySelector('input[name="cab_type"]:checked');
-        const hasCab = selected && selected.value !== '';
+        const hasCab = selected && selected.value !== '' && !selected.disabled;
         if (!pickupWrap) return;
         if (hasCab) {
             pickupWrap.removeAttribute('hidden');
@@ -808,11 +857,53 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         pickupWrap.setAttribute('hidden', '');
         if (pickupSel) pickupSel.value = '';
         if (detailInp) detailInp.value = '';
+        if (addressInp) {
+            addressInp.value = '';
+            addressInp.setAttribute('hidden', '');
+            addressInp.removeAttribute('required');
+        }
         if (detailWrap) detailWrap.setAttribute('hidden', '');
         if (detailInp) detailInp.removeAttribute('required');
         if (pickupTimeInp) {
             pickupTimeInp.value = '';
             pickupTimeInp.removeAttribute('required');
+        }
+    }
+
+    function syncCabCapacity() {
+        const people = peopleSelect ? (parseInt(peopleSelect.value || '0', 10) || 0) : 0;
+        const radios = Array.from(picker.querySelectorAll('input[name="cab_type"]'));
+        let selected = picker.querySelector('input[name="cab_type"]:checked');
+        let changed = false;
+
+        radios.forEach(function(radio) {
+            const capacity = parseInt(radio.getAttribute('data-cab-capacity') || '0', 10) || 0;
+            const fits = capacity <= 0 || people <= 0 || capacity >= people;
+            const label = radio.closest('.cart-cab-option');
+            radio.disabled = !fits;
+            if (label) {
+                label.classList.toggle('is-unavailable', !fits);
+            }
+            if (!fits && radio.checked) {
+                radio.checked = false;
+                selected = null;
+                changed = true;
+            }
+        });
+
+        if (!selected || selected.disabled) {
+            const next = radios.find(function(radio) { return !radio.disabled; });
+            if (next) {
+                next.checked = true;
+                changed = true;
+            }
+        }
+
+        syncCabSelection();
+        syncTotalStatus();
+
+        if (changed && form) {
+            form.dispatchEvent(new CustomEvent('cart-cab-capacity-changed', { bubbles: true }));
         }
     }
 
@@ -825,8 +916,10 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
     if (pickupSel) {
         pickupSel.addEventListener('change', syncPickupDetail);
     }
-    syncCabSelection();
-    syncTotalStatus();
+    if (peopleSelect) {
+        peopleSelect.addEventListener('change', syncCabCapacity);
+    }
+    syncCabCapacity();
 });
 
 document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
@@ -894,6 +987,8 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
     form.querySelectorAll('input[name="cab_type"]').forEach(function(radio) {
         radio.addEventListener('change', saveCartItem);
     });
+
+    form.addEventListener('cart-cab-capacity-changed', saveCartItem);
 
     const pickupPlace = form.querySelector('[data-cart-pickup-place]');
     if (pickupPlace) pickupPlace.addEventListener('change', saveCartItem);

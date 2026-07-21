@@ -1040,9 +1040,20 @@ $hero_images = array_slice($hero_images, 0, 6);
                                 </div>
                                 <div class="d-flex flex-wrap gap-3 mb-2">
                                     <?php foreach ($tourCabList as $cab): ?>
+                                        <?php
+                                        $cabBadgeName = $cab['display_name'] ?? getCabDisplayName($cab['value']);
+                                        $cabBadgePrice = (float) ($cab['tour_price'] ?? $cab['price'] ?? 0);
+                                        $cabBadgeCapacity = (int) ($cab['max_passengers'] ?? 0);
+                                        ?>
                                         <span class="badge bg-primary px-3 py-2">
                                             <i class="fas fa-car me-1"></i>
-                                            <?php echo htmlspecialchars($cab['display_name'] ?? getCabDisplayName($cab['value'])); ?>
+                                            <?php echo htmlspecialchars($cabBadgeName); ?>
+                                            <?php if ($cabBadgePrice > 0): ?>
+                                                · ₹<?php echo number_format($cabBadgePrice, 0); ?>
+                                            <?php endif; ?>
+                                            <?php if ($cabBadgeCapacity > 0): ?>
+                                                · up to <?php echo $cabBadgeCapacity; ?>
+                                            <?php endif; ?>
                                         </span>
                                     <?php endforeach; ?>
                                 </div>

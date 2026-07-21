@@ -270,6 +270,21 @@
     line-height: 1.25;
 }
 
+.cart-cab-option__capacity {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    line-height: 1.2;
+}
+
+.cart-cab-option.is-unavailable {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.cart-cab-option.is-unavailable .cart-cab-option__body {
+    background: #f8fafc;
+}
+
 .cart-cab-option input:checked + .cart-cab-option__body {
     border-color: #667eea;
     box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.14);
@@ -289,8 +304,16 @@
     border-top: 1px dashed #e2e8f0;
 }
 
+.cart-pickup-detail-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 0;
+}
+
 .cart-pickup-place,
 .cart-pickup-detail,
+.cart-pickup-address,
 .cart-pickup-time {
     width: 100%;
     min-height: 44px;
@@ -302,16 +325,18 @@
     background: #fff;
 }
 
+.cart-pickup-address {
+    resize: vertical;
+    min-height: 72px;
+}
+
 .cart-pickup-place:focus,
 .cart-pickup-detail:focus,
+.cart-pickup-address:focus,
 .cart-pickup-time:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
     outline: none;
-}
-
-.cart-pickup-detail-wrap {
-    margin-top: 0;
 }
 
 .cart-tour-item__footer {

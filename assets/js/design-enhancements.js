@@ -85,11 +85,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Enhanced card hover effects
     function enhanceCards() {
-        const cards = document.querySelectorAll('.card');
+        const cards = document.querySelectorAll('.card:not(.destination-tour-card)');
         
         cards.forEach(card => {
             card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-10px) rotateX(5deg)';
+                this.style.transform = 'translateY(-10px)';
                 this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
                 
                 // Add glow effect
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) rotateX(0)';
+                this.style.transform = 'translateY(0)';
                 this.style.boxShadow = '0 10px 40px rgba(0, 0, 0, 0.1)';
             });
         });

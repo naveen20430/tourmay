@@ -83,29 +83,31 @@
                     <div class="destination-tours owl-carousel owl-theme tours-carousel-<?php echo $dest['id']; ?>">
                             <?php foreach ($destination_tours as $tour): ?>
                             <div class="item">
-                                <div class="card" style="border: none; border-radius: 0; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1); transition: all 0.3s ease; position: relative;">
+                                <div class="card destination-tour-card" style="border: none; border-radius: 0; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.1); transition: all 0.3s ease; position: relative;">
                                     
-                                    <!-- Featured Badge -->
-                                    <?php if (!empty($tour['featured']) && $tour['featured'] == 1): ?>
-                                    <div style="position: absolute; top: 15px; left: 15px; z-index: 10;">
-                                        <span class="badge" style="background: linear-gradient(135deg, #f09433 0%, #e6683c 100%); color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">Featured</span>
-                                    </div>
-                                    <?php endif; ?>
-                                    
-                                    <!-- Price Badge -->
-                                    <div style="position: absolute; top: 15px; right: 15px; z-index: 10;">
-                                        <div style="background: rgba(0,0,0,0.8); color: white; padding: 8px 15px; border-radius: 15px; font-weight: 600;">
-                                            <?php if (!empty($tour['discount_price']) && $tour['discount_price'] < $tour['price']): ?>
-                                                <div style="font-size: 0.7rem; text-decoration: line-through; opacity: 0.7;"><?php echo formatPriceINR($tour['price']); ?></div>
-                                                <div style="font-size: 0.95rem;"><?php echo formatPriceINR($tour['discount_price']); ?></div>
-                                            <?php else: ?>
-                                                <div style="font-size: 0.95rem;"><?php echo formatPriceINR($tour['price']); ?></div>
-                                            <?php endif; ?>
+                                    <div class="destination-tour-card__media">
+                                        <!-- Tour Image -->
+                                        <img src="<?php echo BASE_URL . ($tour['featured_image'] ?: 'assets/images/tours/default.jpg'); ?>" class="card-img-top" style="height: 220px; object-fit: cover; width: 100%; display: block;" alt="<?php echo htmlspecialchars($tour['title']); ?>">
+
+                                        <!-- Featured Badge -->
+                                        <?php if (!empty($tour['featured']) && $tour['featured'] == 1): ?>
+                                        <div class="destination-tour-card__badge destination-tour-card__badge--featured">
+                                            <span class="badge" style="background: linear-gradient(135deg, #f09433 0%, #e6683c 100%); color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">Featured</span>
+                                        </div>
+                                        <?php endif; ?>
+
+                                        <!-- Price Badge (always visible) -->
+                                        <div class="destination-tour-card__price">
+                                            <div class="destination-tour-card__price-inner">
+                                                <?php if (!empty($tour['discount_price']) && $tour['discount_price'] < $tour['price']): ?>
+                                                    <div class="destination-tour-card__price-old"><?php echo formatPriceINR($tour['price']); ?></div>
+                                                    <div class="destination-tour-card__price-now"><?php echo formatPriceINR($tour['discount_price']); ?></div>
+                                                <?php else: ?>
+                                                    <div class="destination-tour-card__price-now"><?php echo formatPriceINR($tour['price']); ?></div>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                     </div>
-                                    
-                                    <!-- Tour Image -->
-                                    <img src="<?php echo BASE_URL . ($tour['featured_image'] ?: 'assets/images/tours/default.jpg'); ?>" class="card-img-top" style="height: 220px; object-fit: cover;" alt="<?php echo htmlspecialchars($tour['title']); ?>">
                                     
                                     <!-- Card Body -->
                                     <div class="card-body" style="padding: 20px;">
@@ -219,25 +221,24 @@
     }
 }
 
-/* OwlCarousel Container */
+/* Tour cards as a real grid (Owl JS is disabled for this section) */
+.destinations-cab-section .destination-tours,
 .destinations-cab-section .owl-carousel {
-   display: flex;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
     margin: 0;
+    width: 100%;
 }
 
 .destinations-cab-section .owl-carousel .item {
     padding: 0;
-}
-
-@media (max-width: 991px) {
-    .destinations-cab-section .owl-carousel {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    min-width: 0;
+    width: 100% !important;
 }
 
 @media (max-width: 575px) {
+    .destinations-cab-section .destination-tours,
     .destinations-cab-section .owl-carousel {
         grid-template-columns: 1fr;
     }
@@ -258,6 +259,57 @@
 .destinations-cab-section .owl-carousel .card:hover {
     transform: translateY(-5px) !important;
     box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Keep tour price badge always visible (not hover-only) */
+.destinations-cab-section .destination-tour-card__media {
+    position: relative;
+    overflow: hidden;
+}
+
+.destinations-cab-section .destination-tour-card__badge,
+.destinations-cab-section .destination-tour-card__price {
+    position: absolute !important;
+    z-index: 20 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: none;
+}
+
+.destinations-cab-section .destination-tour-card__badge--featured {
+    top: 15px;
+    left: 15px;
+}
+
+.destinations-cab-section .destination-tour-card__price {
+    top: 15px;
+    right: 15px;
+}
+
+.destinations-cab-section .destination-tour-card__price-inner {
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.destinations-cab-section .destination-tour-card__price-old {
+    font-size: 0.7rem;
+    text-decoration: line-through;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.destinations-cab-section .destination-tour-card__price-now {
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.destinations-cab-section .destination-tour-card .card-img-top {
+    position: relative;
+    z-index: 1;
 }
 
 .destinations-cab-section .owl-carousel .card .card-body {

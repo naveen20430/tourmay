@@ -767,10 +767,9 @@
         cards.forEach(function(card) {
             card.addEventListener('mouseenter', function() {
                 this.style.boxShadow = '0 25px 50px rgba(102, 126, 234, 0.15), 0 0 0 1px rgba(102, 126, 234, 0.1)';
-                const overlay = this.querySelector('div[style*="opacity: 0"]');
+                const overlay = this.querySelector('.card-hover-overlay');
                 if (overlay) {
                     overlay.style.opacity = '1';
-                    overlay.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)';
                 }
                 this.style.transform = 'translateY(-8px) scale(1.02)';
             });
@@ -778,10 +777,9 @@
             card.addEventListener('mouseleave', function() {
                 this.style.boxShadow = '0 15px 35px rgba(0, 0, 0, 0.1)';
                 this.style.transform = 'translateY(0) scale(1)';
-                const overlay = this.querySelector('div[style*="opacity: 1"]');
-                if (overlay && overlay.style.background.includes('rgba(102, 126, 234')) {
+                const overlay = this.querySelector('.card-hover-overlay');
+                if (overlay) {
                     overlay.style.opacity = '0';
-                    overlay.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)';
                 }
             });
         });

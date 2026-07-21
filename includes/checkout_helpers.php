@@ -50,6 +50,28 @@ function isValidPickupTime($time) {
     return in_array($time, getAllowedPickupTimes(), true);
 }
 
+/**
+ * Combine hotel name + address (or other detail) into one string for booking storage/display.
+ */
+function formatPickupDetailForStorage($pickupPlace, $pickupDetail, $pickupAddress = '') {
+    $pickupPlace = trim((string) $pickupPlace);
+    $pickupDetail = trim((string) $pickupDetail);
+    $pickupAddress = trim((string) $pickupAddress);
+
+    if ($pickupPlace === 'Hotel') {
+        $parts = [];
+        if ($pickupDetail !== '') {
+            $parts[] = 'Hotel name: ' . $pickupDetail;
+        }
+        if ($pickupAddress !== '') {
+            $parts[] = 'Full address: ' . $pickupAddress;
+        }
+        return implode("\n", $parts);
+    }
+
+    return $pickupDetail;
+}
+
 function ensureCheckoutSchema() {
     global $db;
     static $ready = false;
@@ -144,6 +166,7 @@ function addTourToSessionCart(int $tourId, array $options = []) {
     $cabType = trim((string) ($options['cab_type'] ?? ''));
     $pickupPlace = trim((string) ($options['pickup_place'] ?? ''));
     $pickupDetail = trim((string) ($options['pickup_detail'] ?? ''));
+    $pickupAddress = trim((string) ($options['pickup_address'] ?? ''));
     $pickupTime = trim((string) ($options['pickup_time'] ?? ''));
     if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
         $pickupTime = '';
@@ -151,7 +174,11 @@ function addTourToSessionCart(int $tourId, array $options = []) {
     if ($cabType === '') {
         $pickupPlace = '';
         $pickupDetail = '';
+        $pickupAddress = '';
         $pickupTime = '';
+    }
+    if ($pickupPlace !== 'Hotel') {
+        $pickupAddress = '';
     }
 
     $_SESSION['tour_cart'][(string) $tourId] = [
@@ -160,6 +187,7 @@ function addTourToSessionCart(int $tourId, array $options = []) {
         'cab_type' => $cabType,
         'pickup_place' => $pickupPlace,
         'pickup_detail' => $pickupDetail,
+        'pickup_address' => $pickupAddress,
         'pickup_time' => $pickupTime,
     ];
 
@@ -264,7 +292,16 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
                 $errors[] = 'Please select a pickup time between 9:00 AM and 6:00 PM for: ' . $tour['title'];
                 continue;
             }
-            if (in_array($pickupPlace, ['Hotel', 'Others'], true) && $pickupDetail === '') {
+            if ($pickupPlace === 'Hotel') {
+                if ($pickupDetail === '') {
+                    $errors[] = 'Please enter the hotel name for: ' . $tour['title'];
+                    continue;
+                }
+                if ($pickupAddress === '') {
+                    $errors[] = 'Please enter the hotel full address with location for: ' . $tour['title'];
+                    continue;
+                }
+            } elseif ($pickupPlace === 'Others' && $pickupDetail === '') {
                 $errors[] = 'Please enter pickup details for: ' . $tour['title'];
                 continue;
             }
@@ -384,7 +421,11 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
                         $cabType,
                         $line['cab_price'],
                         $line['pickup_place'] !== '' ? $line['pickup_place'] : null,
-                        $line['pickup_detail'] !== '' ? $line['pickup_detail'] : null,
+                        formatPickupDetailForStorage(
+                            $line['pickup_place'] ?? '',
+                            $line['pickup_detail'] ?? '',
+                            $line['pickup_address'] ?? ''
+                        ) ?: null,
                         $line['pickup_time'] !== '' ? $line['pickup_time'] : null,
                         $line['line_total'],
                         $guest['special_requirements'] ?? '',
