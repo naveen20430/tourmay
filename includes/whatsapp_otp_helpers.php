@@ -32,6 +32,56 @@ function twilioIsConfigured() {
 }
 
 /**
+ * Fast2SMS API key configured for SMS OTP.
+ * @see https://docs.fast2sms.com/reference/authorization
+ */
+function fast2smsIsConfigured() {
+    return trim((string) getSetting('fast2sms_api_key')) !== '';
+}
+
+/**
+ * Mobile OTP available via Fast2SMS (SMS) and/or Twilio (WhatsApp).
+ */
+function mobileOtpIsConfigured() {
+    return fast2smsIsConfigured() || twilioIsConfigured();
+}
+
+/**
+ * Append a line to logs/otp.log for every OTP send attempt.
+ */
+function otpSendLog($channel, $phone, $status, $detail = '') {
+    $dir = dirname(__DIR__) . '/logs';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+        @file_put_contents($dir . '/.htaccess', "Require all denied\n");
+    }
+    $line = sprintf(
+        "[%s] channel=%s phone=%s status=%s %s\n",
+        date('Y-m-d H:i:s'),
+        $channel,
+        preg_replace('/\d(?=\d{4})/', '*', (string) $phone),
+        $status,
+        trim((string) $detail)
+    );
+    @file_put_contents($dir . '/otp.log', $line, FILE_APPEND | LOCK_EX);
+    error_log('OTP ' . trim($line));
+}
+
+/**
+ * Convert any phone format to a 10-digit Indian mobile for Fast2SMS.
+ */
+function phoneToFast2SmsMobile($phone) {
+    $digits = preg_replace('/\D+/', '', (string) $phone);
+    if ($digits === '') {
+        return '';
+    }
+    if (strlen($digits) >= 10) {
+        return substr($digits, -10);
+    }
+    return '';
+}
+
+/**
  * Resolve Twilio Account SID (for API URL) and auth username/password.
  * Supports Account SID + Auth Token, or Account SID + API Key SID + Secret.
  */
@@ -446,6 +496,169 @@ function sendWhatsAppOtpMessage($phone, $otp) {
     );
 }
 
+/**
+ * HTTP JSON helper for Fast2SMS APIs.
+ */
+function fast2smsHttpJson($method, $path, array $payload = []) {
+    $apiKey = trim((string) getSetting('fast2sms_api_key'));
+    if ($apiKey === '') {
+        throw new Exception('SMS OTP is not configured. Please contact support.');
+    }
+
+    $url = 'https://www.fast2sms.com' . $path;
+    if (strtoupper($method) === 'GET' && !empty($payload)) {
+        $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($payload);
+    }
+
+    $headers = [
+        'Authorization: ' . $apiKey,
+        'Accept: application/json',
+    ];
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        $options = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_NOSIGNAL => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_CUSTOMREQUEST => strtoupper($method),
+        ];
+        if (strtoupper($method) === 'POST') {
+            $headers[] = 'Content-Type: application/json';
+            $options[CURLOPT_HTTPHEADER] = $headers;
+            $options[CURLOPT_POSTFIELDS] = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+        if (defined('CURL_IPRESOLVE_V4')) {
+            $options[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
+        }
+        curl_setopt_array($ch, $options);
+        $response = curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false) {
+            throw new Exception('SMS gateway error: ' . ($curlError !== '' ? $curlError : 'Unable to reach Fast2SMS'));
+        }
+
+        return ['response' => $response, 'http_code' => $httpCode];
+    }
+
+    $contextHeaders = implode("\r\n", $headers);
+    $opts = [
+        'http' => [
+            'method' => strtoupper($method),
+            'header' => $contextHeaders,
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ];
+    if (strtoupper($method) === 'POST') {
+        $opts['http']['header'] .= "\r\nContent-Type: application/json";
+        $opts['http']['content'] = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+    $response = @file_get_contents($url, false, stream_context_create($opts));
+    if ($response === false) {
+        throw new Exception('SMS gateway error: Unable to reach Fast2SMS');
+    }
+    $httpCode = 0;
+    if (!empty($http_response_header[0]) && preg_match('/\s(\d{3})\s/', $http_response_header[0], $m)) {
+        $httpCode = (int) $m[1];
+    }
+    return ['response' => $response, 'http_code' => $httpCode];
+}
+
+/**
+ * Send OTP SMS via Fast2SMS.
+ * Uses OTP API when otp_id is set; otherwise Quick SMS (route=q).
+ * @see https://docs.fast2sms.com/reference/send-otp
+ * @see https://docs.fast2sms.com/reference/authorization
+ */
+function sendFast2SmsOtpMessage($phone, $otp) {
+    $mobile = phoneToFast2SmsMobile($phone);
+    if ($mobile === '' || !preg_match('/^[6-9]\d{9}$/', $mobile)) {
+        throw new Exception('Please enter a valid 10-digit Indian mobile number');
+    }
+
+    $otpId = trim((string) getSetting('fast2sms_otp_id'));
+    $siteName = getSetting('site_name') ?: 'The World Journey';
+
+    if ($otpId !== '') {
+        $result = fast2smsHttpJson('POST', '/dev/otp/send', [
+            'mobile' => $mobile,
+            'otp_id' => $otpId,
+            'otp' => (string) $otp,
+            'otp_length' => strlen((string) $otp),
+            'otp_expiry' => 10,
+        ]);
+    } else {
+        $message = $siteName . ' verification code: ' . $otp . '. Valid for 10 minutes. Do not share this code.';
+        $result = fast2smsHttpJson('GET', '/dev/bulkV2', [
+            'route' => 'q',
+            'message' => $message,
+            'numbers' => $mobile,
+            'flash' => '0',
+        ]);
+    }
+
+    $data = json_decode($result['response'], true);
+    if (!is_array($data)) {
+        $data = [];
+    }
+
+    $ok = !empty($data['return']) || ((int) ($data['status_code'] ?? 0) === 200);
+    if ((int) $result['http_code'] >= 400 || !$ok) {
+        $msg = (string) ($data['message'] ?? '');
+        if (is_array($data['message'] ?? null)) {
+            $msg = implode(' ', $data['message']);
+        }
+        if ($msg === '') {
+            $msg = 'Unable to send SMS OTP right now. Please try again.';
+        }
+        throw new Exception($msg);
+    }
+
+    return $data;
+}
+
+/**
+ * Deliver OTP: prefer Fast2SMS SMS, fall back to Twilio WhatsApp.
+ */
+function sendMobileOtpMessage($phone, $otp) {
+    $errors = [];
+
+    if (fast2smsIsConfigured()) {
+        try {
+            $data = sendFast2SmsOtpMessage($phone, $otp);
+            otpSendLog('fast2sms', $phone, 'sent', 'response=' . json_encode($data, JSON_UNESCAPED_SLASHES));
+            return $data;
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
+            otpSendLog('fast2sms', $phone, 'failed', 'error=' . $e->getMessage());
+            if (!twilioIsConfigured()) {
+                throw $e;
+            }
+        }
+    }
+
+    if (twilioIsConfigured()) {
+        try {
+            $data = sendWhatsAppOtpMessage($phone, $otp);
+            otpSendLog('twilio_whatsapp', $phone, 'sent', 'sid=' . (string) ($data['sid'] ?? ''));
+            return $data;
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
+            otpSendLog('twilio_whatsapp', $phone, 'failed', 'error=' . $e->getMessage());
+        }
+    }
+
+    throw new Exception($errors[0] ?? 'Mobile OTP is not configured yet');
+}
+
 function sendWhatsAppMediaMessage($phone, $body, $mediaUrl) {
     $creds = twilioGetCredentials();
     $from = trim((string) getSetting('twilio_whatsapp_from'));
@@ -504,16 +717,16 @@ function createOtpForPhone($phone, $purpose = 'login', $excludeUserId = 0) {
         throw new Exception('Please enter a valid mobile number');
     }
 
-    if (!twilioIsConfigured()) {
-        throw new Exception('WhatsApp OTP login is not configured yet');
+    if (!mobileOtpIsConfigured()) {
+        throw new Exception('Mobile OTP login is not configured yet');
     }
 
     if ($purpose === 'register' && phoneBelongsToAnotherUser($normalized)) {
-        throw new Exception('This WhatsApp number is already registered. Please login instead.');
+        throw new Exception('This mobile number is already registered. Please login instead.');
     }
 
     if ($purpose === 'update_phone' && phoneBelongsToAnotherUser($normalized, $excludeUserId)) {
-        throw new Exception('This WhatsApp number is already linked to another account');
+        throw new Exception('This mobile number is already linked to another account');
     }
 
     $recent = $db->fetch(
@@ -536,7 +749,7 @@ function createOtpForPhone($phone, $purpose = 'login', $excludeUserId = 0) {
     $otpId = (int) $db->lastInsertId();
 
     try {
-        sendWhatsAppOtpMessage($normalized, $otp);
+        sendMobileOtpMessage($normalized, $otp);
     } catch (Exception $e) {
         if ($otpId > 0) {
             $db->execute('DELETE FROM whatsapp_login_otps WHERE id = ?', [$otpId]);
