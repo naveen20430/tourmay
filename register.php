@@ -4,7 +4,7 @@ require_once 'includes/whatsapp_otp_helpers.php';
 
 $errors = [];
 $success = false;
-$whatsappEnabled = twilioIsConfigured();
+$whatsappEnabled = mobileOtpIsConfigured();
 $whatsappSandboxNotice = getWhatsAppSandboxInstructions();
 
 if ($_POST) {

@@ -6,8 +6,9 @@ requireUserLogin();
 
 $user = getCurrentUser();
 $user_data = $db->fetch('SELECT * FROM users WHERE id = ?', [(int) $user['id']]);
-$whatsappEnabled = twilioIsConfigured();
+$whatsappEnabled = mobileOtpIsConfigured();
 $whatsappSandboxNotice = getWhatsAppSandboxInstructions();
+$otpChannelLabel = fast2smsIsConfigured() ? 'SMS' : 'WhatsApp';
 $page_title = 'My Profile - ' . getSetting('site_name');
 $current_page = 'profile';
 
@@ -207,10 +208,10 @@ include 'includes/header.php';
                     <div class="card-body">
                         <?php if (!$whatsappEnabled): ?>
                             <div class="alert alert-warning mb-0">
-                                WhatsApp OTP verification is not configured yet. Please contact support.
+                                Mobile OTP verification is not configured yet. Please contact support.
                             </div>
                         <?php else: ?>
-                            <?php if ($whatsappSandboxNotice): ?>
+                            <?php if ($whatsappSandboxNotice && !fast2smsIsConfigured()): ?>
                                 <div class="alert alert-info" style="font-size:.9rem;"><?php echo $whatsappSandboxNotice; ?></div>
                             <?php endif; ?>
                             <p class="text-muted mb-3">
@@ -221,13 +222,13 @@ include 'includes/header.php';
 
                             <div id="profileWhatsappPhoneStep">
                                 <div class="mb-3">
-                                    <label class="form-label">New WhatsApp Number</label>
+                                    <label class="form-label">New Mobile Number</label>
                                     <input type="tel" id="profileWhatsappPhone" class="form-control"
                                            maxlength="16" placeholder="e.g. +91 9876543210 or 9876543210">
                                     <small class="text-muted">Include country code for numbers outside India.</small>
                                 </div>
                                 <button type="button" class="btn btn-success" id="profileSendOtpBtn">
-                                    <i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp
+                                    <i class="fas fa-mobile-alt me-2"></i>Send OTP
                                 </button>
                             </div>
 

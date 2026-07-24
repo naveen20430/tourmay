@@ -11,8 +11,9 @@ if (isset($_SESSION['user_id'])) {
 
 $errors = [];
 $success_message = '';
-$whatsappEnabled = twilioIsConfigured();
+$whatsappEnabled = mobileOtpIsConfigured();
 $whatsappSandboxNotice = getWhatsAppSandboxInstructions();
+$otpChannelLabel = fast2smsIsConfigured() ? 'SMS' : 'WhatsApp';
 $loginRedirect = $_GET['redirect'] ?? navUrl('home');
 $activeLoginTab = 'whatsapp';
 

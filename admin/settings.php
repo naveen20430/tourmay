@@ -87,7 +87,9 @@ $default_settings = [
     'twilio_auth_token' => '',
     'twilio_whatsapp_from' => 'whatsapp:+14155238886',
     'twilio_whatsapp_content_sid' => 'HXb5b62575e6e4ff6129ad7c8efe1f983e',
-    'twilio_whatsapp_sandbox_join' => ''
+    'twilio_whatsapp_sandbox_join' => '',
+    'fast2sms_api_key' => '',
+    'fast2sms_otp_id' => ''
 ];
 
 // Merge with current settings
@@ -470,6 +472,44 @@ include 'includes/header.php';
                         </div>
                         <p class="text-muted mb-0">
                             Add your Razorpay test or live keys here to enable online checkout. Cash/manual payment works without Razorpay keys.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SMS OTP / Fast2SMS -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-sms mr-2"></i>SMS OTP (Fast2SMS)
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label for="fast2sms_api_key">Fast2SMS Authorization API Key</label>
+                                    <input type="password" class="form-control" id="fast2sms_api_key"
+                                           name="settings[fast2sms_api_key]"
+                                           value="<?php echo htmlspecialchars($settings_array['fast2sms_api_key'] ?? ''); ?>"
+                                           placeholder="Paste Authorization key from Fast2SMS Dev API">
+                                    <small class="form-text text-muted">
+                                        From <a href="https://docs.fast2sms.com/reference/authorization" target="_blank" rel="noopener">Fast2SMS Authorization</a>. Sent as <code>Authorization</code> header.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="fast2sms_otp_id">OTP Template ID (optional)</label>
+                                    <input type="text" class="form-control" id="fast2sms_otp_id"
+                                           name="settings[fast2sms_otp_id]"
+                                           value="<?php echo htmlspecialchars($settings_array['fast2sms_otp_id'] ?? ''); ?>"
+                                           placeholder="your_otp_id_here">
+                                    <small class="form-text text-muted">If set, uses Fast2SMS OTP API. Otherwise Quick SMS route.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">
+                            When Fast2SMS is configured, mobile login/register OTP is sent by SMS first. Twilio WhatsApp remains available as fallback.
                         </p>
                     </div>
                 </div>

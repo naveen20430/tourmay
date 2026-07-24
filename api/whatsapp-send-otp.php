@@ -29,7 +29,7 @@ try {
     $result = createOtpForPhone($phone, $purpose, $excludeUserId);
     echo json_encode([
         'success' => true,
-        'message' => 'OTP sent on WhatsApp',
+        'message' => fast2smsIsConfigured() ? 'OTP sent by SMS' : 'OTP sent on WhatsApp',
         'phone' => $result['phone'],
         'expires_at' => $result['expires_at'],
         'purpose' => $purpose,
