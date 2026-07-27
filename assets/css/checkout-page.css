@@ -690,6 +690,62 @@
     background: #f8fafc;
 }
 
+.cart-form-card .cart-gst-check {
+    margin-bottom: 0;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.cart-form-card .cart-gst-check .form-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    min-height: 0;
+}
+
+.cart-form-card .cart-gst-check .form-check-input {
+    margin-top: 0;
+}
+
+.cart-form-card .cart-gst-check .form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.cart-form-card .cart-gst-check .form-check-label {
+    font-size: 0.92rem;
+    color: #374151;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.cart-form-card .cart-gst-check .form-check-label i {
+    color: #667eea;
+}
+
+.cart-form-card .cart-gst-optional {
+    color: #94a3b8;
+    font-weight: 500;
+    font-size: 0.88em;
+}
+
+.cart-form-card .cart-gst-number-wrap {
+    margin-top: 12px;
+}
+
+.cart-form-card .cart-gst-number-wrap .cart-help {
+    display: block;
+    margin-top: 6px;
+}
+
 .cart-form-card .cart-terms-check .form-check-input:checked {
     background-color: #667eea;
     border-color: #667eea;

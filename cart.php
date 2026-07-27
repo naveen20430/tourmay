@@ -173,12 +173,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $guestEmail = trim((string)($_POST['guest_email'] ?? ''));
         $guestPhone = trim((string)($_POST['guest_phone'] ?? ''));
         $specialRequirements = trim((string)($_POST['special_requirements'] ?? ''));
+        $claimGst = !empty($_POST['claim_gst']);
+        $gstNumber = strtoupper(preg_replace('/\s+/', '', trim((string) ($_POST['gst_number'] ?? ''))));
         $paymentMethod = trim((string)($_POST['payment_method'] ?? 'razorpay'));
 
         $errors = [];
         if ($guestName === '') $errors[] = 'Your name is required';
         if ($guestEmail === '' || !filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required';
         if ($guestPhone === '') $errors[] = 'Your phone number is required';
+        if ($claimGst) {
+            if ($gstNumber === '') {
+                $errors[] = 'Please enter your GST number';
+            } elseif (!preg_match('/^[0-9A-Z]{15}$/', $gstNumber)) {
+                $errors[] = 'Please enter a valid 15-character GSTIN';
+            }
+        } else {
+            $gstNumber = '';
+        }
         if ($paymentMethod !== 'razorpay') {
             $errors[] = 'Please select online payment';
         }
@@ -195,6 +206,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'guest_email' => $guestEmail,
                 'guest_phone' => $guestPhone,
                 'special_requirements' => $specialRequirements,
+                'claim_gst' => $claimGst,
+                'gst_number' => $gstNumber,
                 'payment_method' => $paymentMethod,
                 'accept_terms' => !empty($_POST['accept_terms']),
             ];
@@ -209,6 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'email' => $guestEmail,
                 'phone' => $guestPhone,
                 'special_requirements' => $specialRequirements,
+                'gst_number' => $gstNumber,
                 'payment_method' => $paymentMethod,
             ];
             unset($_SESSION['cart_checkout_draft']);
@@ -223,6 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'email' => $guestEmail,
                 'phone' => $guestPhone,
                 'special_requirements' => $specialRequirements,
+                'gst_number' => $gstNumber,
             ], $paymentMethod);
         } catch (Exception $e) {
             $_SESSION['cart_flash'] = ['type' => 'error', 'message' => $e->getMessage()];
@@ -325,6 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isUserLoggedIn() && !empty($_SESSIO
             'email' => (string) ($pendingCheckout['email'] ?? ''),
             'phone' => (string) ($pendingCheckout['phone'] ?? ''),
             'special_requirements' => (string) ($pendingCheckout['special_requirements'] ?? ''),
+            'gst_number' => (string) ($pendingCheckout['gst_number'] ?? ''),
         ], $paymentMethod, $cab_functionality_enabled);
 
         $_SESSION['tour_cart'] = [];
@@ -347,6 +363,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isUserLoggedIn() && !empty($_SESSIO
             'guest_email' => (string) ($pendingCheckout['email'] ?? ''),
             'guest_phone' => (string) ($pendingCheckout['phone'] ?? ''),
             'special_requirements' => (string) ($pendingCheckout['special_requirements'] ?? ''),
+            'claim_gst' => !empty($pendingCheckout['gst_number']),
+            'gst_number' => (string) ($pendingCheckout['gst_number'] ?? ''),
             'payment_method' => (string) ($pendingCheckout['payment_method'] ?? 'razorpay'),
             'accept_terms' => true,
         ];
@@ -368,6 +386,8 @@ if ($prefillPhone === '' && !empty($checkoutDraft['guest_phone'])) {
     $prefillPhone = (string) $checkoutDraft['guest_phone'];
 }
 $prefillSpecialRequirements = (string) ($checkoutDraft['special_requirements'] ?? '');
+$prefillGstNumber = (string) ($checkoutDraft['gst_number'] ?? '');
+$prefillClaimGst = !empty($checkoutDraft['claim_gst']) || $prefillGstNumber !== '';
 $prefillAcceptTerms = !empty($checkoutDraft['accept_terms']);
 $razorpayEnabled = razorpayIsConfigured();
 $isLoggedIn = isUserLoggedIn();
@@ -648,7 +668,7 @@ include 'includes/header.php';
                     <p class="cart-help" style="margin-bottom:18px;"><?php echo htmlspecialchars($checkoutHelpText); ?></p>
 
                     <div class="cart-total-box">
-                        <div class="cart-help">Order total (cab pricing)</div>
+                        <div class="cart-help">Total Cab Price including GST</div>
                         <div class="amount" data-cart-order-total><?php echo formatPriceINR($cartSummary['total']); ?></div>
                     </div>
 
@@ -674,6 +694,26 @@ include 'includes/header.php';
                         <div class="cart-field">
                             <label class="cart-form-label" for="cartSpecialRequirements"><i class="fas fa-comment-dots"></i> Special Requirements</label>
                             <textarea name="special_requirements" id="cartSpecialRequirements" class="form-control" rows="3" placeholder="Optional"><?php echo htmlspecialchars($prefillSpecialRequirements); ?></textarea>
+                        </div>
+
+                        <div class="cart-field cart-gst-block">
+                            <div class="cart-gst-check">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="claim_gst" id="cartClaimGst" value="1" <?php echo $prefillClaimGst ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="cartClaimGst">
+                                        <i class="fas fa-file-invoice"></i> Claim GST <span class="cart-gst-optional">(optional)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="cart-gst-number-wrap<?php echo $prefillClaimGst ? '' : ' d-none'; ?>" id="cartGstNumberWrap">
+                                <label class="cart-form-label" for="cartGstNumber"><i class="fas fa-hashtag"></i> GST Number</label>
+                                <input type="text" name="gst_number" id="cartGstNumber" class="form-control"
+                                       maxlength="15" placeholder="Enter 15-digit GSTIN"
+                                       value="<?php echo htmlspecialchars($prefillGstNumber); ?>"
+                                       <?php echo $prefillClaimGst ? 'required' : ''; ?>
+                                       autocomplete="off" style="text-transform:uppercase;">
+                                <small class="cart-help">Enter your 15-character GSTIN to claim GST on this invoice.</small>
+                            </div>
                         </div>
 
                         <div class="cart-field cart-payment-block">
@@ -714,6 +754,28 @@ include 'includes/header.php';
 
 <?php include 'includes/footer.php'; ?>
 <script>
+(function() {
+    var claimGst = document.getElementById('cartClaimGst');
+    var gstWrap = document.getElementById('cartGstNumberWrap');
+    var gstInput = document.getElementById('cartGstNumber');
+    if (!claimGst || !gstWrap || !gstInput) return;
+
+    function syncGstField() {
+        var on = !!claimGst.checked;
+        gstWrap.classList.toggle('d-none', !on);
+        gstInput.required = on;
+        if (!on) {
+            gstInput.value = '';
+        }
+    }
+
+    claimGst.addEventListener('change', syncGstField);
+    gstInput.addEventListener('input', function() {
+        gstInput.value = gstInput.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15);
+    });
+    syncGstField();
+})();
+
 document.querySelectorAll('.payment-option input[type="radio"]').forEach(function(input) {
     input.addEventListener('change', function() {
         document.querySelectorAll('.payment-option').forEach(function(option) {

@@ -89,7 +89,14 @@ $default_settings = [
     'twilio_whatsapp_content_sid' => 'HXb5b62575e6e4ff6129ad7c8efe1f983e',
     'twilio_whatsapp_sandbox_join' => '',
     'fast2sms_api_key' => '',
-    'fast2sms_otp_id' => ''
+    'fast2sms_otp_id' => '',
+    'smtp_host' => 'smtp.hostinger.com',
+    'smtp_port' => '465',
+    'smtp_encryption' => 'ssl',
+    'smtp_username' => 'noreply@theworldjourney.in',
+    'smtp_password' => '',
+    'smtp_from_email' => 'noreply@theworldjourney.in',
+    'smtp_from_name' => 'The World Journey'
 ];
 
 // Merge with current settings
@@ -472,6 +479,83 @@ include 'includes/header.php';
                         </div>
                         <p class="text-muted mb-0">
                             Add your Razorpay test or live keys here to enable online checkout. Cash/manual payment works without Razorpay keys.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Email OTP / SMTP -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-envelope mr-2"></i>Email OTP (SMTP)
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="smtp_host">SMTP Host</label>
+                                    <input type="text" class="form-control" id="smtp_host"
+                                           name="settings[smtp_host]"
+                                           value="<?php echo htmlspecialchars($settings_array['smtp_host'] ?? 'smtp.hostinger.com'); ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="smtp_port">Port</label>
+                                    <input type="text" class="form-control" id="smtp_port"
+                                           name="settings[smtp_port]"
+                                           value="<?php echo htmlspecialchars($settings_array['smtp_port'] ?? '465'); ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="smtp_encryption">Encryption</label>
+                                    <select class="form-control" id="smtp_encryption" name="settings[smtp_encryption]">
+                                        <?php $enc = $settings_array['smtp_encryption'] ?? 'ssl'; ?>
+                                        <option value="ssl" <?php echo $enc === 'ssl' ? 'selected' : ''; ?>>SSL (465)</option>
+                                        <option value="tls" <?php echo $enc === 'tls' ? 'selected' : ''; ?>>TLS / STARTTLS (587)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="smtp_username">Username</label>
+                                    <input type="text" class="form-control" id="smtp_username"
+                                           name="settings[smtp_username]"
+                                           value="<?php echo htmlspecialchars($settings_array['smtp_username'] ?? 'noreply@theworldjourney.in'); ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="smtp_password">Password</label>
+                                    <input type="password" class="form-control" id="smtp_password"
+                                           name="settings[smtp_password]"
+                                           value="<?php echo htmlspecialchars($settings_array['smtp_password'] ?? ''); ?>"
+                                           placeholder="Mailbox password">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="smtp_from_email">From Email</label>
+                                    <input type="email" class="form-control" id="smtp_from_email"
+                                           name="settings[smtp_from_email]"
+                                           value="<?php echo htmlspecialchars($settings_array['smtp_from_email'] ?? 'noreply@theworldjourney.in'); ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="smtp_from_name">From Name</label>
+                                    <input type="text" class="form-control" id="smtp_from_name"
+                                           name="settings[smtp_from_name]"
+                                           value="<?php echo htmlspecialchars($settings_array['smtp_from_name'] ?? 'The World Journey'); ?>">
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">
+                            Used for login/register email OTP. Test connection at
+                            <a href="smtp-test.php">SMTP Test</a>.
+                            Mobile/WhatsApp OTP is currently hidden in the frontend.
                         </p>
                     </div>
                 </div>

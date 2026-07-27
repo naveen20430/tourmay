@@ -1,14 +1,15 @@
 <?php
 require_once 'config/config.php';
-require_once 'includes/whatsapp_otp_helpers.php';
+// require_once 'includes/whatsapp_otp_helpers.php'; // Mobile OTP commented — email OTP login only
+require_once 'includes/email_otp_helpers.php';
 
 requireUserLogin();
 
 $user = getCurrentUser();
 $user_data = $db->fetch('SELECT * FROM users WHERE id = ?', [(int) $user['id']]);
-$whatsappEnabled = mobileOtpIsConfigured();
-$whatsappSandboxNotice = getWhatsAppSandboxInstructions();
-$otpChannelLabel = fast2smsIsConfigured() ? 'SMS' : 'WhatsApp';
+// $whatsappEnabled = mobileOtpIsConfigured();
+// $whatsappSandboxNotice = getWhatsAppSandboxInstructions();
+// $otpChannelLabel = fast2smsIsConfigured() ? 'SMS' : 'WhatsApp';
 $page_title = 'My Profile - ' . getSetting('site_name');
 $current_page = 'profile';
 
@@ -126,9 +127,11 @@ include 'includes/header.php';
                     <a href="#bookings" class="list-group-item list-group-item-action">
                         <i class="fas fa-calendar-check me-2"></i> My Bookings
                     </a>
+                    <?php /* Mobile / WhatsApp OTP update — commented out
                     <a href="#whatsapp" class="list-group-item list-group-item-action">
                         <i class="fab fa-whatsapp me-2"></i> WhatsApp
                     </a>
+                    */ ?>
                     <a href="#security" class="list-group-item list-group-item-action">
                         <i class="fas fa-lock me-2"></i> Security
                     </a>
@@ -200,62 +203,11 @@ include 'includes/header.php';
                     </div>
                 </div>
 
-                <!-- WhatsApp Number Update -->
-                <div class="card shadow-sm mb-4" id="whatsapp">
-                    <div class="card-header">
-                        <h5><i class="fab fa-whatsapp me-2 text-success"></i> Update WhatsApp Number</h5>
-                    </div>
-                    <div class="card-body">
-                        <?php if (!$whatsappEnabled): ?>
-                            <div class="alert alert-warning mb-0">
-                                Mobile OTP verification is not configured yet. Please contact support.
-                            </div>
-                        <?php else: ?>
-                            <?php if ($whatsappSandboxNotice && !fast2smsIsConfigured()): ?>
-                                <div class="alert alert-info" style="font-size:.9rem;"><?php echo $whatsappSandboxNotice; ?></div>
-                            <?php endif; ?>
-                            <p class="text-muted mb-3">
-                                Current number:
-                                <strong><?php echo htmlspecialchars(formatPhoneDisplay($user_data['phone'] ?? '') ?: 'Not linked'); ?></strong>
-                            </p>
-                            <div id="profileWhatsappAlert" class="alert d-none" role="alert"></div>
+                <?php /*
+                <!-- WhatsApp / Mobile OTP Number Update (commented — email OTP only) -->
+                <div class="card shadow-sm mb-4" id="whatsapp">...</div>
+                */ ?>
 
-                            <div id="profileWhatsappPhoneStep">
-                                <div class="mb-3">
-                                    <label class="form-label">New Mobile Number</label>
-                                    <input type="tel" id="profileWhatsappPhone" class="form-control"
-                                           maxlength="16" placeholder="e.g. +91 9876543210 or 9876543210">
-                                    <small class="text-muted">Include country code for numbers outside India.</small>
-                                </div>
-                                <button type="button" class="btn btn-success" id="profileSendOtpBtn">
-                                    <i class="fas fa-mobile-alt me-2"></i>Send OTP
-                                </button>
-                            </div>
-
-                            <div id="profileWhatsappOtpStep" class="d-none mt-3">
-                                <p class="text-muted mb-2">
-                                    OTP sent to <strong id="profileWhatsappPhoneDisplay"></strong>
-                                    <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="profileChangeWhatsappPhone">Change</button>
-                                </p>
-                                <div class="mb-3">
-                                    <label class="form-label">Enter OTP</label>
-                                    <input type="text" id="profileWhatsappOtp" class="form-control"
-                                           maxlength="5" pattern="[0-9]{5}" placeholder="5-digit code"
-                                           style="letter-spacing:.35em;text-align:center;font-weight:700;">
-                                </div>
-                                <div class="d-flex gap-2 flex-wrap">
-                                    <button type="button" class="btn btn-primary" id="profileVerifyOtpBtn">
-                                        <i class="fas fa-check-circle me-2"></i>Verify &amp; Update Number
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" id="profileResendOtpBtn">
-                                        Resend OTP
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                
                 <!-- My Bookings Section -->
                 <div class="card shadow-sm mb-4" id="bookings">
                     <div class="card-header">
@@ -355,108 +307,7 @@ document.querySelectorAll('.list-group-item[href^="#"]').forEach(anchor => {
     });
 });
 
-<?php if ($whatsappEnabled): ?>
-(function() {
-    const sendUrl = <?php echo json_encode(BASE_URL . 'api/whatsapp-send-otp.php'); ?>;
-    const verifyUrl = <?php echo json_encode(BASE_URL . 'api/whatsapp-verify-otp.php'); ?>;
-    const phoneInput = document.getElementById('profileWhatsappPhone');
-    const otpInput = document.getElementById('profileWhatsappOtp');
-    const alertBox = document.getElementById('profileWhatsappAlert');
-    const phoneStep = document.getElementById('profileWhatsappPhoneStep');
-    const otpStep = document.getElementById('profileWhatsappOtpStep');
-    let activePhone = '';
-
-    function showAlert(type, message) {
-        alertBox.className = 'alert alert-' + type;
-        alertBox.textContent = message;
-        alertBox.classList.remove('d-none');
-    }
-
-    function normalizeWhatsappPhone(raw) {
-        let digits = (raw || '').replace(/\D/g, '');
-        if (digits.length === 10) return '+91' + digits;
-        if (digits.length > 10) return '+' + digits;
-        return '';
-    }
-
-    function sendOtp() {
-        const phone = normalizeWhatsappPhone(phoneInput.value || '');
-        if (!phone || phone.replace(/\D/g, '').length < 10) {
-            showAlert('danger', 'Please enter a valid WhatsApp number with country code');
-            return;
-        }
-
-        const btn = document.getElementById('profileSendOtpBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
-
-        fetch(sendUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ phone: phone, purpose: 'update_phone' })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            if (!data.success) throw new Error(data.message || 'Unable to send OTP');
-            activePhone = data.phone;
-            document.getElementById('profileWhatsappPhoneDisplay').textContent = data.phone;
-            phoneStep.classList.add('d-none');
-            otpStep.classList.remove('d-none');
-            showAlert('success', data.message || 'OTP sent on WhatsApp');
-            otpInput.focus();
-        })
-        .catch(function(err) {
-            showAlert('danger', err.message || 'Unable to send OTP');
-        })
-        .finally(function() {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fab fa-whatsapp me-2"></i>Send OTP on WhatsApp';
-        });
-    }
-
-    function verifyOtp() {
-        const otp = (otpInput.value || '').replace(/\D/g, '');
-        if (!activePhone || otp.length !== 5) {
-            showAlert('danger', 'Please enter the 5-digit verification code');
-            return;
-        }
-
-        const btn = document.getElementById('profileVerifyOtpBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
-
-        fetch(verifyUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ phone: activePhone, otp: otp, purpose: 'update_phone' })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            if (!data.success) throw new Error(data.message || 'OTP verification failed');
-            showAlert('success', data.message || 'WhatsApp number updated');
-            setTimeout(function() { window.location.reload(); }, 1200);
-        })
-        .catch(function(err) {
-            showAlert('danger', err.message || 'OTP verification failed');
-        })
-        .finally(function() {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Verify & Update Number';
-        });
-    }
-
-    document.getElementById('profileSendOtpBtn').addEventListener('click', sendOtp);
-    document.getElementById('profileVerifyOtpBtn').addEventListener('click', verifyOtp);
-    document.getElementById('profileResendOtpBtn').addEventListener('click', sendOtp);
-    document.getElementById('profileChangeWhatsappPhone').addEventListener('click', function() {
-        otpStep.classList.add('d-none');
-        phoneStep.classList.remove('d-none');
-        activePhone = '';
-        otpInput.value = '';
-        alertBox.classList.add('d-none');
-    });
-})();
-<?php endif; ?>
+/* Mobile OTP profile JS commented out — email OTP login only */
 
 // Auto-hide success messages
 setTimeout(function() {

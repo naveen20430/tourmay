@@ -80,6 +80,9 @@ $methodLabel = ($invoice['payment_method'] ?? 'cash') === 'razorpay' ? 'Razorpay
                         <strong><?php echo htmlspecialchars($invoice['guest_name']); ?></strong>
                         <div class="sub"><?php echo htmlspecialchars($invoice['guest_email']); ?></div>
                         <div class="sub"><?php echo htmlspecialchars($invoice['guest_phone']); ?></div>
+                        <?php if (!empty($invoice['gst_number'])): ?>
+                            <div class="sub"><strong>GSTIN:</strong> <?php echo htmlspecialchars($invoice['gst_number']); ?></div>
+                        <?php endif; ?>
                     </div>
                     <div class="invoice-meta-card">
                         <span>Payment Method</span>

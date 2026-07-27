@@ -88,6 +88,7 @@ function ensureCheckoutSchema() {
         guest_email VARCHAR(100) NOT NULL,
         guest_phone VARCHAR(20) NOT NULL,
         special_requirements TEXT NULL,
+        gst_number VARCHAR(30) NULL,
         subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
         cab_total DECIMAL(10,2) NOT NULL DEFAULT 0,
         total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -122,6 +123,11 @@ function ensureCheckoutSchema() {
     }
     if (!in_array('pickup_time', $cols, true)) {
         $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_time VARCHAR(10) NULL AFTER pickup_detail');
+    }
+
+    $invoiceCols = array_column($db->fetchAll('SHOW COLUMNS FROM invoices'), 'Field');
+    if (!in_array('gst_number', $invoiceCols, true)) {
+        $pdo->exec('ALTER TABLE invoices ADD COLUMN gst_number VARCHAR(30) NULL AFTER special_requirements');
     }
 
     $ready = true;
@@ -378,8 +384,8 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
     try {
         $invoiceNumber = generateInvoiceNumber();
         $db->execute(
-            "INSERT INTO invoices (invoice_number, user_id, guest_name, guest_email, guest_phone, special_requirements, subtotal, cab_total, total_amount, payment_method, payment_status, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())",
+            "INSERT INTO invoices (invoice_number, user_id, guest_name, guest_email, guest_phone, special_requirements, gst_number, subtotal, cab_total, total_amount, payment_method, payment_status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())",
             [
                 $invoiceNumber,
                 $userId,
@@ -387,6 +393,7 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
                 $guest['email'],
                 $guest['phone'],
                 $guest['special_requirements'] ?? '',
+                !empty($guest['gst_number']) ? $guest['gst_number'] : null,
                 $validated['subtotal'],
                 $validated['cabTotal'],
                 $validated['total'],
