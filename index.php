@@ -48,9 +48,17 @@ $all_destinations = $db->fetchAll("
     ORDER BY d.name ASC
 ");
 
-// Hero background slideshow for search section (managed in Admin → Hero Images)
-$hero_search_backgrounds = getHeroSearchBackgrounds();
-$hero_search_text = getHeroSearchText();
+// Hero slideshow for search section (managed in Admin → Hero Images)
+// Each row = one slide with its own image + title + description
+$hero_search_slides = getHeroSearchSlides();
+$hero_search_backgrounds = array_column($hero_search_slides, 'image_path');
+$hero_search_text = !empty($hero_search_slides[0])
+    ? [
+        'title' => $hero_search_slides[0]['title'],
+        'subtitle' => $hero_search_slides[0]['subtitle'],
+        'description' => $hero_search_slides[0]['description'],
+    ]
+    : getHeroSearchText();
 
 // Cab routes for Transfer (cab) search
 $cab_routes = $db->fetchAll("
@@ -150,11 +158,11 @@ include 'includes/header.php';
 ?>
 
 <!-- Hero Search Section: Transfer (Cab) + Activity (Tour) -->
-<section class="search-section hero-search-section<?php echo !empty($hero_search_backgrounds) ? ' hero-search-section--slider' : ''; ?>">
-    <?php if (!empty($hero_search_backgrounds)): ?>
+<section class="search-section hero-search-section<?php echo !empty($hero_search_slides) ? ' hero-search-section--slider' : ''; ?>">
+    <?php if (!empty($hero_search_slides)): ?>
     <div class="hero-search__bg" aria-hidden="true">
-        <?php foreach ($hero_search_backgrounds as $hero_bg_path): ?>
-        <div class="hero-search__bg-slide" style="background-image:url('<?php echo BASE_URL . htmlspecialchars($hero_bg_path); ?>')"></div>
+        <?php foreach ($hero_search_slides as $i => $slide): ?>
+        <div class="hero-search__bg-slide<?php echo $i === 0 ? ' is-active' : ''; ?>" style="background-image:url('<?php echo htmlspecialchars($slide['image_url']); ?>')"></div>
         <?php endforeach; ?>
     </div>
     <?php endif; ?>
@@ -164,8 +172,22 @@ include 'includes/header.php';
 
     <div class="container">
         <div class="hero-search-header text-center">
-            <h2 class="hero-search-title"><?php echo htmlspecialchars($hero_search_text['title']); ?></h2>
-            <p class="hero-search-subtitle"><?php echo htmlspecialchars($hero_search_text['description']); ?></p>
+            <?php if (!empty($hero_search_slides)): ?>
+                <div class="hero-search__copy" data-hero-copy>
+                    <?php foreach ($hero_search_slides as $i => $slide): ?>
+                        <div class="hero-search__copy-slide<?php echo $i === 0 ? ' is-active' : ''; ?>" data-hero-copy-slide>
+                            <h2 class="hero-search-title"><?php echo htmlspecialchars($slide['title']); ?></h2>
+                            <?php if ($slide['subtitle'] !== '' && $slide['subtitle'] !== $slide['description']): ?>
+                                <p class="hero-search-kicker"><?php echo htmlspecialchars($slide['subtitle']); ?></p>
+                            <?php endif; ?>
+                            <p class="hero-search-subtitle"><?php echo htmlspecialchars($slide['description']); ?></p>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <h2 class="hero-search-title"><?php echo htmlspecialchars($hero_search_text['title']); ?></h2>
+                <p class="hero-search-subtitle"><?php echo htmlspecialchars($hero_search_text['description']); ?></p>
+            <?php endif; ?>
         </div>
 
         <div class="search-category-tabs" role="tablist" aria-label="Search type">

@@ -112,10 +112,15 @@ function buildEmailOtpHtml($otp, $purpose = 'login') {
     $logoUrl = rtrim(BASE_URL, '/') . '/assets/images/logonew.png';
     $homeUrl = rtrim(BASE_URL, '/') . '/';
 
-    $title = $purpose === 'register' ? 'Verify your email' : 'Login verification';
-    $intro = $purpose === 'register'
-        ? 'Use this code to verify your email and complete registration.'
-        : 'Use this code to sign in to your account.';
+    $title = 'Login verification';
+    $intro = 'Use this code to sign in to your account.';
+    if ($purpose === 'register') {
+        $title = 'Verify your email';
+        $intro = 'Use this code to verify your email and complete registration.';
+    } elseif ($purpose === 'checkout') {
+        $title = 'Verify your email';
+        $intro = 'Use this code to verify your email and continue checkout.';
+    }
 
     $otpEsc = htmlspecialchars((string) $otp, ENT_QUOTES, 'UTF-8');
     $siteEsc = htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8');
@@ -453,11 +458,54 @@ function consumeVerifiedEmailSession($purpose, $email) {
     return true;
 }
 
+function findOrCreateUserForCheckout($email, $name = '', $phone = '') {
+    global $db;
+
+    $normalized = normalizeEmailAddress($email);
+    if ($normalized === '') {
+        throw new Exception('Please enter a valid email address');
+    }
+
+    $user = findUserByEmail($normalized);
+    if ($user) {
+        return $user;
+    }
+
+    $name = trim((string) $name);
+    $parts = preg_split('/\s+/', $name, 2) ?: [];
+    $first = trim((string) ($parts[0] ?? ''));
+    $last = trim((string) ($parts[1] ?? ''));
+    if ($first === '') {
+        $first = 'Guest';
+    }
+    if ($last === '') {
+        $last = 'User';
+    }
+
+    $normalizedPhone = $phone !== '' ? normalizePhoneE164($phone) : '';
+
+    $password = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
+    $token = bin2hex(random_bytes(16));
+
+    $db->execute(
+        "INSERT INTO users (first_name, last_name, email, password, phone, country, verification_token, email_verified, status, created_at)
+         VALUES (?, ?, ?, ?, ?, 'IN', ?, 1, 'active', NOW())",
+        [$first, $last, $normalized, $password, $normalizedPhone !== '' ? $normalizedPhone : null, $token]
+    );
+
+    $user = findUserByEmail($normalized);
+    if (!$user) {
+        throw new Exception('Unable to create account for checkout. Please try again.');
+    }
+
+    return $user;
+}
+
 function createOtpForEmail($email, $purpose = 'login') {
     global $db;
     ensureEmailOtpSchema();
 
-    $purpose = in_array($purpose, ['login', 'register'], true) ? $purpose : 'login';
+    $purpose = in_array($purpose, ['login', 'register', 'checkout'], true) ? $purpose : 'login';
     $normalized = normalizeEmailAddress($email);
     if ($normalized === '') {
         throw new Exception('Please enter a valid email address');

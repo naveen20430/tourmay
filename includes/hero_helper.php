@@ -45,23 +45,69 @@ function getHeroContent() {
  * @return string[] Relative image paths under assets/
  */
 function getHeroSearchBackgrounds() {
+    $slides = getHeroSearchSlides();
+    $paths = [];
+    foreach ($slides as $slide) {
+        if (!empty($slide['image_path'])) {
+            $paths[] = $slide['image_path'];
+        }
+    }
+    return $paths;
+}
+
+/**
+ * Full homepage hero slides (image + title + text) in sort order.
+ * Each admin hero_images row becomes one slider with its own copy.
+ *
+ * @return array<int, array{image_path:string,image_url:string,title:string,subtitle:string,description:string}>
+ */
+function getHeroSearchSlides() {
     global $db;
 
-    $paths = [];
+    $defaults = [
+        'title' => 'Luxury Options',
+        'subtitle' => '',
+        'description' => 'Search for best available hotel options, events, tours, activities and create various easy to book holiday packages.',
+    ];
+
+    $slides = [];
 
     try {
-        $rows = $db->fetchAll("SELECT image_path FROM hero_images ORDER BY sort_order ASC, created_at DESC");
+        $rows = $db->fetchAll("
+            SELECT title, subtitle, description, image_path, is_active, sort_order
+            FROM hero_images
+            ORDER BY sort_order ASC, created_at DESC
+        ");
         foreach ($rows as $row) {
+            // Prefer active slides; if none are marked active, include all rows with files.
             $path = trim((string) ($row['image_path'] ?? ''));
-            if ($path !== '' && is_file(BASE_PATH . $path)) {
-                $paths[] = $path;
+            if ($path === '' || !is_file(BASE_PATH . $path)) {
+                continue;
             }
+            $title = trim((string) ($row['title'] ?? ''));
+            $subtitle = trim((string) ($row['subtitle'] ?? ''));
+            $description = trim((string) ($row['description'] ?? ''));
+            $slides[] = [
+                'image_path' => $path,
+                'image_url' => BASE_URL . $path,
+                'title' => $title !== '' ? $title : $defaults['title'],
+                'subtitle' => $subtitle,
+                'description' => $description !== '' ? $description : ($subtitle !== '' ? $subtitle : $defaults['description']),
+                'is_active' => !empty($row['is_active']) ? 1 : 0,
+            ];
         }
     } catch (Exception $e) {
-        // hero_images table may not exist yet
+        $slides = [];
     }
 
-    if (empty($paths)) {
+    $active = array_values(array_filter($slides, function ($s) {
+        return !empty($s['is_active']);
+    }));
+    if (!empty($active)) {
+        $slides = $active;
+    }
+
+    if (empty($slides)) {
         try {
             $tours = $db->fetchAll("
                 SELECT featured_image
@@ -75,7 +121,14 @@ function getHeroSearchBackgrounds() {
             foreach ($tours as $tour) {
                 $path = trim((string) ($tour['featured_image'] ?? ''));
                 if ($path !== '' && is_file(BASE_PATH . $path)) {
-                    $paths[] = $path;
+                    $slides[] = [
+                        'image_path' => $path,
+                        'image_url' => BASE_URL . $path,
+                        'title' => $defaults['title'],
+                        'subtitle' => $defaults['subtitle'],
+                        'description' => $defaults['description'],
+                        'is_active' => 1,
+                    ];
                 }
             }
         } catch (Exception $e) {
@@ -83,7 +136,29 @@ function getHeroSearchBackgrounds() {
         }
     }
 
-    return array_values(array_unique($paths));
+    return array_values($slides);
+}
+
+/**
+ * Title and copy for the homepage search hero.
+ * Uses the first hero slide that has text (kept for older callers).
+ * @return array{title: string, subtitle: string, description: string}
+ */
+function getHeroSearchText() {
+    $slides = getHeroSearchSlides();
+    if (!empty($slides[0])) {
+        return [
+            'title' => $slides[0]['title'],
+            'subtitle' => $slides[0]['subtitle'],
+            'description' => $slides[0]['description'],
+        ];
+    }
+
+    return [
+        'title' => 'Luxury Options',
+        'subtitle' => '',
+        'description' => 'Search for best available hotel options, events, tours, activities and create various easy to book holiday packages.',
+    ];
 }
 
 /**

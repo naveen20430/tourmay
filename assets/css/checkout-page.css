@@ -304,6 +304,15 @@
     border-top: 1px dashed #e2e8f0;
 }
 
+.cart-pickup-fields[hidden],
+.cart-pickup-detail-wrap[hidden],
+.cart-pickup-address[hidden],
+[data-cart-pickup-wrap][hidden],
+[data-cart-pickup-detail-wrap][hidden],
+[data-cart-pickup-address][hidden] {
+    display: none !important;
+}
+
 .cart-pickup-detail-wrap {
     display: flex;
     flex-direction: column;
@@ -317,6 +326,37 @@
 .cart-pickup-time {
     width: 100%;
     min-height: 44px;
+    border-radius: 10px;
+}
+
+.cart-pickup-place.is-invalid,
+.cart-pickup-detail.is-invalid,
+.cart-pickup-address.is-invalid,
+.cart-pickup-time.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.12);
+}
+
+.cart-tour-item.is-incomplete {
+    border-color: #f1aeb5;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.12);
+}
+
+.cart-item-field-error {
+    margin-top: 6px;
+    color: #b42318;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.cart-validation-alert ul {
+    padding-left: 1.1rem;
+}
+
+.cart-pickup-place,
+.cart-pickup-detail,
+.cart-pickup-address,
+.cart-pickup-time {
     border: 1.5px solid #e2e8f0;
     border-radius: 10px;
     padding: 10px 12px;
@@ -746,6 +786,24 @@
     margin-top: 6px;
 }
 
+.cart-form-card .cart-email-otp-block {
+    margin-top: 10px;
+}
+
+.cart-form-card .cart-email-otp-block .alert {
+    margin-bottom: 10px;
+    font-size: 0.88rem;
+}
+
+.cart-form-card .cart-email-verified {
+    margin-top: 10px;
+}
+
+.cart-form-card .cart-email-verified .badge {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.65rem;
+}
+
 .cart-form-card .cart-terms-check .form-check-input:checked {
     background-color: #667eea;
     border-color: #667eea;
@@ -886,4 +944,84 @@
     .cart-cab-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Email OTP verify popup on checkout */
+body.cart-otp-modal-open {
+    overflow: hidden;
+}
+
+.cart-otp-modal[hidden] {
+    display: none !important;
+}
+
+.cart-otp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.cart-otp-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.cart-otp-modal__dialog {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 24px 24px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+    z-index: 1;
+}
+
+.cart-otp-modal__close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    border: 0;
+    background: transparent;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.cart-otp-modal__dialog h3 {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+    color: #111827;
+}
+
+.cart-otp-modal__text {
+    margin: 0 0 14px;
+    color: #4b5563;
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.cart-otp-modal__actions {
+    display: grid;
+    gap: 10px;
+}
+
+.cart-otp-modal .alert {
+    margin-bottom: 12px;
+    font-size: 0.88rem;
+}
+
+.cart-form-card .cart-email-verified {
+    margin-top: 10px;
+}
+
+.cart-form-card .cart-email-verified .badge {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.65rem;
 }

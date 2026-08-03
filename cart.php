@@ -1,6 +1,7 @@
 <?php
 require_once 'config/config.php';
 require_once 'includes/checkout_helpers.php';
+require_once 'includes/email_otp_helpers.php';
 
 $current_page = 'cart';
 $page_title = 'Cart - ' . getSetting('site_name');
@@ -169,6 +170,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $redirectTo(navUrl('cart'));
         }
 
+        // Apply latest tour/cab/pickup values from the checkout form (source of truth),
+        // so payment does not depend on a prior AJAX save that may have failed or raced.
+        $cartSyncRaw = (string) ($_POST['cart_sync'] ?? '');
+        if ($cartSyncRaw !== '') {
+            $cartSync = json_decode($cartSyncRaw, true);
+            if (is_array($cartSync)) {
+                foreach ($cartSync as $syncItem) {
+                    if (!is_array($syncItem)) {
+                        continue;
+                    }
+                    $syncTourId = filter_var($syncItem['tour_id'] ?? null, FILTER_VALIDATE_INT);
+                    if (!$syncTourId || !isset($_SESSION['tour_cart'][(string) $syncTourId])) {
+                        continue;
+                    }
+                    addTourToSessionCart((int) $syncTourId, [
+                        'tour_date' => $syncItem['tour_date'] ?? ($_SESSION['tour_cart'][(string) $syncTourId]['tour_date'] ?? ''),
+                        'people' => $syncItem['people'] ?? ($_SESSION['tour_cart'][(string) $syncTourId]['people'] ?? null),
+                        'cab_type' => $cab_functionality_enabled ? ($syncItem['cab_type'] ?? '') : '',
+                        'pickup_place' => $syncItem['pickup_place'] ?? '',
+                        'pickup_detail' => $syncItem['pickup_detail'] ?? '',
+                        'pickup_address' => $syncItem['pickup_address'] ?? '',
+                        'pickup_time' => $syncItem['pickup_time'] ?? '',
+                    ]);
+                }
+                $cartItems = $_SESSION['tour_cart'];
+            }
+        }
+
         $guestName = trim((string)($_POST['guest_name'] ?? ''));
         $guestEmail = trim((string)($_POST['guest_email'] ?? ''));
         $guestPhone = trim((string)($_POST['guest_phone'] ?? ''));
@@ -200,6 +229,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'You must accept the Terms of Service and Privacy Policy to continue';
         }
 
+        if (!isUserLoggedIn()) {
+            $normalizedGuestEmail = normalizeEmailAddress($guestEmail);
+            if (!isVerifiedEmailSession('checkout', $normalizedGuestEmail)) {
+                $errors[] = 'Please verify your email with OTP before proceeding to payment';
+            }
+        }
+
         if (!empty($errors)) {
             $_SESSION['cart_checkout_draft'] = [
                 'guest_name' => $guestName,
@@ -210,25 +246,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'gst_number' => $gstNumber,
                 'payment_method' => $paymentMethod,
                 'accept_terms' => !empty($_POST['accept_terms']),
+                'email_verified' => isVerifiedEmailSession('checkout', normalizeEmailAddress($guestEmail)),
             ];
             $_SESSION['cart_flash'] = ['type' => 'error', 'message' => implode(' | ', $errors)];
             $redirectTo(navUrl('cart'));
         }
 
-        // Guests can fill checkout details; login is required only to proceed with payment.
         if (!isUserLoggedIn()) {
-            $_SESSION['cart_checkout_pending'] = [
-                'name' => $guestName,
-                'email' => $guestEmail,
-                'phone' => $guestPhone,
-                'special_requirements' => $specialRequirements,
-                'gst_number' => $gstNumber,
-                'payment_method' => $paymentMethod,
-            ];
-            unset($_SESSION['cart_checkout_draft']);
-            $_SESSION['cart_flash'] = ['type' => 'info', 'message' => 'Please log in to proceed with payment. Your booking details have been saved.'];
-            header('Location: ' . loginUrl(navUrl('cart')));
-            exit;
+            try {
+                $user = findOrCreateUserForCheckout($guestEmail, $guestName, $guestPhone);
+                establishUserSession($user);
+                consumeVerifiedEmailSession('checkout', normalizeEmailAddress($guestEmail));
+            } catch (Exception $e) {
+                $_SESSION['cart_checkout_draft'] = [
+                    'guest_name' => $guestName,
+                    'guest_email' => $guestEmail,
+                    'guest_phone' => $guestPhone,
+                    'special_requirements' => $specialRequirements,
+                    'claim_gst' => $claimGst,
+                    'gst_number' => $gstNumber,
+                    'payment_method' => $paymentMethod,
+                    'accept_terms' => !empty($_POST['accept_terms']),
+                ];
+                $_SESSION['cart_flash'] = ['type' => 'error', 'message' => $e->getMessage()];
+                $redirectTo(navUrl('cart'));
+            }
         }
 
         try {
@@ -390,11 +432,17 @@ $prefillGstNumber = (string) ($checkoutDraft['gst_number'] ?? '');
 $prefillClaimGst = !empty($checkoutDraft['claim_gst']) || $prefillGstNumber !== '';
 $prefillAcceptTerms = !empty($checkoutDraft['accept_terms']);
 $razorpayEnabled = razorpayIsConfigured();
+$emailOtpEnabled = emailOtpIsConfigured();
 $isLoggedIn = isUserLoggedIn();
+$prefillEmailVerified = $isLoggedIn
+    || (!empty($checkoutDraft['email_verified']) && isVerifiedEmailSession('checkout', $prefillEmail))
+    || isVerifiedEmailSession('checkout', $prefillEmail);
 $checkoutButtonLabel = $isLoggedIn ? 'Book Now' : 'Proceed to Payment';
 $checkoutHelpText = $isLoggedIn
     ? 'Complete your booking details and pay online.'
-    : 'Fill your details below. You will be asked to log in only when you proceed to payment.';
+    : ($emailOtpEnabled
+        ? 'Fill the form below. When you proceed to payment, an OTP will be sent to your email to verify.'
+        : 'Fill your details below. Email OTP must be configured to checkout as a guest.');
 
 include 'includes/header.php';
 ?>
@@ -411,19 +459,34 @@ include 'includes/header.php';
 
 <section class="cart-wrapper">
     <div class="container">
-        <?php if ($flash && isset($flash['message'])): ?>
+        <?php
+        $cartValidationErrors = array_values(array_unique($cartSummary['errors'] ?? []));
+        $flashMessage = ($flash && isset($flash['message'])) ? trim((string) $flash['message']) : '';
+        $flashLooksLikeCartValidation = $flashMessage !== '' && !empty($cartValidationErrors) && (
+            $flashMessage === implode(' | ', $cartValidationErrors)
+            || str_contains($flashMessage, 'pickup point')
+            || str_contains($flashMessage, 'pickup time')
+            || str_contains($flashMessage, 'cab option')
+        );
+        ?>
+        <?php if ($flashMessage !== '' && !$flashLooksLikeCartValidation): ?>
             <?php
             $flashType = (string) ($flash['type'] ?? 'error');
             $flashClass = $flashType === 'success' ? 'alert-success' : ($flashType === 'info' ? 'alert-info' : 'alert-danger');
             ?>
             <div class="alert <?php echo $flashClass; ?>" style="margin-bottom: 20px;">
-                <?php echo htmlspecialchars((string)$flash['message']); ?>
+                <?php echo htmlspecialchars($flashMessage); ?>
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($cartSummary['errors'])): ?>
-            <div class="alert alert-warning" style="margin-bottom: 20px;">
-                <?php echo htmlspecialchars(implode(' | ', $cartSummary['errors'])); ?>
+        <?php if (!empty($cartValidationErrors)): ?>
+            <div class="alert alert-danger cart-validation-alert d-none" id="cartValidationAlert" style="margin-bottom: 20px;">
+                <strong>Please complete these tour details:</strong>
+                <ul class="mb-0 mt-2">
+                    <?php foreach ($cartValidationErrors as $cartError): ?>
+                        <li><?php echo htmlspecialchars($cartError); ?></li>
+                    <?php endforeach; ?>
+                </ul>
             </div>
         <?php endif; ?>
 
@@ -489,8 +552,13 @@ include 'includes/header.php';
                                 }
                                 $totalStatusText = $cabLabel;
                             }
+                            $tourMissingPickup = $cab_functionality_enabled && $selectedCab !== '' && $selectedPickup === '';
+                            $tourMissingPickupTime = $cab_functionality_enabled && $selectedCab !== '' && $selectedPickupTime === '';
                             ?>
-                            <article class="cart-tour-item" data-cart-tour-item data-duration-days="<?php echo max(1, $durationDays); ?>">
+                            <article class="cart-tour-item"
+                                     data-cart-tour-item
+                                     data-duration-days="<?php echo max(1, $durationDays); ?>"
+                                     data-tour-title="<?php echo htmlspecialchars($tour['title']); ?>">
                                 <form method="POST" action="<?php echo navUrl('cart'); ?>" class="cart-tour-item__form" data-cart-tour-form>
                                     <input type="hidden" name="tour_id" value="<?php echo (int)$tour['id']; ?>">
                                     <input type="hidden" name="action" value="add" data-cart-action>
@@ -591,11 +659,12 @@ include 'includes/header.php';
                                             </div>
 
                                             <div class="cart-pickup-fields" data-cart-pickup-wrap <?php echo $showPickup ? '' : 'hidden'; ?>>
-                                                <label class="cart-field-label" for="pickup_place_<?php echo (int)$tour['id']; ?>">Pickup point</label>
+                                                <label class="cart-field-label" for="pickup_place_<?php echo (int)$tour['id']; ?>">Pickup point <span class="text-danger">*</span></label>
                                                 <select name="pickup_place"
                                                         id="pickup_place_<?php echo (int)$tour['id']; ?>"
                                                         class="form-control cart-pickup-place"
-                                                        data-cart-pickup-place>
+                                                        data-cart-pickup-place
+                                                        <?php echo $showPickup ? 'required' : ''; ?>>
                                                     <option value="">Select pickup point</option>
                                                     <?php foreach ($pickupPlaces as $place): ?>
                                                         <option value="<?php echo htmlspecialchars($place); ?>" <?php echo $selectedPickup === $place ? 'selected' : ''; ?>>
@@ -620,11 +689,12 @@ include 'includes/header.php';
                                                            <?php echo $needsHotelAddress ? '' : 'hidden'; ?>
                                                            <?php echo $needsHotelAddress ? 'required' : ''; ?>><?php echo htmlspecialchars($selectedPickupAddress); ?></textarea>
                                                 </div>
-                                                <label class="cart-field-label" for="pickup_time_<?php echo (int)$tour['id']; ?>">Pickup time</label>
+                                                <label class="cart-field-label" for="pickup_time_<?php echo (int)$tour['id']; ?>">Pickup time <span class="text-danger">*</span></label>
                                                 <select name="pickup_time"
                                                         id="pickup_time_<?php echo (int)$tour['id']; ?>"
                                                         class="form-control cart-pickup-time"
-                                                        data-cart-pickup-time>
+                                                        data-cart-pickup-time
+                                                        <?php echo $showPickup ? 'required' : ''; ?>>
                                                     <option value="">Select time (9 AM – 6 PM)</option>
                                                     <?php foreach ($pickupTimeOptions as $timeOpt): ?>
                                                         <option value="<?php echo htmlspecialchars($timeOpt['value']); ?>"
@@ -633,6 +703,7 @@ include 'includes/header.php';
                                                         </option>
                                                     <?php endforeach; ?>
                                                 </select>
+                                                <div class="cart-item-field-error d-none" data-cart-pickup-error></div>
                                             </div>
                                         </div>
                                     <?php endif; ?>
@@ -674,6 +745,7 @@ include 'includes/header.php';
 
                     <form method="POST" action="<?php echo navUrl('cart'); ?>" id="cartCheckoutForm">
                         <input type="hidden" name="action" value="checkout">
+                        <input type="hidden" name="cart_sync" id="cartSyncPayload" value="">
                         <input type="hidden" name="return_url" value="<?php echo htmlspecialchars(navUrl('cart')); ?>">
 
                         <div class="cart-field">
@@ -683,7 +755,18 @@ include 'includes/header.php';
 
                         <div class="cart-field">
                             <label class="cart-form-label" for="cartGuestEmail"><i class="fas fa-envelope"></i> Email</label>
-                            <input type="email" name="guest_email" id="cartGuestEmail" class="form-control" value="<?php echo htmlspecialchars($prefillEmail); ?>" required>
+                            <input type="email" name="guest_email" id="cartGuestEmail" class="form-control" value="<?php echo htmlspecialchars($prefillEmail); ?>" required
+                                   <?php echo ($isLoggedIn || $prefillEmailVerified) ? 'readonly' : ''; ?>>
+                            <?php if (!$isLoggedIn && $emailOtpEnabled): ?>
+                                <small class="cart-help d-block mt-2" id="cartEmailOtpHelp">
+                                    OTP will come to this email when you proceed to payment.
+                                </small>
+                                <div id="cartEmailVerifiedBadge" class="cart-email-verified<?php echo $prefillEmailVerified ? '' : ' d-none'; ?>" data-email-verified="<?php echo $prefillEmailVerified ? '1' : '0'; ?>">
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i> Email verified</span>
+                                </div>
+                            <?php elseif (!$isLoggedIn): ?>
+                                <small class="cart-help text-warning d-block mt-2">Guest checkout requires email OTP. Please contact support.</small>
+                            <?php endif; ?>
                         </div>
 
                         <div class="cart-field">
@@ -744,7 +827,7 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100"><?php echo htmlspecialchars($checkoutButtonLabel); ?></button>
+                        <button type="submit" class="btn btn-primary w-100" id="cartCheckoutSubmitBtn"><?php echo htmlspecialchars($checkoutButtonLabel); ?></button>
                     </form>
                 </div>
             </div>
@@ -752,8 +835,242 @@ include 'includes/header.php';
     </div>
 </section>
 
+<?php if (!$isLoggedIn && $emailOtpEnabled && !empty($cartItems)): ?>
+<div class="cart-otp-modal" id="cartOtpModal" hidden>
+    <div class="cart-otp-modal__backdrop" data-cart-otp-close></div>
+    <div class="cart-otp-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="cartOtpModalTitle">
+        <button type="button" class="cart-otp-modal__close" data-cart-otp-close aria-label="Close">&times;</button>
+        <h3 id="cartOtpModalTitle">Verify email OTP</h3>
+        <p class="cart-otp-modal__text" id="cartOtpModalText">Enter the 5-digit OTP sent to your email to continue to payment.</p>
+        <div id="cartEmailOtpAlert" class="alert d-none" role="alert"></div>
+        <label class="cart-form-label" for="cartEmailOtp"><i class="fas fa-key"></i> Enter OTP</label>
+        <input type="text" id="cartEmailOtp" class="form-control auth-otp-input otp-input mb-3"
+               maxlength="5" pattern="[0-9]{5}" placeholder="5-digit code" inputmode="numeric" autocomplete="one-time-code">
+        <div class="cart-otp-modal__actions">
+            <button type="button" class="btn btn-primary w-100" id="cartVerifyEmailOtpBtn">
+                <i class="fas fa-check-circle me-1"></i> Verify &amp; Continue to Payment
+            </button>
+            <button type="button" class="btn btn-outline-secondary w-100" id="cartResendEmailOtpBtn">
+                Resend OTP
+            </button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php include 'includes/footer.php'; ?>
 <script>
+window.__cartEmailOtpEnabled = <?php echo (!$isLoggedIn && $emailOtpEnabled && !empty($cartItems)) ? 'true' : 'false'; ?>;
+window.__cartEmailVerified = <?php echo $prefillEmailVerified ? 'true' : 'false'; ?>;
+window.__cartFinishCheckout = null;
+
+<?php if (!$isLoggedIn && $emailOtpEnabled && !empty($cartItems)): ?>
+(function() {
+    var sendUrl = <?php echo json_encode(BASE_URL . 'api/email-send-otp.php'); ?>;
+    var verifyUrl = <?php echo json_encode(BASE_URL . 'api/email-verify-otp.php'); ?>;
+    var emailInput = document.getElementById('cartGuestEmail');
+    var otpInput = document.getElementById('cartEmailOtp');
+    var alertBox = document.getElementById('cartEmailOtpAlert');
+    var verifiedBadge = document.getElementById('cartEmailVerifiedBadge');
+    var modal = document.getElementById('cartOtpModal');
+    var modalText = document.getElementById('cartOtpModalText');
+    var submitBtn = document.getElementById('cartCheckoutSubmitBtn');
+    var emailVerified = <?php echo $prefillEmailVerified ? 'true' : 'false'; ?>;
+    var activeEmail = emailVerified ? (emailInput ? emailInput.value.trim() : '') : '';
+    var sending = false;
+    var verifying = false;
+
+    function showAlert(type, message) {
+        if (!alertBox) return;
+        alertBox.className = 'alert alert-' + type;
+        alertBox.textContent = message;
+        alertBox.classList.remove('d-none');
+    }
+
+    function hideAlert() {
+        if (alertBox) alertBox.classList.add('d-none');
+    }
+
+    function openModal() {
+        if (!modal) return;
+        modal.hidden = false;
+        document.body.classList.add('cart-otp-modal-open');
+        if (otpInput) {
+            otpInput.value = '';
+            setTimeout(function() { otpInput.focus(); }, 50);
+        }
+    }
+
+    function closeModal() {
+        if (!modal) return;
+        modal.hidden = true;
+        document.body.classList.remove('cart-otp-modal-open');
+        hideAlert();
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            if (submitBtn.dataset.originalText) {
+                submitBtn.textContent = submitBtn.dataset.originalText;
+            }
+        }
+    }
+
+    function markVerified(email, loggedIn) {
+        emailVerified = true;
+        window.__cartEmailVerified = true;
+        activeEmail = email;
+        if (verifiedBadge) {
+            verifiedBadge.classList.remove('d-none');
+            verifiedBadge.setAttribute('data-email-verified', '1');
+        }
+        if (emailInput) emailInput.readOnly = true;
+        if (submitBtn) submitBtn.textContent = loggedIn ? 'Book Now' : 'Proceed to Payment';
+    }
+
+    function resetVerification() {
+        emailVerified = false;
+        window.__cartEmailVerified = false;
+        activeEmail = '';
+        if (verifiedBadge) {
+            verifiedBadge.classList.add('d-none');
+            verifiedBadge.setAttribute('data-email-verified', '0');
+        }
+        if (emailInput) emailInput.readOnly = false;
+        if (otpInput) otpInput.value = '';
+        if (submitBtn) submitBtn.textContent = 'Proceed to Payment';
+        hideAlert();
+    }
+
+    function sendOtp(options) {
+        options = options || {};
+        hideAlert();
+        var email = emailInput ? emailInput.value.trim() : '';
+        if (!email || email.indexOf('@') < 1) {
+            showAlert('danger', 'Please enter a valid email address first');
+            if (typeof options.onError === 'function') options.onError(new Error('Invalid email'));
+            return Promise.reject(new Error('Invalid email'));
+        }
+        if (sending) return Promise.resolve();
+        sending = true;
+
+        var resendBtn = document.getElementById('cartResendEmailOtpBtn');
+        if (resendBtn && options.fromResend) {
+            resendBtn.disabled = true;
+            resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Sending...';
+        }
+
+        return fetch(sendUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email: email, purpose: 'checkout' })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (!data.success) throw new Error(data.message || 'Unable to send OTP');
+            activeEmail = data.email || email;
+            if (modalText) {
+                modalText.textContent = 'We sent a 5-digit OTP to ' + activeEmail + '. Enter it below to continue to payment.';
+            }
+            showAlert('success', data.message || 'OTP sent to your email');
+            if (typeof options.onSuccess === 'function') options.onSuccess(data);
+            return data;
+        })
+        .catch(function(err) {
+            showAlert('danger', err.message || 'Unable to send OTP');
+            if (typeof options.onError === 'function') options.onError(err);
+            throw err;
+        })
+        .finally(function() {
+            sending = false;
+            if (resendBtn) {
+                resendBtn.disabled = false;
+                resendBtn.innerHTML = 'Resend OTP';
+            }
+        });
+    }
+
+    function verifyOtp() {
+        hideAlert();
+        var otp = (otpInput && otpInput.value ? otpInput.value : '').replace(/\D/g, '');
+        var email = activeEmail || (emailInput ? emailInput.value.trim() : '');
+        if (!email || otp.length !== 5) {
+            showAlert('danger', 'Please enter the 5-digit verification code');
+            return;
+        }
+        if (verifying) return;
+        verifying = true;
+
+        var btn = document.getElementById('cartVerifyEmailOtpBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Verifying...';
+        }
+
+        fetch(verifyUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email: email, otp: otp, purpose: 'checkout' })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (!data.success) throw new Error(data.message || 'OTP verification failed');
+            markVerified(data.email || email, !!data.logged_in);
+            closeModal();
+            if (typeof window.__cartFinishCheckout === 'function') {
+                window.__cartFinishCheckout();
+            }
+        })
+        .catch(function(err) {
+            showAlert('danger', err.message || 'OTP verification failed');
+        })
+        .finally(function() {
+            verifying = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle me-1"></i> Verify & Continue to Payment';
+            }
+        });
+    }
+
+    window.__cartStartEmailOtp = function() {
+        openModal();
+        return sendOtp({});
+    };
+
+    window.__cartIsEmailVerified = function() {
+        return !!emailVerified || window.__cartEmailVerified === true;
+    };
+
+    if (emailInput) {
+        emailInput.addEventListener('input', function() {
+            var current = emailInput.value.trim().toLowerCase();
+            if (emailVerified && activeEmail && current !== activeEmail.toLowerCase()) {
+                resetVerification();
+            }
+        });
+    }
+
+    document.querySelectorAll('[data-cart-otp-close]').forEach(function(el) {
+        el.addEventListener('click', closeModal);
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+    });
+
+    var verifyBtn = document.getElementById('cartVerifyEmailOtpBtn');
+    var resendBtn = document.getElementById('cartResendEmailOtpBtn');
+    if (verifyBtn) verifyBtn.addEventListener('click', verifyOtp);
+    if (resendBtn) resendBtn.addEventListener('click', function() { sendOtp({ fromResend: true }); });
+    if (otpInput) {
+        otpInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verifyOtp();
+            }
+        });
+    }
+})();
+<?php endif; ?>
 (function() {
     var claimGst = document.getElementById('cartClaimGst');
     var gstWrap = document.getElementById('cartGstNumberWrap');
@@ -913,11 +1230,15 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         if (hasCab) {
             pickupWrap.removeAttribute('hidden');
             syncPickupDetail();
+            if (pickupSel) pickupSel.setAttribute('required', 'required');
             if (pickupTimeInp) pickupTimeInp.setAttribute('required', 'required');
             return;
         }
         pickupWrap.setAttribute('hidden', '');
-        if (pickupSel) pickupSel.value = '';
+        if (pickupSel) {
+            pickupSel.value = '';
+            pickupSel.removeAttribute('required');
+        }
         if (detailInp) detailInp.value = '';
         if (addressInp) {
             addressInp.value = '';
@@ -986,6 +1307,7 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
 
 document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
     let saveTimer = null;
+    let savePromise = Promise.resolve();
     const actionInput = form.querySelector('[data-cart-action]');
     const ajaxInput = form.querySelector('[data-cart-ajax]');
     const removeBtn = form.querySelector('[data-cart-remove]');
@@ -1001,7 +1323,7 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
         if (ajaxInput) ajaxInput.value = '1';
 
         const body = new FormData(form);
-        fetch(form.action, {
+        savePromise = fetch(form.action, {
             method: 'POST',
             body: body,
             headers: {
@@ -1013,7 +1335,7 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (!data || !data.success) {
-                return;
+                return data;
             }
             if (typeof data.line_total === 'number' && totalAmount) {
                 if (data.line_total > 0) {
@@ -1029,11 +1351,17 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
             } else {
                 recalculateOrderTotalFromCards();
             }
+            return data;
         })
         .catch(function() {
             recalculateOrderTotalFromCards();
+            return null;
         });
+        return savePromise;
     }
+
+    form._saveCartItem = saveCartItem;
+    form._getSavePromise = function() { return savePromise; };
 
     function saveCartItemDebounced() {
         if (saveTimer) clearTimeout(saveTimer);
@@ -1047,19 +1375,34 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
     if (peopleSelect) peopleSelect.addEventListener('change', saveCartItem);
 
     form.querySelectorAll('input[name="cab_type"]').forEach(function(radio) {
-        radio.addEventListener('change', saveCartItem);
+        radio.addEventListener('change', function() {
+            saveCartItem();
+            if (window.__cartSubmitAttempted) setTimeout(refreshCartValidationAlert, 0);
+        });
     });
 
-    form.addEventListener('cart-cab-capacity-changed', saveCartItem);
+    form.addEventListener('cart-cab-capacity-changed', function() {
+        saveCartItem();
+        if (window.__cartSubmitAttempted) setTimeout(refreshCartValidationAlert, 0);
+    });
 
     const pickupPlace = form.querySelector('[data-cart-pickup-place]');
-    if (pickupPlace) pickupPlace.addEventListener('change', saveCartItem);
+    if (pickupPlace) pickupPlace.addEventListener('change', function() {
+        saveCartItem();
+        if (window.__cartSubmitAttempted) refreshCartValidationAlert();
+    });
 
     const pickupTime = form.querySelector('[data-cart-pickup-time]');
-    if (pickupTime) pickupTime.addEventListener('change', saveCartItem);
+    if (pickupTime) pickupTime.addEventListener('change', function() {
+        saveCartItem();
+        if (window.__cartSubmitAttempted) refreshCartValidationAlert();
+    });
 
     form.querySelectorAll('[data-cart-pickup-detail], [data-cart-pickup-address]').forEach(function(input) {
-        input.addEventListener('input', saveCartItemDebounced);
+        input.addEventListener('input', function() {
+            saveCartItemDebounced();
+            if (window.__cartSubmitAttempted) refreshCartValidationAlert();
+        });
         input.addEventListener('blur', saveCartItem);
     });
 
@@ -1070,6 +1413,222 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
         });
     }
 });
+
+function collectCartSyncPayload() {
+    const items = [];
+    document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
+        const tourIdInput = form.querySelector('input[name="tour_id"]');
+        const tourId = tourIdInput ? parseInt(tourIdInput.value || '0', 10) : 0;
+        if (!tourId) return;
+        const cabChecked = form.querySelector('input[name="cab_type"]:checked:not(:disabled)');
+        const dateInput = form.querySelector('[name="tour_date"]');
+        const peopleSelect = form.querySelector('[name="people"], [data-people-select]');
+        const pickupSel = form.querySelector('[data-cart-pickup-place]');
+        const pickupTime = form.querySelector('[data-cart-pickup-time]');
+        const detailInp = form.querySelector('[data-cart-pickup-detail]');
+        const addressInp = form.querySelector('[data-cart-pickup-address]');
+        items.push({
+            tour_id: tourId,
+            tour_date: dateInput ? dateInput.value : '',
+            people: peopleSelect ? peopleSelect.value : '',
+            cab_type: cabChecked ? cabChecked.value : '',
+            pickup_place: pickupSel ? pickupSel.value : '',
+            pickup_detail: detailInp ? detailInp.value : '',
+            pickup_address: addressInp ? addressInp.value : '',
+            pickup_time: pickupTime ? pickupTime.value : ''
+        });
+    });
+    return items;
+}
+
+function validateCartTourDetails() {
+    const errors = [];
+    let firstInvalid = null;
+
+    document.querySelectorAll('[data-cart-tour-item]').forEach(function(card) {
+        const form = card.querySelector('[data-cart-tour-form]');
+        if (!form) return;
+
+        const title = card.getAttribute('data-tour-title') || 'this tour';
+        const cabChecked = form.querySelector('input[name="cab_type"]:checked');
+        const pickupSel = form.querySelector('[data-cart-pickup-place]');
+        const pickupTime = form.querySelector('[data-cart-pickup-time]');
+        const detailInp = form.querySelector('[data-cart-pickup-detail]');
+        const addressInp = form.querySelector('[data-cart-pickup-address]');
+        const errorBox = form.querySelector('[data-cart-pickup-error]');
+        const pickupWrap = form.querySelector('[data-cart-pickup-wrap]');
+        let cardError = '';
+
+        card.classList.remove('is-incomplete');
+        if (pickupSel) pickupSel.classList.remove('is-invalid');
+        if (pickupTime) pickupTime.classList.remove('is-invalid');
+        if (detailInp) detailInp.classList.remove('is-invalid');
+        if (addressInp) addressInp.classList.remove('is-invalid');
+        if (errorBox) {
+            errorBox.textContent = '';
+            errorBox.classList.add('d-none');
+        }
+
+        if (!cabChecked || !cabChecked.value || cabChecked.disabled) {
+            cardError = 'Please select a cab option for: ' + title;
+        } else {
+            // Cab selected → pickup fields are required (don't rely only on [hidden], CSS can override it)
+            if (pickupWrap) pickupWrap.removeAttribute('hidden');
+            const place = pickupSel ? pickupSel.value.trim() : '';
+            const time = pickupTime ? pickupTime.value.trim() : '';
+            if (!place) {
+                cardError = 'Please select a pickup point for: ' + title;
+                if (pickupSel) pickupSel.classList.add('is-invalid');
+            } else if (place === 'Hotel') {
+                if (detailInp && !detailInp.value.trim()) {
+                    cardError = 'Please enter the hotel name for: ' + title;
+                    detailInp.classList.add('is-invalid');
+                } else if (addressInp && !addressInp.value.trim()) {
+                    cardError = 'Please enter the hotel full address with location for: ' + title;
+                    addressInp.classList.add('is-invalid');
+                }
+            } else if (place === 'Others' && detailInp && !detailInp.value.trim()) {
+                cardError = 'Please enter pickup details for: ' + title;
+                detailInp.classList.add('is-invalid');
+            }
+            if (!cardError && !time) {
+                cardError = 'Please select a pickup time for: ' + title;
+                if (pickupTime) pickupTime.classList.add('is-invalid');
+            }
+        }
+
+        if (cardError) {
+            errors.push(cardError);
+            card.classList.add('is-incomplete');
+            if (errorBox) {
+                errorBox.textContent = cardError;
+                errorBox.classList.remove('d-none');
+            }
+            if (!firstInvalid) firstInvalid = card;
+        }
+    });
+
+    return { errors: errors, firstInvalid: firstInvalid };
+}
+
+function refreshCartValidationAlert() {
+    const result = validateCartTourDetails();
+    let alertBox = document.getElementById('cartValidationAlert');
+    if (!result.errors.length) {
+        if (alertBox) {
+            alertBox.classList.add('d-none');
+            alertBox.innerHTML = '';
+        }
+        return result;
+    }
+    if (!alertBox) {
+        alertBox = document.createElement('div');
+        alertBox.id = 'cartValidationAlert';
+        alertBox.className = 'alert alert-danger cart-validation-alert';
+        alertBox.style.marginBottom = '20px';
+        const wrap = document.querySelector('.cart-wrapper .container');
+        if (wrap) wrap.insertBefore(alertBox, wrap.firstChild);
+    }
+    alertBox.innerHTML = '<strong>Please complete these tour details:</strong><ul class="mb-0 mt-2">' +
+        result.errors.map(function(err) { return '<li>' + err.replace(/</g, '&lt;') + '</li>'; }).join('') +
+        '</ul>';
+    alertBox.classList.remove('d-none');
+    return result;
+}
+
+(function() {
+    const checkoutForm = document.getElementById('cartCheckoutForm');
+    if (!checkoutForm) return;
+    const syncInput = document.getElementById('cartSyncPayload');
+    const submitBtn = document.getElementById('cartCheckoutSubmitBtn');
+
+    function finishCheckout() {
+        const syncItems = collectCartSyncPayload();
+        if (syncInput) {
+            syncInput.value = JSON.stringify(syncItems);
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.dataset.originalText = submitBtn.dataset.originalText || submitBtn.textContent || '';
+            submitBtn.textContent = 'Processing...';
+        }
+
+        const forms = Array.from(document.querySelectorAll('[data-cart-tour-form]'));
+        const saves = forms.map(function(form) {
+            if (typeof form._saveCartItem === 'function') {
+                return form._saveCartItem();
+            }
+            return Promise.resolve();
+        });
+
+        Promise.all(saves).then(function() {
+            HTMLFormElement.prototype.submit.call(checkoutForm);
+        }).catch(function() {
+            HTMLFormElement.prototype.submit.call(checkoutForm);
+        });
+    }
+
+    window.__cartFinishCheckout = finishCheckout;
+
+    checkoutForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        window.__cartSubmitAttempted = true;
+
+        if (!checkoutForm.checkValidity()) {
+            checkoutForm.reportValidity();
+            return;
+        }
+
+        const result = refreshCartValidationAlert();
+        if (result.errors.length) {
+            if (result.firstInvalid) {
+                const badField = result.firstInvalid.querySelector('.is-invalid, [data-cart-pickup-place], [data-cart-pickup-wrap]');
+                if (badField && typeof badField.focus === 'function') {
+                    try { badField.focus(); } catch (err) {}
+                }
+                result.firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                const alertBox = document.getElementById('cartValidationAlert');
+                if (alertBox) alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
+
+        const needsOtp = !!window.__cartEmailOtpEnabled && !(
+            (typeof window.__cartIsEmailVerified === 'function' && window.__cartIsEmailVerified())
+            || window.__cartEmailVerified === true
+        );
+
+        if (needsOtp) {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.dataset.originalText = submitBtn.textContent || '';
+                submitBtn.textContent = 'Sending OTP...';
+            }
+            if (typeof window.__cartStartEmailOtp === 'function') {
+                window.__cartStartEmailOtp().catch(function() {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = submitBtn.dataset.originalText || 'Proceed to Payment';
+                    }
+                });
+            }
+            return;
+        }
+
+        finishCheckout();
+    });
+})();
+
+(function() {
+    const incomplete = document.querySelector('#cartValidationAlert:not(.d-none)');
+    if (incomplete) {
+        setTimeout(function() {
+            incomplete.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+    }
+})();
 
 recalculateOrderTotalFromCards();
 </script>

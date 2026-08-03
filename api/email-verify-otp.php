@@ -39,6 +39,30 @@ try {
         exit;
     }
 
+    if ($purpose === 'checkout') {
+        $normalized = verifyEmailOtpCodeOnly($email, $otp);
+        $user = findUserByEmail($normalized);
+        $loggedIn = false;
+
+        if ($user) {
+            establishUserSession($user);
+            $loggedIn = true;
+        } else {
+            setVerifiedEmailSession($normalized, 'checkout');
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => $loggedIn
+                ? 'Email verified. You are signed in and can continue checkout.'
+                : 'Email verified. You can continue checkout.',
+            'email' => $normalized,
+            'logged_in' => $loggedIn,
+            'purpose' => 'checkout',
+        ]);
+        exit;
+    }
+
     $user = verifyOtpForEmailLogin($email, $otp);
     establishUserSession($user);
 

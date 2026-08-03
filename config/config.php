@@ -73,14 +73,26 @@ function uploadFile($file, $directory) {
     // Use assets/images directory for uploads
     $uploadDir = BASE_PATH . 'assets/images/' . $directory . '/';
     if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
+        if (!@mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+            return false;
+        }
+    }
+    if (!is_writable($uploadDir)) {
+        return false;
     }
     
-    // Generate unique filename
-    $fileName = date('Y-m-d') . '_' . time() . '_' . basename($file['name']);
+    // Generate unique, safe filename
+    $original = basename((string) ($file['name'] ?? 'image'));
+    $original = preg_replace('/[^A-Za-z0-9._-]/', '-', $original);
+    $original = trim((string) $original, '.-_');
+    if ($original === '') {
+        $original = 'image.jpg';
+    }
+    $fileName = date('Y-m-d') . '_' . time() . '_' . $original;
     $uploadPath = $uploadDir . $fileName;
     
     if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+        @chmod($uploadPath, 0644);
         return 'assets/images/' . $directory . '/' . $fileName;
     }
     return false;
@@ -88,12 +100,13 @@ function uploadFile($file, $directory) {
 
 function getUploadError($file) {
     $errors = [];
+    $errorCode = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
     
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        switch ($file['error']) {
+    if ($errorCode !== UPLOAD_ERR_OK) {
+        switch ($errorCode) {
             case UPLOAD_ERR_INI_SIZE:
             case UPLOAD_ERR_FORM_SIZE:
-                $errors[] = 'File is too large';
+                $errors[] = 'File is too large for the server limit (' . (ini_get('upload_max_filesize') ?: 'unknown') . ')';
                 break;
             case UPLOAD_ERR_PARTIAL:
                 $errors[] = 'File upload was interrupted';
@@ -108,7 +121,7 @@ function getUploadError($file) {
                 $errors[] = 'Server error: cannot write file';
                 break;
             default:
-                $errors[] = 'Unknown upload error';
+                $errors[] = 'Unknown upload error (code ' . $errorCode . ')';
         }
         return $errors;
     }
@@ -131,9 +144,9 @@ function getUploadError($file) {
         $errors[] = 'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed. Detected: ' . $mimeType;
     }
     
-    // Check file size (5MB max)
-    if ($file['size'] > 5 * 1024 * 1024) {
-        $errors[] = 'File is too large. Maximum size is 5MB';
+    // Check file size (10MB max — hero backgrounds are often large)
+    if ($file['size'] > 10 * 1024 * 1024) {
+        $errors[] = 'File is too large. Maximum size is 10MB';
     }
     
     return $errors;
