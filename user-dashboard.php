@@ -22,8 +22,115 @@ try {
     die('Error loading user data');
 }
 
-// Get user's bookings
 ensureCheckoutSchema();
+
+/**
+ * Whether the logged-in user may cancel this booking.
+ */
+function userCanCancelBooking(array $booking): bool {
+    $status = strtolower(trim((string) ($booking['booking_status'] ?? '')));
+    if (!in_array($status, ['pending', 'confirmed'], true)) {
+        return false;
+    }
+
+    $tourDate = trim((string) ($booking['tour_date'] ?? ''));
+    if ($tourDate === '') {
+        return false;
+    }
+
+    // Allow cancel on or before the travel date
+    return $tourDate >= date('Y-m-d');
+}
+
+// Handle cancel booking (before fetching list / rendering)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel_booking') {
+    $bookingId = (int) ($_POST['booking_id'] ?? 0);
+    $redirectBase = rtrim(userDashboardUrl(), '/') . '#bookings';
+
+    if ($bookingId <= 0) {
+        $_SESSION['dashboard_flash'] = ['type' => 'error', 'message' => 'Invalid booking selected.'];
+        header('Location: ' . $redirectBase);
+        exit;
+    }
+
+    try {
+        $booking = $db->fetch(
+            "SELECT * FROM bookings
+             WHERE id = ?
+               AND (user_id = ? OR LOWER(guest_email) = LOWER(?))
+             LIMIT 1",
+            [$bookingId, $user_id, $user['email']]
+        );
+
+        if (!$booking) {
+            $_SESSION['dashboard_flash'] = ['type' => 'error', 'message' => 'Booking not found.'];
+            header('Location: ' . $redirectBase);
+            exit;
+        }
+
+        if (!userCanCancelBooking($booking)) {
+            $_SESSION['dashboard_flash'] = [
+                'type' => 'error',
+                'message' => 'This booking can no longer be cancelled. Please contact support if you need help.',
+            ];
+            header('Location: ' . $redirectBase);
+            exit;
+        }
+
+        $db->execute(
+            "UPDATE bookings
+             SET booking_status = 'cancelled',
+                 updated_at = NOW()
+             WHERE id = ?
+               AND (user_id = ? OR LOWER(guest_email) = LOWER(?))",
+            [$bookingId, $user_id, $user['email']]
+        );
+
+        // If every booking on the invoice is cancelled, mark the invoice cancelled too
+        $invoiceId = (int) ($booking['invoice_id'] ?? 0);
+        if ($invoiceId > 0) {
+            $openCount = $db->fetch(
+                "SELECT COUNT(*) AS c FROM bookings
+                 WHERE invoice_id = ?
+                   AND LOWER(COALESCE(booking_status, '')) NOT IN ('cancelled', 'canceled')",
+                [$invoiceId]
+            );
+            if ((int) ($openCount['c'] ?? 0) === 0) {
+                $db->execute(
+                    "UPDATE invoices
+                     SET payment_status = 'cancelled', updated_at = NOW()
+                     WHERE id = ? AND payment_status IN ('pending', 'failed')",
+                    [$invoiceId]
+                );
+            }
+        }
+
+        $wasPaid = strtolower((string) ($booking['payment_status'] ?? '')) === 'paid';
+        $message = 'Booking #' . ($booking['booking_number'] ?? $bookingId) . ' has been cancelled.';
+        if ($wasPaid) {
+            $message .= ' For paid bookings, please contact support regarding any refund.';
+        }
+
+        $_SESSION['dashboard_flash'] = ['type' => 'success', 'message' => $message];
+    } catch (Exception $e) {
+        $_SESSION['dashboard_flash'] = ['type' => 'error', 'message' => 'Could not cancel booking. Please try again.'];
+    }
+
+    header('Location: ' . $redirectBase);
+    exit;
+}
+
+if (!empty($_SESSION['dashboard_flash']) && is_array($_SESSION['dashboard_flash'])) {
+    $flash = $_SESSION['dashboard_flash'];
+    unset($_SESSION['dashboard_flash']);
+    if (($flash['type'] ?? '') === 'success') {
+        $success_message = (string) ($flash['message'] ?? '');
+    } else {
+        $errors[] = (string) ($flash['message'] ?? 'Something went wrong.');
+    }
+}
+
+// Get user's bookings
 try {
     $bookings = $db->fetchAll("
         SELECT b.*, t.title as tour_title, t.slug as tour_slug, t.featured_image,
@@ -331,6 +438,7 @@ $destinationCount = count(array_unique(array_filter(array_column($bookings, 'des
                                         </div>
 
                                         <div class="dashboard-booking-card__footer">
+                                            <div class="dashboard-booking-card__links">
                                             <?php if (!empty($booking['invoice_number'])): ?>
                                                 <a href="<?php echo invoiceUrl($booking['invoice_number']); ?>" class="dashboard-invoice-link">
                                                     <i class="fas fa-file-invoice"></i>
@@ -342,11 +450,24 @@ $destinationCount = count(array_unique(array_filter(array_column($bookings, 'des
                                             <?php else: ?>
                                                 <span class="dashboard-booking-card__note">Invoice will be available after confirmation.</span>
                                             <?php endif; ?>
+                                            </div>
 
-                                            <a href="<?php echo tourUrl($booking['tour_slug']); ?>" class="dashboard-booking-card__cta">
-                                                View Tour
-                                                <i class="fas fa-arrow-right"></i>
-                                            </a>
+                                            <div class="dashboard-booking-card__actions">
+                                                <?php if (userCanCancelBooking($booking)): ?>
+                                                    <form method="POST" class="dashboard-cancel-form" onsubmit="return confirm('Cancel this booking? This cannot be undone.');">
+                                                        <input type="hidden" name="action" value="cancel_booking">
+                                                        <input type="hidden" name="booking_id" value="<?php echo (int) $booking['id']; ?>">
+                                                        <button type="submit" class="dashboard-cancel-btn">
+                                                            <i class="fas fa-times-circle"></i>
+                                                            Cancel Booking
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+                                                <a href="<?php echo tourUrl($booking['tour_slug']); ?>" class="dashboard-booking-card__cta">
+                                                    View Tour
+                                                    <i class="fas fa-arrow-right"></i>
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
                                 </article>

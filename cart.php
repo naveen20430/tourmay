@@ -129,11 +129,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
             }
+            $savedDate = (string) ($_SESSION['tour_cart'][(string) $tourId]['tour_date'] ?? '');
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => !empty($result['ok']),
                 'message' => $result['message'] ?? '',
                 'tour_id' => (int) $tourId,
+                'tour_date' => $savedDate,
                 'line_total' => $lineTotal,
                 'order_total' => (float) ($summary['total'] ?? 0),
                 'errors' => $summary['errors'] ?? [],
@@ -176,6 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($cartSyncRaw !== '') {
             $cartSync = json_decode($cartSyncRaw, true);
             if (is_array($cartSync)) {
+                $syncErrors = [];
                 foreach ($cartSync as $syncItem) {
                     if (!is_array($syncItem)) {
                         continue;
@@ -184,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!$syncTourId || !isset($_SESSION['tour_cart'][(string) $syncTourId])) {
                         continue;
                     }
-                    addTourToSessionCart((int) $syncTourId, [
+                    $syncResult = addTourToSessionCart((int) $syncTourId, [
                         'tour_date' => $syncItem['tour_date'] ?? ($_SESSION['tour_cart'][(string) $syncTourId]['tour_date'] ?? ''),
                         'people' => $syncItem['people'] ?? ($_SESSION['tour_cart'][(string) $syncTourId]['people'] ?? null),
                         'cab_type' => $cab_functionality_enabled ? ($syncItem['cab_type'] ?? '') : '',
@@ -193,8 +196,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'pickup_address' => $syncItem['pickup_address'] ?? '',
                         'pickup_time' => $syncItem['pickup_time'] ?? '',
                     ]);
+                    if (empty($syncResult['ok'])) {
+                        $syncErrors[] = (string) ($syncResult['message'] ?? 'Unable to update cart item');
+                    }
                 }
                 $cartItems = $_SESSION['tour_cart'];
+                if (!empty($syncErrors)) {
+                    $_SESSION['cart_checkout_draft'] = [
+                        'guest_name' => trim((string) ($_POST['guest_name'] ?? '')),
+                        'guest_email' => trim((string) ($_POST['guest_email'] ?? '')),
+                        'guest_phone' => trim((string) ($_POST['guest_phone'] ?? '')),
+                        'special_requirements' => trim((string) ($_POST['special_requirements'] ?? '')),
+                        'claim_gst' => !empty($_POST['claim_gst']),
+                        'gst_number' => strtoupper(preg_replace('/\s+/', '', trim((string) ($_POST['gst_number'] ?? '')))),
+                        'payment_method' => trim((string) ($_POST['payment_method'] ?? 'razorpay')),
+                        'accept_terms' => !empty($_POST['accept_terms']),
+                    ];
+                    $_SESSION['cart_flash'] = [
+                        'type' => 'error',
+                        'message' => implode(' | ', array_values(array_unique($syncErrors))),
+                    ];
+                    $redirectTo(navUrl('cart'));
+                }
             }
         }
 
@@ -499,11 +522,18 @@ include 'includes/header.php';
         <?php else: ?>
             <div class="cart-grid">
                 <div class="cart-card">
-                    <div class="cart-actions" style="justify-content:space-between;align-items:center;margin-bottom:12px;">
-                        <div class="cart-help">Changes save automatically. Checkout once for all tours.</div>
-                        <form method="POST" action="<?php echo navUrl('cart'); ?>">
+                    <div class="cart-actions cart-actions--toolbar">
+                        <div class="cart-actions__left">
+                            <a href="<?php echo navUrl('tours'); ?>" class="btn btn-primary cart-btn-add-tour">
+                                <i class="fas fa-plus me-1"></i> Add more tour
+                            </a>
+                            <span class="cart-help cart-actions__hint">Changes save automatically. Checkout once for all tours.</span>
+                        </div>
+                        <form method="POST" action="<?php echo navUrl('cart'); ?>" class="cart-actions__clear" onsubmit="return confirm('Clear all tours from your cart?');">
                             <input type="hidden" name="action" value="clear">
-                            <button type="submit" class="btn btn-outline-danger">Clear Cart</button>
+                            <button type="submit" class="btn btn-danger cart-btn-clear">
+                                <i class="fas fa-trash-alt me-1"></i> Clear Cart
+                            </button>
                         </form>
                     </div>
 
@@ -557,6 +587,7 @@ include 'includes/header.php';
                             ?>
                             <article class="cart-tour-item"
                                      data-cart-tour-item
+                                     data-tour-id="<?php echo (int) $tour['id']; ?>"
                                      data-duration-days="<?php echo max(1, $durationDays); ?>"
                                      data-tour-title="<?php echo htmlspecialchars($tour['title']); ?>">
                                 <form method="POST" action="<?php echo navUrl('cart'); ?>" class="cart-tour-item__form" data-cart-tour-form>
@@ -623,7 +654,7 @@ include 'includes/header.php';
 
                                     <?php if ($cartHasCabs && !empty($tourCabs)): ?>
                                         <div class="cart-field-group cart-field-group--cab">
-                                            <label class="cart-field-label">Cab</label>
+                                            <label class="cart-field-label">Choose your vehicle</label>
                                             <div class="cart-cab-grid" data-cart-cab-picker>
                                                 <?php foreach ($tourCabs as $cab): ?>
                                                     <?php
@@ -723,7 +754,7 @@ include 'includes/header.php';
                                             <?php endif; ?>
                                         </div>
                                         <div class="cart-tour-item__footer-actions">
-                                            <button type="submit" class="cart-delete-btn" data-cart-remove title="Remove from cart" aria-label="Remove from cart">
+                                            <button type="submit" class="cart-delete-btn" data-cart-remove formnovalidate title="Remove from cart" aria-label="Remove from cart">
                                                 <i class="fas fa-trash" aria-hidden="true"></i>
                                             </button>
                                         </div>
@@ -1335,7 +1366,30 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (!data || !data.success) {
+                const dateInput = form.querySelector('[name="tour_date"]');
+                if (dateInput && data && data.tour_date) {
+                    dateInput.value = data.tour_date;
+                }
+                const msg = (data && data.message) ? data.message : 'Unable to update cart';
+                let alertBox = document.getElementById('cartValidationAlert');
+                if (!alertBox) {
+                    alertBox = document.createElement('div');
+                    alertBox.id = 'cartValidationAlert';
+                    alertBox.className = 'alert alert-danger cart-validation-alert';
+                    alertBox.style.marginBottom = '20px';
+                    const wrap = document.querySelector('.cart-wrapper .container');
+                    if (wrap) wrap.insertBefore(alertBox, wrap.firstChild);
+                }
+                alertBox.innerHTML = '<strong>Cannot use this date:</strong><ul class="mb-0 mt-2"><li>' +
+                    String(msg).replace(/</g, '&lt;') + '</li></ul>';
+                alertBox.classList.remove('d-none');
+                alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return data;
+            }
+            const okAlert = document.getElementById('cartValidationAlert');
+            if (okAlert && /same day|already have|already booked/i.test(okAlert.textContent || '')) {
+                okAlert.classList.add('d-none');
+                okAlert.innerHTML = '';
             }
             if (typeof data.line_total === 'number' && totalAmount) {
                 if (data.line_total > 0) {
@@ -1369,7 +1423,22 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
     }
 
     const dateInput = form.querySelector('[name="tour_date"]');
-    if (dateInput) dateInput.addEventListener('change', saveCartItem);
+    if (dateInput) {
+        dateInput.dataset.lastValidDate = dateInput.value || '';
+        dateInput.addEventListener('change', function() {
+            const conflict = findCartDateConflictForCard(card, dateInput.value);
+            if (conflict) {
+                showCartDateConflictAlert(conflict);
+                dateInput.value = dateInput.dataset.lastValidDate || '';
+                return;
+            }
+            saveCartItem().then(function(data) {
+                if (data && data.success) {
+                    dateInput.dataset.lastValidDate = dateInput.value || '';
+                }
+            });
+        });
+    }
 
     const peopleSelect = form.querySelector('[data-people-select]');
     if (peopleSelect) peopleSelect.addEventListener('change', saveCartItem);
@@ -1408,11 +1477,73 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
 
     if (removeBtn) {
         removeBtn.addEventListener('click', function() {
+            // Bypass pickup/location required validation so delete always works
+            form.setAttribute('novalidate', 'novalidate');
+            form.querySelectorAll('[required]').forEach(function(el) {
+                el.removeAttribute('required');
+            });
             if (actionInput) actionInput.value = 'remove';
             if (ajaxInput) ajaxInput.value = '0';
         });
     }
 });
+
+function cartDateRange(startDate, durationDays) {
+    if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return null;
+    const days = Math.max(1, parseInt(durationDays || '1', 10) || 1);
+    const start = new Date(startDate + 'T00:00:00');
+    if (isNaN(start.getTime())) return null;
+    const end = new Date(start.getTime());
+    end.setDate(end.getDate() + days - 1);
+    const pad = function(n) { return String(n).padStart(2, '0'); };
+    const endStr = end.getFullYear() + '-' + pad(end.getMonth() + 1) + '-' + pad(end.getDate());
+    return { start: startDate, end: endStr };
+}
+
+function cartRangesOverlap(a, b) {
+    return !!(a && b && a.start <= b.end && b.start <= a.end);
+}
+
+function findCartDateConflictForCard(card, nextDate) {
+    if (!card || !nextDate) return '';
+    const selfId = card.getAttribute('data-tour-id') || '';
+    const selfDays = card.getAttribute('data-duration-days') || '1';
+    const selfTitle = card.getAttribute('data-tour-title') || 'this tour';
+    const selfRange = cartDateRange(nextDate, selfDays);
+    if (!selfRange) return '';
+
+    let message = '';
+    document.querySelectorAll('[data-cart-tour-item]').forEach(function(other) {
+        if (message) return;
+        if (other === card) return;
+        const otherId = other.getAttribute('data-tour-id') || '';
+        if (selfId && otherId && selfId === otherId) return;
+        const otherDateInput = other.querySelector('[name="tour_date"]');
+        const otherDate = otherDateInput ? otherDateInput.value.trim() : '';
+        const otherRange = cartDateRange(otherDate, other.getAttribute('data-duration-days') || '1');
+        if (!cartRangesOverlap(selfRange, otherRange)) return;
+        const otherTitle = other.getAttribute('data-tour-title') || 'another tour';
+        message = 'You already selected "' + otherTitle + '" on ' + otherDate +
+            '. Multiple tours are allowed, but not on the same date. Please choose a different date for "' + selfTitle + '".';
+    });
+    return message;
+}
+
+function showCartDateConflictAlert(message) {
+    let alertBox = document.getElementById('cartValidationAlert');
+    if (!alertBox) {
+        alertBox = document.createElement('div');
+        alertBox.id = 'cartValidationAlert';
+        alertBox.className = 'alert alert-danger cart-validation-alert';
+        alertBox.style.marginBottom = '20px';
+        const wrap = document.querySelector('.cart-wrapper .container');
+        if (wrap) wrap.insertBefore(alertBox, wrap.firstChild);
+    }
+    alertBox.innerHTML = '<strong>Date not available:</strong><ul class="mb-0 mt-2"><li>' +
+        String(message || '').replace(/</g, '&lt;') + '</li></ul>';
+    alertBox.classList.remove('d-none');
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
 function collectCartSyncPayload() {
     const items = [];
@@ -1455,6 +1586,7 @@ function validateCartTourDetails() {
         const pickupTime = form.querySelector('[data-cart-pickup-time]');
         const detailInp = form.querySelector('[data-cart-pickup-detail]');
         const addressInp = form.querySelector('[data-cart-pickup-address]');
+        const dateInp = form.querySelector('[name="tour_date"]');
         const errorBox = form.querySelector('[data-cart-pickup-error]');
         const pickupWrap = form.querySelector('[data-cart-pickup-wrap]');
         let cardError = '';
@@ -1464,12 +1596,17 @@ function validateCartTourDetails() {
         if (pickupTime) pickupTime.classList.remove('is-invalid');
         if (detailInp) detailInp.classList.remove('is-invalid');
         if (addressInp) addressInp.classList.remove('is-invalid');
+        if (dateInp) dateInp.classList.remove('is-invalid');
         if (errorBox) {
             errorBox.textContent = '';
             errorBox.classList.add('d-none');
         }
 
-        if (!cabChecked || !cabChecked.value || cabChecked.disabled) {
+        const dateConflict = findCartDateConflictForCard(card, dateInp ? dateInp.value.trim() : '');
+        if (dateConflict) {
+            cardError = dateConflict;
+            if (dateInp) dateInp.classList.add('is-invalid');
+        } else if (!cabChecked || !cabChecked.value || cabChecked.disabled) {
             cardError = 'Please select a cab option for: ' + title;
         } else {
             // Cab selected → pickup fields are required (don't rely only on [hidden], CSS can override it)

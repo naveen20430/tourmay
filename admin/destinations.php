@@ -1,6 +1,9 @@
 <?php
 require_once '../config/config.php';
+require_once '../includes/tour_destinations.php';
 requireLogin();
+
+ensureTourDestinationsSchema();
 
 // Handle delete action
 if ($_GET['action'] ?? '' === 'delete' && $_GET['id']) {
@@ -27,8 +30,13 @@ if ($_GET['action'] ?? '' === 'delete' && $_GET['id']) {
             }
         }
         
-        // Check if destination is used by any tours
-        $tour_count = $db->fetchColumn("SELECT COUNT(*) FROM tours WHERE destination_id = ?", [$destination_id]);
+        // Check if destination is used by any tours (join table or legacy FK)
+        $usage = $db->fetch(
+            "SELECT COUNT(DISTINCT t.id) AS tour_count FROM tours t
+             WHERE " . tourLinkedToDestinationIdSql('t', '?'),
+            [$destination_id, $destination_id]
+        );
+        $tour_count = (int) ($usage['tour_count'] ?? 0);
         
         if ($tour_count > 0) {
             // Don't delete, just set to inactive and show warning
@@ -45,11 +53,14 @@ if ($_GET['action'] ?? '' === 'delete' && $_GET['id']) {
 
 // Get all destinations with tour count
 $destinations = $db->fetchAll("
-    SELECT d.*, 
-           COUNT(t.id) as tour_count
-    FROM destinations d 
-    LEFT JOIN tours t ON d.id = t.destination_id 
-    GROUP BY d.id 
+    SELECT d.*,
+           (
+               SELECT COUNT(DISTINCT t.id)
+               FROM tours t
+               LEFT JOIN tour_destinations td ON td.tour_id = t.id
+               WHERE td.destination_id = d.id OR t.destination_id = d.id
+           ) AS tour_count
+    FROM destinations d
     ORDER BY d.created_at DESC
 ");
 ?>

@@ -47,11 +47,23 @@ $extra_css = '<style>
 .pay-brand p{margin:4px 0 0;opacity:.9;font-size:.88rem}
 .pay-body{padding:28px}
 .pay-summary{background:#f8f9ff;border:1px solid rgba(102,126,234,.12);border-radius:14px;padding:16px;margin-bottom:20px}
-.pay-line{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(102,126,234,.18)}
+.pay-line{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px dashed rgba(102,126,234,.18)}
 .pay-line:last-child{border-bottom:0}
+.pay-line > span:last-child,
+.pay-line > strong:last-child{text-align:right;white-space:nowrap;min-width:110px}
+.pay-line-main{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;width:100%}
+.pay-line-meta{font-size:.82rem;color:#64748b;margin-top:4px;text-align:right;width:100%}
+.pay-item-title{font-weight:600;color:#0f172a;text-align:left;padding-right:12px}
+.pay-sub{color:#475569;font-weight:500}
 .pay-total{font-size:1.1rem;font-weight:800;color:#764ba2;padding-top:12px}
+.pay-gst-note{margin:10px 0 0;font-size:.8rem;color:#64748b;text-align:right}
 .pay-body .btn-primary{background:linear-gradient(135deg,#764ba2 0%,#667eea 100%)!important;border:0!important;box-shadow:0 8px 20px rgba(102,126,234,.28)!important}
 </style>';
+
+$gstRate = 0.05;
+$invoiceTotal = (float) ($invoice['total_amount'] ?? 0);
+$invoiceBase = round($invoiceTotal / (1 + $gstRate), 2);
+$invoiceGst = round($invoiceTotal - $invoiceBase, 2);
 
 include 'includes/header.php';
 ?>
@@ -82,20 +94,41 @@ include 'includes/header.php';
 
             <div class="pay-summary">
                 <?php foreach ($bookings as $booking): ?>
-                    <?php $lineAmount = (float) ($booking['total_with_cab'] ?: ($booking['total_amount'] + (float) ($booking['cab_price'] ?? 0))); ?>
-                    <div class="pay-line">
-                        <span><?php echo htmlspecialchars($booking['tour_title']); ?></span>
-                        <strong><?php echo formatPriceINR($lineAmount); ?></strong>
+                    <?php
+                    $lineAmount = (float) ($booking['total_with_cab'] ?: ($booking['total_amount'] + (float) ($booking['cab_price'] ?? 0)));
+                    $lineBase = round($lineAmount / (1 + $gstRate), 2);
+                    $lineGst = round($lineAmount - $lineBase, 2);
+                    ?>
+                    <div class="pay-line" style="flex-direction:column;align-items:stretch;">
+                        <div class="pay-line-main">
+                            <span class="pay-item-title"><?php echo htmlspecialchars($booking['tour_title']); ?></span>
+                            <strong><?php echo formatPriceINR($lineAmount); ?></strong>
+                        </div>
+                        <div class="pay-line-meta">
+                            Price <?php echo formatPriceINR($lineBase); ?>
+                            + GST 5% <?php echo formatPriceINR($lineGst); ?>
+                            = Total <?php echo formatPriceINR($lineAmount); ?>
+                        </div>
                     </div>
                 <?php endforeach; ?>
+
+                <div class="pay-line pay-sub">
+                    <span>Price (before GST)</span>
+                    <span><?php echo formatPriceINR($invoiceBase); ?></span>
+                </div>
+                <div class="pay-line pay-sub">
+                    <span>GST (5%)</span>
+                    <span><?php echo formatPriceINR($invoiceGst); ?></span>
+                </div>
                 <div class="pay-line pay-total">
                     <span>Total Payable</span>
-                    <span><?php echo formatPriceINR((float) $invoice['total_amount']); ?></span>
+                    <span><?php echo formatPriceINR($invoiceTotal); ?></span>
                 </div>
+                <p class="pay-gst-note">Total Price = Price + 5% GST</p>
             </div>
 
             <button type="button" class="btn btn-primary w-100" id="razorpayPayBtn">
-                <i class="fas fa-lock"></i> Pay <?php echo formatPriceINR((float) $invoice['total_amount']); ?> with Razorpay
+                <i class="fas fa-lock"></i> Pay <?php echo formatPriceINR($invoiceTotal); ?> with Razorpay
             </button>
             <div class="cart-help" style="margin-top:12px;text-align:center;">You will receive a printable invoice with full tour itinerary after successful payment.</div>
             </div>
@@ -158,13 +191,13 @@ include 'includes/header.php';
                     .catch(function(err) {
                         alert(err.message || 'Payment verification failed');
                         payBtn.disabled = false;
-                        payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR((float) $invoice['total_amount']); ?> with Razorpay';
+                        payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR($invoiceTotal); ?> with Razorpay';
                     });
                 },
                 modal: {
                     ondismiss: function() {
                         payBtn.disabled = false;
-                        payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR((float) $invoice['total_amount']); ?> with Razorpay';
+                        payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR($invoiceTotal); ?> with Razorpay';
                     }
                 }
             };
@@ -175,7 +208,7 @@ include 'includes/header.php';
         .catch(function(err) {
             alert(err.message || 'Unable to start payment');
             payBtn.disabled = false;
-            payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR((float) $invoice['total_amount']); ?> with Razorpay';
+            payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR($invoiceTotal); ?> with Razorpay';
         });
     });
 })();

@@ -1,7 +1,10 @@
 <?php
 require_once '../config/config.php';
 require_once '../includes/html_helpers.php';
+require_once '../includes/tour_destinations.php';
 requireLogin();
+
+ensureTourDestinationsSchema();
 
 $errors = [];
 $success = false;
@@ -16,7 +19,8 @@ if ($_POST) {
     }
     
     $title = trim($_POST['title'] ?? '');
-    $destination_id = $_POST['destination_id'] ?? '';
+    $destination_ids = normalizeTourDestinationIds($_POST['destination_ids'] ?? []);
+    $destination_id = $destination_ids[0] ?? null;
     $description = sanitizeRichTextHtml(trim($_POST['description'] ?? ''));
     $short_description = trim($_POST['short_description'] ?? '');
     $price = floatval($_POST['price'] ?? 0);
@@ -123,13 +127,15 @@ if ($_POST) {
     // Create tour if no errors
     if (empty($errors)) {
         try {
-            $tour_id = $db->execute(
+            $inserted = $db->execute(
                 "INSERT INTO tours (title, slug, destination_id, description, short_description, price, discount_price, duration_days, duration_nights, max_people, min_people, featured_image, gallery, inclusions, exclusions, itinerary, difficulty_level, tour_type, featured, popular, status, availability_start, availability_end, created_at) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
-                [$title, $slug, $destination_id ?: null, $description, $short_description, $price, $discount_price, $duration_days, $duration_nights, $max_people, $min_people, $featured_image, json_encode($gallery_images), json_encode($inclusions), json_encode($exclusions), json_encode($itinerary), $difficulty_level, $tour_type, $featured, $popular, $status, $availability_start ?: null, $availability_end ?: null]
+                [$title, $slug, $destination_id, $description, $short_description, $price, $discount_price, $duration_days, $duration_nights, $max_people, $min_people, $featured_image, json_encode($gallery_images), json_encode($inclusions), json_encode($exclusions), json_encode($itinerary), $difficulty_level, $tour_type, $featured, $popular, $status, $availability_start ?: null, $availability_end ?: null]
             );
             
-            if ($tour_id) {
+            $tour_id = (int) $db->lastInsertId();
+            if ($inserted && $tour_id > 0) {
+                saveTourDestinations($tour_id, $destination_ids, $db);
                 header('Location: tours.php?msg=added');
                 exit;
             } else {
@@ -250,15 +256,29 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
                                                value="<?php echo htmlspecialchars($_POST['title'] ?? ''); ?>">
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label">Destination</label>
-                                        <select name="destination_id" class="form-select">
-                                            <option value="">Select Destination</option>
-                                            <?php foreach ($destinations as $dest): ?>
-                                                <option value="<?php echo $dest['id']; ?>" <?php echo ($_POST['destination_id'] ?? '') == $dest['id'] ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($dest['name']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <label class="form-label">Destinations</label>
+                                        <?php
+                                        $selectedDestinationIds = normalizeTourDestinationIds($_POST['destination_ids'] ?? []);
+                                        ?>
+                                        <div class="border rounded p-2 bg-white" style="max-height:180px;overflow:auto;">
+                                            <?php if (empty($destinations)): ?>
+                                                <small class="text-muted">No active destinations found.</small>
+                                            <?php else: ?>
+                                                <?php foreach ($destinations as $dest): ?>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               name="destination_ids[]"
+                                                               value="<?php echo (int) $dest['id']; ?>"
+                                                               id="dest_<?php echo (int) $dest['id']; ?>"
+                                                               <?php echo in_array((int) $dest['id'], $selectedDestinationIds, true) ? 'checked' : ''; ?>>
+                                                        <label class="form-check-label" for="dest_<?php echo (int) $dest['id']; ?>">
+                                                            <?php echo htmlspecialchars($dest['name']); ?>
+                                                        </label>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <small class="text-muted">Select one or more destinations for this tour.</small>
                                     </div>
                                 </div>
                                 

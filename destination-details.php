@@ -1,5 +1,8 @@
 <?php
 require_once 'config/config.php';
+require_once 'includes/tour_destinations.php';
+
+ensureTourDestinationsSchema();
 
 // Get destination slug from URL
 $slug = $_GET['slug'] ?? '';
@@ -23,13 +26,21 @@ if (!$destination) {
 
 // Get tours for this destination
 $destination_tours = $db->fetchAll("
-    SELECT t.*, d.name as destination_name 
+    SELECT DISTINCT t.*,
+           COALESCE(
+               NULLIF(GROUP_CONCAT(DISTINCT d_all.name ORDER BY td_all.sort_order ASC, d_all.name ASC SEPARATOR ', '), ''),
+               d.name
+           ) AS destination_name
     FROM tours t
     LEFT JOIN destinations d ON t.destination_id = d.id
-    WHERE t.destination_id = ? AND t.status = 'active'
+    LEFT JOIN tour_destinations td_all ON t.id = td_all.tour_id
+    LEFT JOIN destinations d_all ON td_all.destination_id = d_all.id
+    WHERE t.status = 'active'
+      AND " . tourLinkedToDestinationIdSql('t', '?') . "
+    GROUP BY t.id
     ORDER BY t.featured DESC, t.created_at DESC
     LIMIT 6
-", [$destination['id']]);
+", [$destination['id'], $destination['id']]);
 
 // Set page variables
 $page_title = htmlspecialchars($destination['name']) . ' - ' . getSetting('site_name');

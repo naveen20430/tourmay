@@ -148,7 +148,7 @@ function addTourToSessionCart(int $tourId, array $options = []) {
         $_SESSION['tour_cart'] = [];
     }
 
-    $tour = $db->fetch("SELECT id, min_people, max_people FROM tours WHERE id = ? AND status = 'active'", [$tourId]);
+    $tour = $db->fetch("SELECT id, title, min_people, max_people, duration_days FROM tours WHERE id = ? AND status = 'active'", [$tourId]);
     if (!$tour) {
         return ['ok' => false, 'message' => 'Tour not found'];
     }
@@ -156,12 +156,56 @@ function addTourToSessionCart(int $tourId, array $options = []) {
     $tomorrow = date('Y-m-d', strtotime('+1 day'));
     $tourDate = trim((string) ($options['tour_date'] ?? ''));
     if ($tourDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tourDate) || $tourDate <= date('Y-m-d')) {
-        $tourDate = $tomorrow;
+        // Keep existing cart date when a partial AJAX update omits/invalidates the date
+        $existingDate = trim((string) ($_SESSION['tour_cart'][(string) $tourId]['tour_date'] ?? ''));
+        if ($existingDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $existingDate) && $existingDate > date('Y-m-d')) {
+            $tourDate = $existingDate;
+        } else {
+            $tourDate = $tomorrow;
+        }
+    }
+
+    $durationDays = max(1, (int) ($tour['duration_days'] ?? 1));
+    $isUpdate = isset($_SESSION['tour_cart'][(string) $tourId]);
+    $conflict = findSameDayBookingConflict(
+        $tourDate,
+        $durationDays,
+        (int) $tourId,
+        $_SESSION['tour_cart'],
+        trim((string) ($tour['title'] ?? 'this tour'))
+    );
+    $dateWasShifted = false;
+    if ($conflict !== null && !$isUpdate) {
+        // New tour add: keep multiple tours allowed by moving to the next free day
+        for ($i = 1; $i <= 90; $i++) {
+            $candidate = date('Y-m-d', strtotime($tourDate . ' +' . $i . ' days'));
+            $tryConflict = findSameDayBookingConflict(
+                $candidate,
+                $durationDays,
+                (int) $tourId,
+                $_SESSION['tour_cart'],
+                trim((string) ($tour['title'] ?? 'this tour'))
+            );
+            if ($tryConflict === null) {
+                $tourDate = $candidate;
+                $conflict = null;
+                $dateWasShifted = true;
+                break;
+            }
+        }
+    }
+    if ($conflict !== null) {
+        return ['ok' => false, 'message' => $conflict];
     }
 
     $people = $options['people'] ?? null;
     if ($people === null || $people === '') {
-        $people = max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8)));
+        $existingPeople = $_SESSION['tour_cart'][(string) $tourId]['people'] ?? null;
+        if ($existingPeople !== null && $existingPeople !== '') {
+            $people = $existingPeople;
+        } else {
+            $people = max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_people'] ?? 8)));
+        }
     } else {
         $people = filter_var($people, FILTER_VALIDATE_INT);
         if ($people === false) {
@@ -169,11 +213,21 @@ function addTourToSessionCart(int $tourId, array $options = []) {
         }
     }
 
-    $cabType = trim((string) ($options['cab_type'] ?? ''));
-    $pickupPlace = trim((string) ($options['pickup_place'] ?? ''));
-    $pickupDetail = trim((string) ($options['pickup_detail'] ?? ''));
-    $pickupAddress = trim((string) ($options['pickup_address'] ?? ''));
-    $pickupTime = trim((string) ($options['pickup_time'] ?? ''));
+    $cabType = array_key_exists('cab_type', $options)
+        ? trim((string) ($options['cab_type'] ?? ''))
+        : trim((string) ($_SESSION['tour_cart'][(string) $tourId]['cab_type'] ?? ''));
+    $pickupPlace = array_key_exists('pickup_place', $options)
+        ? trim((string) ($options['pickup_place'] ?? ''))
+        : trim((string) ($_SESSION['tour_cart'][(string) $tourId]['pickup_place'] ?? ''));
+    $pickupDetail = array_key_exists('pickup_detail', $options)
+        ? trim((string) ($options['pickup_detail'] ?? ''))
+        : trim((string) ($_SESSION['tour_cart'][(string) $tourId]['pickup_detail'] ?? ''));
+    $pickupAddress = array_key_exists('pickup_address', $options)
+        ? trim((string) ($options['pickup_address'] ?? ''))
+        : trim((string) ($_SESSION['tour_cart'][(string) $tourId]['pickup_address'] ?? ''));
+    $pickupTime = array_key_exists('pickup_time', $options)
+        ? trim((string) ($options['pickup_time'] ?? ''))
+        : trim((string) ($_SESSION['tour_cart'][(string) $tourId]['pickup_time'] ?? ''));
     if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
         $pickupTime = '';
     }
@@ -197,7 +251,165 @@ function addTourToSessionCart(int $tourId, array $options = []) {
         'pickup_time' => $pickupTime,
     ];
 
-    return ['ok' => true, 'message' => 'Added to cart'];
+    $message = 'Added to cart';
+    if ($dateWasShifted) {
+        $message = 'Added to cart. Date set to ' . date('d M Y', strtotime($tourDate))
+            . ' because another tour in your cart already uses the selected day.';
+    }
+
+    return ['ok' => true, 'message' => $message, 'tour_date' => $tourDate];
+}
+
+/**
+ * Inclusive date range for a tour starting on $startDate lasting $durationDays.
+ * @return array{0:string,1:string} [start, end] Y-m-d
+ */
+function getTourInclusiveDateRange(string $startDate, int $durationDays): array {
+    $durationDays = max(1, $durationDays);
+    $end = date('Y-m-d', strtotime($startDate . ' +' . ($durationDays - 1) . ' days'));
+    return [$startDate, $end];
+}
+
+function tourDateRangesOverlap(string $aStart, string $aEnd, string $bStart, string $bEnd): bool {
+    return $aStart <= $bEnd && $bStart <= $aEnd;
+}
+
+/**
+ * Block booking/carting another tour or cab on the same calendar day (or overlapping multi-day range).
+ * Checks other cart items and existing non-cancelled bookings for the current user/email.
+ */
+function findSameDayBookingConflict(
+    string $tourDate,
+    int $durationDays,
+    int $excludeTourId = 0,
+    ?array $cartItems = null,
+    string $tourTitle = 'this tour'
+): ?string {
+    global $db;
+
+    if ($tourDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tourDate)) {
+        return null;
+    }
+
+    [$rangeStart, $rangeEnd] = getTourInclusiveDateRange($tourDate, $durationDays);
+    $cartItems = $cartItems ?? ($_SESSION['tour_cart'] ?? []);
+    if (!is_array($cartItems)) {
+        $cartItems = [];
+    }
+
+    $otherTourIds = [];
+    foreach ($cartItems as $otherIdStr => $otherItem) {
+        $otherId = (int) $otherIdStr;
+        if ($otherId <= 0 || $otherId === $excludeTourId) {
+            continue;
+        }
+        $otherDate = trim((string) ($otherItem['tour_date'] ?? ''));
+        if ($otherDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $otherDate)) {
+            continue;
+        }
+        $otherTourIds[] = $otherId;
+    }
+
+    $toursById = [];
+    if (!empty($otherTourIds)) {
+        $placeholders = implode(',', array_fill(0, count($otherTourIds), '?'));
+        $rows = $db->fetchAll(
+            "SELECT id, title, duration_days FROM tours WHERE id IN ($placeholders)",
+            $otherTourIds
+        );
+        foreach ($rows as $row) {
+            $toursById[(string) $row['id']] = $row;
+        }
+    }
+
+    foreach ($cartItems as $otherIdStr => $otherItem) {
+        $otherId = (int) $otherIdStr;
+        if ($otherId <= 0 || $otherId === $excludeTourId) {
+            continue;
+        }
+        $otherDate = trim((string) ($otherItem['tour_date'] ?? ''));
+        if ($otherDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $otherDate)) {
+            continue;
+        }
+        $otherTour = $toursById[$otherIdStr] ?? null;
+        $otherDuration = max(1, (int) ($otherTour['duration_days'] ?? 1));
+        [$otherStart, $otherEnd] = getTourInclusiveDateRange($otherDate, $otherDuration);
+        if (tourDateRangesOverlap($rangeStart, $rangeEnd, $otherStart, $otherEnd)) {
+            $otherTitle = trim((string) ($otherTour['title'] ?? 'another tour'));
+            $dayLabel = $otherStart === $otherEnd
+                ? date('d M Y', strtotime($otherStart))
+                : (date('d M Y', strtotime($otherStart)) . ' – ' . date('d M Y', strtotime($otherEnd)));
+            return 'You already have "' . $otherTitle . '" in your cart covering ' . $dayLabel
+                . '. You cannot book another tour or cab on the same day. Please choose a different date for "'
+                . $tourTitle . '".';
+        }
+    }
+
+    // Existing bookings for logged-in user or known checkout email
+    $userId = isUserLoggedIn() ? (int) ($_SESSION['user_id'] ?? 0) : 0;
+    $email = '';
+    if (function_exists('getCurrentUser')) {
+        $user = getCurrentUser();
+        if (is_array($user) && !empty($user['email'])) {
+            $email = strtolower(trim((string) $user['email']));
+        }
+    }
+    if ($email === '' && !empty($_SESSION['cart_checkout_draft']['guest_email'])) {
+        $email = strtolower(trim((string) $_SESSION['cart_checkout_draft']['guest_email']));
+    }
+
+    if ($userId <= 0 && $email === '') {
+        return null;
+    }
+
+    try {
+        $params = [];
+        $where = ["LOWER(COALESCE(b.booking_status, '')) NOT IN ('cancelled', 'canceled', 'failed')"];
+        $owner = [];
+        if ($userId > 0) {
+            $owner[] = 'b.user_id = ?';
+            $params[] = $userId;
+        }
+        if ($email !== '') {
+            $owner[] = 'LOWER(TRIM(b.guest_email)) = ?';
+            $params[] = $email;
+        }
+        $where[] = '(' . implode(' OR ', $owner) . ')';
+        $where[] = 'b.tour_date IS NOT NULL';
+        $where[] = 'b.tour_date != \'\'';
+
+        $sql = "
+            SELECT b.tour_date, b.tour_id, t.title, t.duration_days
+            FROM bookings b
+            LEFT JOIN tours t ON t.id = b.tour_id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY b.id DESC
+            LIMIT 100
+        ";
+        $bookings = $db->fetchAll($sql, $params);
+        foreach ($bookings as $booking) {
+            $bookDate = trim((string) ($booking['tour_date'] ?? ''));
+            if ($bookDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $bookDate)) {
+                continue;
+            }
+            // Allow updating the same tour in cart even if already booked? Still block same day for another tour.
+            $bookDuration = max(1, (int) ($booking['duration_days'] ?? 1));
+            [$bookStart, $bookEnd] = getTourInclusiveDateRange($bookDate, $bookDuration);
+            if (tourDateRangesOverlap($rangeStart, $rangeEnd, $bookStart, $bookEnd)) {
+                $bookTitle = trim((string) ($booking['title'] ?? 'a previous booking'));
+                $dayLabel = $bookStart === $bookEnd
+                    ? date('d M Y', strtotime($bookStart))
+                    : (date('d M Y', strtotime($bookStart)) . ' – ' . date('d M Y', strtotime($bookEnd)));
+                return 'You already booked "' . $bookTitle . '" covering ' . $dayLabel
+                    . '. You cannot book another tour or cab on the same day. Please choose a different date for "'
+                    . $tourTitle . '".';
+            }
+        }
+    } catch (Exception $e) {
+        // Don't block checkout if bookings lookup fails
+    }
+
+    return null;
 }
 
 function validateCartForCheckout($cartItems, $cab_functionality_enabled = false) {
@@ -243,6 +455,19 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
         }
         if ($tourDate <= date('Y-m-d')) {
             $errors[] = 'Tour date must be tomorrow or later for: ' . $tour['title'];
+            continue;
+        }
+
+        $durationDays = max(1, (int) ($tour['duration_days'] ?? 1));
+        $sameDayConflict = findSameDayBookingConflict(
+            $tourDate,
+            $durationDays,
+            (int) $tour['id'],
+            $cartItems,
+            (string) $tour['title']
+        );
+        if ($sameDayConflict !== null) {
+            $errors[] = $sameDayConflict;
             continue;
         }
 
@@ -345,7 +570,7 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
     }
 
     return [
-        'errors' => $errors,
+        'errors' => array_values(array_unique($errors)),
         'toursById' => $toursById,
         'lines' => $lines,
         'subtotal' => $subtotal,

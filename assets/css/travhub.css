@@ -2413,10 +2413,6 @@ h6 {
 
 .main-header__btn {
   position: relative;
-
-  @media (max-width: 767px) {
-    display: none;
-  }
 }
 
 .main-header__right {

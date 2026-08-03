@@ -22,17 +22,43 @@ function getTours($filters = []) {
     }
     
     if (!empty($filters['destination_slug'])) {
-        $where[] = 'd.slug = ?';
+        $where[] = '(
+            EXISTS (
+                SELECT 1 FROM tour_destinations td_link
+                INNER JOIN destinations d_link ON d_link.id = td_link.destination_id
+                WHERE td_link.tour_id = t.id AND d_link.slug = ?
+            )
+            OR EXISTS (
+                SELECT 1 FROM destinations d_legacy
+                WHERE d_legacy.id = t.destination_id AND d_legacy.slug = ?
+            )
+        )';
+        $params[] = $filters['destination_slug'];
         $params[] = $filters['destination_slug'];
     }
     
     if (!empty($filters['destination_id'])) {
-        $where[] = 't.destination_id = ?';
+        $where[] = '(
+            EXISTS (
+                SELECT 1 FROM tour_destinations td_link
+                WHERE td_link.tour_id = t.id AND td_link.destination_id = ?
+            )
+            OR t.destination_id = ?
+        )';
+        $params[] = $filters['destination_id'];
         $params[] = $filters['destination_id'];
     }
     
     if (!empty($filters['country'])) {
-        $where[] = 'd.country = ?';
+        $where[] = '(
+            EXISTS (
+                SELECT 1 FROM tour_destinations td_c
+                INNER JOIN destinations d_c ON d_c.id = td_c.destination_id
+                WHERE td_c.tour_id = t.id AND d_c.country = ?
+            )
+            OR d.country = ?
+        )';
+        $params[] = $filters['country'];
         $params[] = $filters['country'];
     }
     
@@ -40,7 +66,18 @@ function getTours($filters = []) {
     $orderBy = $filters['order_by'] ?? 't.created_at DESC';
     $limit = isset($filters['limit']) ? 'LIMIT ' . (int)$filters['limit'] : '';
     
-    $sql = "SELECT t.*, d.name as destination_name, d.country, d.slug as destination_slug
+    $sql = "SELECT t.*,
+                   COALESCE(
+                       NULLIF((
+                           SELECT GROUP_CONCAT(DISTINCT d2.name ORDER BY td2.sort_order ASC, d2.name ASC SEPARATOR ', ')
+                           FROM tour_destinations td2
+                           INNER JOIN destinations d2 ON d2.id = td2.destination_id
+                           WHERE td2.tour_id = t.id
+                       ), ''),
+                       d.name
+                   ) AS destination_name,
+                   d.country,
+                   d.slug AS destination_slug
             FROM tours t
             LEFT JOIN destinations d ON t.destination_id = d.id
             WHERE $whereClause
@@ -83,16 +120,32 @@ function getTour($identifier) {
 function getRelatedTours($tourId, $destinationId, $limit = 3) {
     $db = DB::getInstance();
     
-    $sql = "SELECT t.*, d.name as destination_name
+    $sql = "SELECT DISTINCT t.*,
+                   COALESCE(
+                       NULLIF((
+                           SELECT GROUP_CONCAT(DISTINCT d2.name ORDER BY td2.sort_order ASC, d2.name ASC SEPARATOR ', ')
+                           FROM tour_destinations td2
+                           INNER JOIN destinations d2 ON d2.id = td2.destination_id
+                           WHERE td2.tour_id = t.id
+                       ), ''),
+                       d.name
+                   ) AS destination_name
             FROM tours t
             LEFT JOIN destinations d ON t.destination_id = d.id
-            WHERE t.destination_id = ? 
-            AND t.id != ? 
-            AND t.status = 'active'
+            WHERE t.id != ?
+              AND t.status = 'active'
+              AND (
+                  EXISTS (
+                      SELECT 1 FROM tour_destinations td_cur
+                      INNER JOIN tour_destinations td_rel ON td_rel.destination_id = td_cur.destination_id
+                      WHERE td_cur.tour_id = ? AND td_rel.tour_id = t.id
+                  )
+                  OR t.destination_id = ?
+              )
             ORDER BY t.created_at DESC
             LIMIT ?";
     
-    return $db->fetchAll($sql, [$destinationId, $tourId, $limit]);
+    return $db->fetchAll($sql, [$tourId, $tourId, $destinationId, $limit]);
 }
 
 /**

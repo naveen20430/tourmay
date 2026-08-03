@@ -1,6 +1,9 @@
 <?php
 require_once 'config/config.php';
 require_once 'includes/html_helpers.php';
+require_once 'includes/tour_destinations.php';
+
+ensureTourDestinationsSchema();
 
 // Get search and filter parameters
 $search = $_GET['search'] ?? '';
@@ -17,7 +20,8 @@ $where_conditions = ['t.status = "active"'];
 $params = [];
 
 if ($search) {
-    $where_conditions[] = '(t.title LIKE ? OR t.description LIKE ? OR d.name LIKE ?)';
+    $where_conditions[] = '(t.title LIKE ? OR t.description LIKE ? OR d.name LIKE ? OR d_primary.name LIKE ?)';
+    $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
@@ -29,7 +33,8 @@ if ($category) {
 }
 
 if ($destination) {
-    $where_conditions[] = 'd.slug = ?';
+    $where_conditions[] = tourLinkedToDestinationSlugSql('t', '?');
+    $params[] = $destination;
     $params[] = $destination;
 }
 
@@ -70,12 +75,21 @@ if ($sort === 'popular') {
 
 // Get tours
 $tours_query = "
-    SELECT DISTINCT t.*, d.name as destination_name, d.country, d.description as destination_description
-    FROM tours t 
-    LEFT JOIN destinations d ON t.destination_id = d.id
+    SELECT DISTINCT t.*,
+           COALESCE(
+               NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY td.sort_order ASC, d.name ASC SEPARATOR ', '), ''),
+               d_primary.name
+           ) AS destination_name,
+           COALESCE(d_primary.country, MIN(d.country)) AS country,
+           d_primary.description AS destination_description
+    FROM tours t
+    LEFT JOIN tour_destinations td ON t.id = td.tour_id
+    LEFT JOIN destinations d ON td.destination_id = d.id
+    LEFT JOIN destinations d_primary ON t.destination_id = d_primary.id
     LEFT JOIN tour_category_relations tcr ON t.id = tcr.tour_id
     LEFT JOIN tour_categories tc ON tcr.category_id = tc.id
     WHERE $where_clause
+    GROUP BY t.id
     ORDER BY $order_clause
 ";
 
@@ -200,7 +214,6 @@ $extra_css = '
 .tour-row .thumb{position:relative;height:100%;min-height:240px;max-height:280px;overflow:hidden}
 .tour-row .thumb img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s ease}
 .tour-row:hover .thumb img{transform:scale(1.05)}
-.elite-badge{position:absolute;top:15px;right:15px;background:linear-gradient(135deg, #ff6a00 0%, #ee0979 100%);color:#fff;padding:6px 15px;font-weight:700;font-size:0.85rem;border-radius:20px;box-shadow:0 4px 10px rgba(238,9,121,0.3);letter-spacing:0.5px;text-transform:uppercase}
 .tour-main{display:flex;flex-direction:column}
 .tour-head{padding:20px 25px 15px}
 .tour-title{font-size:1.4rem;font-weight:700;color:#1a202c;margin:0 0 10px;line-height:1.4}
@@ -394,9 +407,6 @@ include 'includes/header.php';
                                     <a href="<?php echo tourUrl($tour['slug']); ?>" style="display:block; height:100%;">
                                         <img src="<?php echo $image_path; ?>" alt="<?php echo htmlspecialchars($tour['title']); ?>" onerror="this.src='<?php echo BASE_URL; ?>assets/images/tours/default-tour.jpg'">
                                     </a>
-                                    <?php if ($tour['featured']): ?>
-                                        <div class="elite-badge">Elite</div>
-                                    <?php endif; ?>
                                 </div>
                                 <div class="tour-main">
                                     <div class="tour-head">

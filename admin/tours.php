@@ -1,6 +1,9 @@
 <?php
 require_once '../config/config.php';
+require_once '../includes/tour_destinations.php';
 requireLogin();
+
+ensureTourDestinationsSchema();
 
 // Handle delete action
 if ($_GET['action'] ?? '' === 'delete' && $_GET['id']) {
@@ -27,7 +30,8 @@ if ($_GET['action'] ?? '' === 'delete' && $_GET['id']) {
             }
         }
         
-        // Delete tour from database
+        // Delete tour relations then tour
+        $db->execute("DELETE FROM tour_destinations WHERE tour_id = ?", [$tour_id]);
         $db->execute("DELETE FROM tours WHERE id = ?", [$tour_id]);
         header('Location: tours.php?msg=deleted');
         exit;
@@ -36,9 +40,16 @@ if ($_GET['action'] ?? '' === 'delete' && $_GET['id']) {
 
 // Get all tours
 $tours = $db->fetchAll("
-    SELECT t.*, d.name as destination_name 
-    FROM tours t 
-    LEFT JOIN destinations d ON t.destination_id = d.id 
+    SELECT t.*,
+           COALESCE(
+               NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY td.sort_order ASC, d.name ASC SEPARATOR ', '), ''),
+               d_primary.name
+           ) AS destination_name
+    FROM tours t
+    LEFT JOIN tour_destinations td ON t.id = td.tour_id
+    LEFT JOIN destinations d ON td.destination_id = d.id
+    LEFT JOIN destinations d_primary ON t.destination_id = d_primary.id
+    GROUP BY t.id
     ORDER BY t.created_at DESC
 ");
 ?>

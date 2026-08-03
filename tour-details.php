@@ -2,6 +2,9 @@
 require_once 'config/config.php';
 require_once 'includes/cab_options.php';
 require_once 'includes/html_helpers.php';
+require_once 'includes/tour_destinations.php';
+
+ensureTourDestinationsSchema();
 
 // Get tour slug
 $slug = $_GET['slug'] ?? '';
@@ -24,6 +27,20 @@ if (!$tour) {
     exit;
 }
 
+$tourDestinations = getTourDestinations((int) $tour['id'], $db);
+$tourDestinationNames = array_map(static function ($d) {
+    return $d['name'];
+}, $tourDestinations);
+if (!empty($tourDestinationNames)) {
+    $tour['destination_name'] = implode(', ', $tourDestinationNames);
+}
+$tourDestinationCountries = array_values(array_unique(array_filter(array_map(static function ($d) {
+    return trim((string) ($d['country'] ?? ''));
+}, $tourDestinations))));
+if (!empty($tourDestinationCountries)) {
+    $tour['country'] = implode(', ', $tourDestinationCountries);
+}
+
 // Parse JSON fields
 $inclusions = json_decode($tour['inclusions'], true) ?: [];
 $exclusions = json_decode($tour['exclusions'], true) ?: [];
@@ -40,14 +57,36 @@ $defaultPeople = max((int) ($tour['min_people'] ?? 1), min(2, (int) ($tour['max_
 $tomorrow = date('Y-m-d', strtotime('+1 day'));
 $tour_price = (float) ($tour['discount_price'] ?: $tour['price']);
 
-// Get related tours
+// Get related tours (share any destination)
 $related_tours = $db->fetchAll("
-    SELECT t.*, d.name as destination_name
-    FROM tours t 
-    LEFT JOIN destinations d ON t.destination_id = d.id
-    WHERE t.destination_id = ? AND t.id != ? AND t.status = 'active'
+    SELECT DISTINCT t.*,
+           COALESCE(
+               NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY td.sort_order ASC, d.name ASC SEPARATOR ', '), ''),
+               d_primary.name
+           ) AS destination_name
+    FROM tours t
+    LEFT JOIN tour_destinations td ON t.id = td.tour_id
+    LEFT JOIN destinations d ON td.destination_id = d.id
+    LEFT JOIN destinations d_primary ON t.destination_id = d_primary.id
+    WHERE t.id != ? AND t.status = 'active'
+      AND (
+          EXISTS (
+              SELECT 1 FROM tour_destinations td_cur
+              INNER JOIN tour_destinations td_rel ON td_rel.destination_id = td_cur.destination_id
+              WHERE td_cur.tour_id = ? AND td_rel.tour_id = t.id
+          )
+          OR (
+              t.destination_id IS NOT NULL
+              AND t.destination_id IN (
+                  SELECT destination_id FROM tour_destinations WHERE tour_id = ?
+                  UNION
+                  SELECT destination_id FROM tours WHERE id = ? AND destination_id IS NOT NULL
+              )
+          )
+      )
+    GROUP BY t.id
     LIMIT 3
-", [$tour['destination_id'], $tour['id']]);
+", [$tour['id'], $tour['id'], $tour['id'], $tour['id']]);
 
 // Initialize cab options with error handling
 $availableCabs = [];

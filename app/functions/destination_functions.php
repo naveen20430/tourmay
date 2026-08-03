@@ -35,11 +35,16 @@ function getDestinations($filters = []) {
     $orderBy = $filters['order_by'] ?? 'd.created_at DESC';
     $limit = isset($filters['limit']) ? 'LIMIT ' . (int)$filters['limit'] : '';
     
-    $sql = "SELECT d.*, COUNT(t.id) as tour_count
+    $sql = "SELECT d.*,
+                   (
+                       SELECT COUNT(DISTINCT t.id)
+                       FROM tours t
+                       LEFT JOIN tour_destinations td ON td.tour_id = t.id
+                       WHERE t.status = 'active'
+                         AND (td.destination_id = d.id OR t.destination_id = d.id)
+                   ) AS tour_count
             FROM destinations d
-            LEFT JOIN tours t ON d.id = t.destination_id AND t.status = 'active'
             WHERE $whereClause
-            GROUP BY d.id
             ORDER BY $orderBy
             $limit";
     

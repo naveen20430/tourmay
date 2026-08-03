@@ -5,22 +5,28 @@
         <div class="destinations-cab-layout">
             <div class="destinations-cab-stack">
                 <?php 
-                // DEBUG: Check total destinations
-                $total_destinations = $db->fetchAll("
-                    SELECT COUNT(*) as total 
-                    FROM destinations 
-                    WHERE status = 'active'
-                ");
-                // echo "<!-- Total Active Destinations: " . $total_destinations[0]['total'] . " -->";
-                
+                require_once __DIR__ . '/tour_destinations.php';
+                ensureTourDestinationsSchema();
+
                 // Fetch only popular active destinations with tour count
                 $destinations_list = $db->fetchAll("
-                    SELECT d.*, COUNT(t.id) as tour_count
+                    SELECT d.*,
+                           (
+                               SELECT COUNT(DISTINCT t.id)
+                               FROM tours t
+                               LEFT JOIN tour_destinations td ON td.tour_id = t.id
+                               WHERE t.status = 'active'
+                                 AND (td.destination_id = d.id OR t.destination_id = d.id)
+                           ) AS tour_count
                     FROM destinations d
-                    LEFT JOIN tours t ON d.id = t.destination_id AND t.status = 'active'
                     WHERE d.status = 'active' AND d.popular = 1
-                    GROUP BY d.id
-                    HAVING tour_count > 0
+                      AND EXISTS (
+                          SELECT 1
+                          FROM tours t
+                          LEFT JOIN tour_destinations td ON td.tour_id = t.id
+                          WHERE t.status = 'active'
+                            AND (td.destination_id = d.id OR t.destination_id = d.id)
+                      )
                     ORDER BY 
                         CASE 
                             WHEN LOWER(d.name) LIKE '%shila%' OR LOWER(d.name) LIKE '%shimla%' THEN 1
@@ -48,12 +54,13 @@
                     
                     // Fetch active tours for each destination
                     $destination_tours = $db->fetchAll("
-                        SELECT t.* 
-                        FROM tours t 
-                        WHERE t.destination_id = ? AND t.status = 'active'
-                        ORDER BY t.featured DESC, t.popular DESC, t.created_at DESC 
+                        SELECT DISTINCT t.*
+                        FROM tours t
+                        WHERE t.status = 'active'
+                          AND " . tourLinkedToDestinationIdSql('t', '?') . "
+                        ORDER BY t.featured DESC, t.popular DESC, t.created_at DESC
                         LIMIT 2
-                    ", [$dest['id']]);
+                    ", [$dest['id'], $dest['id']]);
 
                     // DEBUG: Output tour count
                     // echo "<!-- Tours found for " . htmlspecialchars($dest['name']) . ": " . count($destination_tours) . " -->";

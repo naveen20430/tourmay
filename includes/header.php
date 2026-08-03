@@ -221,11 +221,11 @@
 	                    <?php
                         $cartCount = (isset($_SESSION['tour_cart']) && is_array($_SESSION['tour_cart'])) ? count($_SESSION['tour_cart']) : 0;
                         ?>
-                        <a href="<?php echo navUrl('cart'); ?>" class="travhub-btn" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:14px;line-height:1;">
-                            <i class="fas fa-shopping-cart"></i>
-                            <span>Cart</span>
+                        <a href="<?php echo navUrl('cart'); ?>" class="travhub-btn header-cart-btn" aria-label="Cart<?php echo $cartCount > 0 ? ' (' . (int) $cartCount . ' items)' : ''; ?>" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:14px;line-height:1;">
+                            <i class="fas fa-shopping-cart" aria-hidden="true"></i>
+                            <span class="header-cart-label">Cart</span>
                             <?php if ($cartCount > 0): ?>
-                                <span style="background:#ff6a00;color:#fff;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:800;line-height:1;">
+                                <span class="header-cart-count" style="background:#ff6a00;color:#fff;border-radius:999px;padding:2px 6px;font-size:11px;font-weight:800;line-height:1;">
                                     <?php echo (int)$cartCount; ?>
                                 </span>
                             <?php endif; ?>

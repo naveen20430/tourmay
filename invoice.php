@@ -144,11 +144,16 @@ $methodLabel = ($invoice['payment_method'] ?? 'cash') === 'razorpay' ? 'Razorpay
                     <div class="invoice-total-box">
                         <div class="invoice-total-head">Payment Summary</div>
                         <div class="invoice-total-body">
-                            <div class="invoice-total-row"><span>Subtotal</span><span><?php echo formatPriceINR((float) $invoice['subtotal']); ?></span></div>
-                            <?php if ((float) $invoice['cab_total'] > 0): ?>
-                                <div class="invoice-total-row"><span>Cab charges</span><span><?php echo formatPriceINR((float) $invoice['cab_total']); ?></span></div>
-                            <?php endif; ?>
-                            <div class="invoice-total-row grand"><span>Total Payable</span><span><?php echo formatPriceINR((float) $invoice['total_amount']); ?></span></div>
+                            <?php
+                            $gstRate = 0.05;
+                            $invTotal = (float) $invoice['total_amount'];
+                            $invBase = round($invTotal / (1 + $gstRate), 2);
+                            $invGst = round($invTotal - $invBase, 2);
+                            ?>
+                            <div class="invoice-total-row"><span>Price (before GST)</span><span><?php echo formatPriceINR($invBase); ?></span></div>
+                            <div class="invoice-total-row"><span>GST (5%)</span><span><?php echo formatPriceINR($invGst); ?></span></div>
+                            <div class="invoice-total-row grand"><span>Total Payable</span><span><?php echo formatPriceINR($invTotal); ?></span></div>
+                            <div class="invoice-total-row" style="font-size:0.8rem;color:#64748b;border-top:0;padding-top:4px;"><span>Total Price = Price + 5% GST</span><span></span></div>
                         </div>
                     </div>
                 </div>
