@@ -1,5 +1,46 @@
 <?php
-session_start();
+// Debug mode: create config/debug.enabled or set TWJ_DEBUG=1
+$twjDebugFlag = is_file(__DIR__ . '/debug.enabled')
+    || (getenv('TWJ_DEBUG') && getenv('TWJ_DEBUG') !== '0' && strtolower((string) getenv('TWJ_DEBUG')) !== 'false');
+if ($twjDebugFlag) {
+    if (!defined('TWJ_DEBUG')) {
+        define('TWJ_DEBUG', true);
+    }
+    // Log everything; keep display off so JSON payment APIs stay valid.
+    @ini_set('display_errors', '0');
+    @ini_set('display_startup_errors', '0');
+    @ini_set('log_errors', '1');
+    $phpErrorLog = dirname(__DIR__) . '/logs/php-error.log';
+    if (!is_dir(dirname($phpErrorLog))) {
+        @mkdir(dirname($phpErrorLog), 0755, true);
+    }
+    @ini_set('error_log', $phpErrorLog);
+    error_reporting(E_ALL);
+} else {
+    if (!defined('TWJ_DEBUG')) {
+        define('TWJ_DEBUG', false);
+    }
+    @ini_set('display_errors', '0');
+    @ini_set('log_errors', '1');
+    error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT);
+}
+
+// Harden session cookies before session_start (helps checkout → pay-invoice keep login)
+if (session_status() === PHP_SESSION_NONE) {
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+require_once dirname(__DIR__) . '/includes/checkout_debug.php';
 
 // Define constants - Dynamic Base URL (stable even when loaded from /api scripts)
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';

@@ -106,6 +106,9 @@ try {
                     <a class="nav-link" href="hero-images.php">
                         <i class="fas fa-image me-2"></i> Hero Images
                     </a>
+                    <a class="nav-link<?php echo basename($_SERVER['PHP_SELF']) === 'logs.php' ? ' active' : ''; ?>" href="logs.php">
+                        <i class="fas fa-file-alt me-2"></i> Logs
+                    </a>
                     <a class="nav-link" href="settings.php">
                         <i class="fas fa-cog me-2"></i> Settings
                     </a>
@@ -141,6 +144,7 @@ try {
                                 case 'users': echo 'Users Management'; break;
                                 case 'contacts': echo 'Contact Messages'; break;
                                 case 'hero-images': echo 'Hero Images'; break;
+                                case 'logs': echo 'System Logs'; break;
                                 case 'settings': echo 'Settings'; break;
                                 default: echo 'Admin Panel';
                             }

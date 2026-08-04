@@ -542,11 +542,24 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
                 continue;
             }
             $lineTotal = $cabPrice;
-        } elseif ($cabType !== '') {
+        } else {
+            // Cab UI/DB unavailable — do not allow a free ₹0 checkout (Razorpay will reject it).
+            $tourPrice = $startsFromPrice;
+            $lineTotal = $startsFromPrice;
+            $cabType = '';
             $pickupPlace = '';
             $pickupDetail = '';
             $pickupAddress = '';
             $pickupTime = '';
+            if ($lineTotal <= 0) {
+                $errors[] = 'Price is not configured for: ' . $tour['title'];
+                continue;
+            }
+        }
+
+        if ($lineTotal <= 0) {
+            $errors[] = 'Invalid amount for: ' . $tour['title'];
+            continue;
         }
 
         $lines[] = [
@@ -600,6 +613,9 @@ function createInvoiceFromCart(array $cartItems, array $guest, string $paymentMe
     $validated = validateCartForCheckout($cartItems, $cab_functionality_enabled);
     if (!empty($validated['errors'])) {
         throw new Exception(implode(' | ', $validated['errors']));
+    }
+    if ((float) ($validated['total'] ?? 0) <= 0) {
+        throw new Exception('Order total is zero. Please select a cab option and try again.');
     }
 
     $userId = isUserLoggedIn() ? (int) $_SESSION['user_id'] : null;
@@ -775,12 +791,28 @@ function razorpayRequest($method, $endpoint, array $payload = null) {
     curl_close($ch);
 
     if ($response === false) {
+        if (function_exists('twjCheckoutLog')) {
+            twjCheckoutLog('razorpay_request_fail', [
+                'force' => true,
+                'endpoint' => $endpoint,
+                'curl_error' => $curlError,
+            ]);
+        }
         throw new Exception('Payment gateway error: ' . $curlError);
     }
 
     $data = json_decode($response, true);
     if ($httpCode >= 400) {
         $message = $data['error']['description'] ?? 'Unable to create payment order';
+        if (function_exists('twjCheckoutLog')) {
+            twjCheckoutLog('razorpay_request_fail', [
+                'force' => true,
+                'endpoint' => $endpoint,
+                'http_code' => $httpCode,
+                'message' => $message,
+                'body' => is_string($response) ? substr($response, 0, 500) : '',
+            ]);
+        }
         throw new Exception($message);
     }
 

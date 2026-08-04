@@ -12,6 +12,7 @@ tmp_*.txt
 # Secrets — never commit live DB credentials
 config/database.php
 **/database.local.php
+config/debug.enabled
 .env
 .env.*
 

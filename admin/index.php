@@ -208,6 +208,9 @@ try {
                     <a class="nav-link" href="hero-images.php">
                         <i class="fas fa-image me-2"></i> Hero Images
                     </a>
+                    <a class="nav-link" href="logs.php">
+                        <i class="fas fa-file-alt me-2"></i> Logs
+                    </a>
                     <a class="nav-link" href="settings.php">
                         <i class="fas fa-cog me-2"></i> Settings
                     </a>

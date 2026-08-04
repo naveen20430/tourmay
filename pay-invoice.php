@@ -142,19 +142,55 @@ include 'includes/header.php';
     var payBtn = document.getElementById('razorpayPayBtn');
     if (!payBtn) return;
 
+    var createOrderUrl = <?php echo json_encode(BASE_URL . 'api/razorpay-create-order.php'); ?>;
+    var verifyUrl = <?php echo json_encode(BASE_URL . 'api/razorpay-verify.php'); ?>;
+    var invoiceNumber = <?php echo json_encode($invoice['invoice_number']); ?>;
+    var payLabel = <?php echo json_encode('Pay ' . formatPriceINR($invoiceTotal) . ' with Razorpay'); ?>;
+    var debugOn = <?php echo TWJ_DEBUG ? 'true' : 'false'; ?>;
+
+    function resetPayBtn() {
+        payBtn.disabled = false;
+        payBtn.innerHTML = '<i class="fas fa-lock"></i> ' + payLabel;
+    }
+
+    function parseJsonResponse(res) {
+        return res.text().then(function(text) {
+            var data = null;
+            try {
+                data = text ? JSON.parse(text) : null;
+            } catch (err) {
+                if (debugOn) {
+                    console.error('Payment API non-JSON response', res.status, text);
+                }
+                throw new Error('Payment server returned an invalid response (HTTP ' + res.status + '). Check logs/checkout.log');
+            }
+            if (!res.ok || !data || data.success === false) {
+                var msg = (data && data.message) ? data.message : ('Payment request failed (HTTP ' + res.status + ')');
+                throw new Error(msg);
+            }
+            return data;
+        });
+    }
+
     payBtn.addEventListener('click', function() {
+        if (typeof Razorpay === 'undefined') {
+            alert('Razorpay checkout failed to load. Please disable ad-blockers and retry.');
+            return;
+        }
+
         payBtn.disabled = true;
         payBtn.textContent = 'Preparing payment...';
 
-        fetch('<?php echo BASE_URL; ?>api/razorpay-create-order.php', {
+        fetch(createOrderUrl, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ invoice_number: <?php echo json_encode($invoice['invoice_number']); ?> })
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: JSON.stringify({ invoice_number: invoiceNumber })
         })
-        .then(function(res) { return res.json(); })
+        .then(parseJsonResponse)
         .then(function(data) {
-            if (!data.success) {
-                throw new Error(data.message || 'Unable to start payment');
+            if (debugOn) {
+                console.log('Razorpay order ready', data.order_id, data.amount);
             }
 
             var options = {
@@ -165,15 +201,16 @@ include 'includes/header.php';
                 description: 'Invoice ' + data.invoice_number,
                 order_id: data.order_id,
                 prefill: {
-                    name: data.customer.name,
-                    email: data.customer.email,
-                    contact: data.customer.phone
+                    name: (data.customer && data.customer.name) || '',
+                    email: (data.customer && data.customer.email) || '',
+                    contact: (data.customer && data.customer.phone) || ''
                 },
                 theme: { color: '#667eea' },
                 handler: function(response) {
-                    fetch('<?php echo BASE_URL; ?>api/razorpay-verify.php', {
+                    fetch(verifyUrl, {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'same-origin',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
                         body: JSON.stringify({
                             invoice_number: data.invoice_number,
                             razorpay_payment_id: response.razorpay_payment_id,
@@ -181,34 +218,38 @@ include 'includes/header.php';
                             razorpay_signature: response.razorpay_signature
                         })
                     })
-                    .then(function(res) { return res.json(); })
+                    .then(parseJsonResponse)
                     .then(function(result) {
-                        if (!result.success) {
-                            throw new Error(result.message || 'Payment verification failed');
-                        }
                         window.location.href = result.redirect_url;
                     })
                     .catch(function(err) {
                         alert(err.message || 'Payment verification failed');
-                        payBtn.disabled = false;
-                        payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR($invoiceTotal); ?> with Razorpay';
+                        resetPayBtn();
                     });
                 },
                 modal: {
                     ondismiss: function() {
-                        payBtn.disabled = false;
-                        payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR($invoiceTotal); ?> with Razorpay';
+                        resetPayBtn();
                     }
                 }
             };
 
             var rzp = new Razorpay(options);
+            rzp.on('payment.failed', function(resp) {
+                var failMsg = (resp && resp.error && resp.error.description)
+                    ? resp.error.description
+                    : 'Payment failed. Please try again.';
+                if (debugOn) {
+                    console.error('Razorpay payment.failed', resp);
+                }
+                alert(failMsg);
+                resetPayBtn();
+            });
             rzp.open();
         })
         .catch(function(err) {
             alert(err.message || 'Unable to start payment');
-            payBtn.disabled = false;
-            payBtn.innerHTML = '<i class="fas fa-lock"></i> Pay <?php echo formatPriceINR($invoiceTotal); ?> with Razorpay';
+            resetPayBtn();
         });
     });
 })();

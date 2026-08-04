@@ -315,6 +315,15 @@
     display: none !important;
 }
 
+.cart-pickup-fields.is-attention,
+[data-cart-pickup-wrap].is-attention {
+    border-top-color: #ef4444;
+    background: #fef2f2;
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 8px;
+}
+
 .cart-pickup-detail-wrap {
     display: flex;
     flex-direction: column;

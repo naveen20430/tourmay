@@ -44,6 +44,13 @@ try {
         'redirect_url' => invoiceUrl($invoice['invoice_number']),
     ]);
 } catch (Exception $e) {
+    if (function_exists('twjCheckoutLog')) {
+        twjCheckoutLog('razorpay_verify_fail', [
+            'force' => true,
+            'invoice_number' => $invoiceNumber ?? '',
+            'message' => $e->getMessage(),
+        ]);
+    }
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

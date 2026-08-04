@@ -47,6 +47,15 @@ try {
         ? ['id' => $invoice['razorpay_order_id'], 'amount' => (int) round(((float) $invoice['total_amount']) * 100), 'currency' => 'INR']
         : createRazorpayOrderForInvoice($invoice);
 
+    if (function_exists('twjCheckoutLog')) {
+        twjCheckoutLog('razorpay_create_order_ok', [
+            'invoice_number' => $invoiceNumber,
+            'order_id' => $order['id'] ?? '',
+            'amount' => $order['amount'] ?? null,
+            'reused' => !empty($invoice['razorpay_order_id']),
+        ]);
+    }
+
     echo json_encode([
         'success' => true,
         'key' => trim((string) getSetting('razorpay_key_id')),
@@ -62,6 +71,13 @@ try {
         ],
     ]);
 } catch (Exception $e) {
+    if (function_exists('twjCheckoutLog')) {
+        twjCheckoutLog('razorpay_create_order_fail', [
+            'force' => true,
+            'invoice_number' => $invoiceNumber ?? '',
+            'message' => $e->getMessage(),
+        ]);
+    }
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

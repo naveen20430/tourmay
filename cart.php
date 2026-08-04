@@ -75,10 +75,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $result = createInvoiceFromCart($cartItems, $guest, $paymentMethod, $cab_functionality_enabled);
 
+        if (function_exists('twjCheckoutLog')) {
+            twjCheckoutLog('checkout_invoice_created', [
+                'invoice_number' => $result['invoice_number'] ?? '',
+                'total_amount' => $result['total_amount'] ?? 0,
+                'payment_method' => $paymentMethod,
+                'cab_enabled' => (bool) $cab_functionality_enabled,
+            ]);
+        }
+
         $_SESSION['tour_cart'] = [];
         unset($_SESSION['cart_checkout_draft'], $_SESSION['cart_checkout_pending']);
 
         if ($paymentMethod === 'razorpay') {
+            if (function_exists('twjCheckoutLog')) {
+                twjCheckoutLog('checkout_redirect_pay', [
+                    'invoice_number' => $result['invoice_number'] ?? '',
+                    'url' => payInvoiceUrl($result['invoice_number']),
+                ]);
+            }
             header('Location: ' . payInvoiceUrl($result['invoice_number']));
             exit;
         }
@@ -305,6 +320,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'gst_number' => $gstNumber,
             ], $paymentMethod);
         } catch (Exception $e) {
+            if (function_exists('twjCheckoutLog')) {
+                twjCheckoutLog('checkout_exception', [
+                    'force' => true,
+                    'message' => $e->getMessage(),
+                    'payment_method' => $paymentMethod,
+                    'guest_email' => $guestEmail,
+                    'cart_count' => is_array($_SESSION['tour_cart'] ?? null) ? count($_SESSION['tour_cart']) : 0,
+                ]);
+            }
             $_SESSION['cart_flash'] = ['type' => 'error', 'message' => $e->getMessage()];
             $redirectTo(navUrl('cart'));
         }
@@ -655,6 +679,11 @@ include 'includes/header.php';
                                     <?php if ($cartHasCabs && !empty($tourCabs)): ?>
                                         <div class="cart-field-group cart-field-group--cab">
                                             <label class="cart-field-label">Choose your vehicle</label>
+                                            <?php /* Hidden field keeps FormData/AJAX stable; radios use unique names per tour so they don't conflict. */ ?>
+                                            <input type="hidden"
+                                                   name="cab_type"
+                                                   value="<?php echo htmlspecialchars($selectedCab); ?>"
+                                                   data-cart-cab-hidden>
                                             <div class="cart-cab-grid" data-cart-cab-picker>
                                                 <?php foreach ($tourCabs as $cab): ?>
                                                     <?php
@@ -664,8 +693,9 @@ include 'includes/header.php';
                                                     <label class="cart-cab-option<?php echo $cabFitsPeople ? '' : ' is-unavailable'; ?>"
                                                            title="<?php echo htmlspecialchars($cab['text'] . ($cabCapacity > 0 ? ' · up to ' . $cabCapacity . ' people' : '')); ?>">
                                                         <input type="radio"
-                                                               name="cab_type"
+                                                               name="cab_choice_<?php echo (int) $tour['id']; ?>"
                                                                value="<?php echo htmlspecialchars($cab['value']); ?>"
+                                                               data-cart-cab-radio
                                                                data-cab-label="<?php echo htmlspecialchars($cab['display_name'] ?? $cab['value']); ?>"
                                                                data-cab-price="<?php echo (float)($cab['price'] ?? 0); ?>"
                                                                data-cab-capacity="<?php echo $cabCapacity; ?>"
@@ -1152,7 +1182,7 @@ function updateOrderTotalDisplay(total) {
 function recalculateOrderTotalFromCards() {
     let total = 0;
     document.querySelectorAll('[data-cart-tour-item]').forEach(function(card) {
-        const selected = card.querySelector('input[name="cab_type"]:checked');
+        const selected = card.querySelector('[data-cart-cab-radio]:checked:not(:disabled)');
         if (selected && selected.value !== '') {
             total += parseFloat(selected.getAttribute('data-cab-price') || '0') || 0;
         }
@@ -1204,11 +1234,22 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
     const totalAmount = card ? card.querySelector('[data-cart-total-amount]') : null;
     const peopleSelect = card ? card.querySelector('[data-people-select]') : null;
     const form = card ? card.querySelector('[data-cart-tour-form]') : null;
+    const cabHidden = form ? form.querySelector('[data-cart-cab-hidden]') : null;
+
+    function selectedCabRadio() {
+        return picker.querySelector('[data-cart-cab-radio]:checked:not(:disabled)');
+    }
+
+    function syncCabHidden() {
+        if (!cabHidden) return;
+        const selected = selectedCabRadio();
+        cabHidden.value = selected && selected.value ? selected.value : '';
+    }
 
     function syncTotalStatus() {
-        const selected = picker.querySelector('input[name="cab_type"]:checked');
+        const selected = selectedCabRadio();
         if (!totalStatus) return;
-        if (!selected || selected.value === '' || selected.disabled) {
+        if (!selected || selected.value === '') {
             totalStatus.textContent = 'Select a cab to see price';
             if (totalAmount) {
                 totalAmount.textContent = '';
@@ -1238,9 +1279,12 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
             detailInp.setAttribute('required', 'required');
         } else {
             detailWrap.setAttribute('hidden', '');
-            detailInp.value = '';
             detailInp.removeAttribute('required');
-            detailInp.placeholder = '';
+            // Keep Lift Parking clean; only clear Hotel/Others detail when leaving those options
+            if (place !== 'Hotel' && place !== 'Others') {
+                detailInp.value = '';
+                detailInp.placeholder = '';
+            }
         }
         if (addressInp) {
             if (needsAddress) {
@@ -1248,46 +1292,55 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
                 addressInp.setAttribute('required', 'required');
             } else {
                 addressInp.setAttribute('hidden', '');
-                addressInp.value = '';
                 addressInp.removeAttribute('required');
+                addressInp.value = '';
             }
         }
     }
 
     function syncCabSelection() {
-        const selected = picker.querySelector('input[name="cab_type"]:checked');
-        const hasCab = selected && selected.value !== '' && !selected.disabled;
+        const selected = selectedCabRadio();
+        const hasCab = !!(selected && selected.value !== '');
+        syncCabHidden();
         if (!pickupWrap) return;
         if (hasCab) {
             pickupWrap.removeAttribute('hidden');
+            pickupWrap.classList.add('is-visible');
             syncPickupDetail();
             if (pickupSel) pickupSel.setAttribute('required', 'required');
             if (pickupTimeInp) pickupTimeInp.setAttribute('required', 'required');
             return;
         }
         pickupWrap.setAttribute('hidden', '');
+        pickupWrap.classList.remove('is-visible');
         if (pickupSel) {
             pickupSel.value = '';
             pickupSel.removeAttribute('required');
+            pickupSel.classList.remove('is-invalid');
         }
-        if (detailInp) detailInp.value = '';
+        if (detailInp) {
+            detailInp.value = '';
+            detailInp.removeAttribute('required');
+            detailInp.classList.remove('is-invalid');
+        }
         if (addressInp) {
             addressInp.value = '';
             addressInp.setAttribute('hidden', '');
             addressInp.removeAttribute('required');
+            addressInp.classList.remove('is-invalid');
         }
         if (detailWrap) detailWrap.setAttribute('hidden', '');
-        if (detailInp) detailInp.removeAttribute('required');
         if (pickupTimeInp) {
             pickupTimeInp.value = '';
             pickupTimeInp.removeAttribute('required');
+            pickupTimeInp.classList.remove('is-invalid');
         }
     }
 
     function syncCabCapacity() {
         const people = peopleSelect ? (parseInt(peopleSelect.value || '0', 10) || 0) : 0;
-        const radios = Array.from(picker.querySelectorAll('input[name="cab_type"]'));
-        let selected = picker.querySelector('input[name="cab_type"]:checked');
+        const radios = Array.from(picker.querySelectorAll('[data-cart-cab-radio]'));
+        let selected = selectedCabRadio();
         let changed = false;
 
         radios.forEach(function(radio) {
@@ -1321,7 +1374,7 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         }
     }
 
-    picker.querySelectorAll('input[name="cab_type"]').forEach(function(radio) {
+    picker.querySelectorAll('[data-cart-cab-radio]').forEach(function(radio) {
         radio.addEventListener('change', function() {
             syncCabSelection();
             syncTotalStatus();
@@ -1352,6 +1405,13 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
         }
         if (actionInput) actionInput.value = 'add';
         if (ajaxInput) ajaxInput.value = '1';
+
+        // Keep hidden cab_type in sync (radios use unique names per tour)
+        const checkedCab = form.querySelector('[data-cart-cab-radio]:checked:not(:disabled)');
+        const cabHidden = form.querySelector('[data-cart-cab-hidden]');
+        if (cabHidden) {
+            cabHidden.value = checkedCab && checkedCab.value ? checkedCab.value : String(cabHidden.value || '');
+        }
 
         const body = new FormData(form);
         savePromise = fetch(form.action, {
@@ -1443,8 +1503,10 @@ document.querySelectorAll('[data-cart-tour-form]').forEach(function(form) {
     const peopleSelect = form.querySelector('[data-people-select]');
     if (peopleSelect) peopleSelect.addEventListener('change', saveCartItem);
 
-    form.querySelectorAll('input[name="cab_type"]').forEach(function(radio) {
+    form.querySelectorAll('[data-cart-cab-radio]').forEach(function(radio) {
         radio.addEventListener('change', function() {
+            const hidden = form.querySelector('[data-cart-cab-hidden]');
+            if (hidden) hidden.value = radio.checked ? radio.value : (hidden.value || '');
             saveCartItem();
             if (window.__cartSubmitAttempted) setTimeout(refreshCartValidationAlert, 0);
         });
@@ -1551,18 +1613,22 @@ function collectCartSyncPayload() {
         const tourIdInput = form.querySelector('input[name="tour_id"]');
         const tourId = tourIdInput ? parseInt(tourIdInput.value || '0', 10) : 0;
         if (!tourId) return;
-        const cabChecked = form.querySelector('input[name="cab_type"]:checked:not(:disabled)');
+        const cabChecked = form.querySelector('[data-cart-cab-radio]:checked:not(:disabled)');
+        const cabHidden = form.querySelector('[data-cart-cab-hidden]');
         const dateInput = form.querySelector('[name="tour_date"]');
         const peopleSelect = form.querySelector('[name="people"], [data-people-select]');
         const pickupSel = form.querySelector('[data-cart-pickup-place]');
         const pickupTime = form.querySelector('[data-cart-pickup-time]');
         const detailInp = form.querySelector('[data-cart-pickup-detail]');
         const addressInp = form.querySelector('[data-cart-pickup-address]');
+        const cabType = cabChecked && cabChecked.value
+            ? cabChecked.value
+            : (cabHidden ? String(cabHidden.value || '').trim() : '');
         items.push({
             tour_id: tourId,
             tour_date: dateInput ? dateInput.value : '',
             people: peopleSelect ? peopleSelect.value : '',
-            cab_type: cabChecked ? cabChecked.value : '',
+            cab_type: cabType,
             pickup_place: pickupSel ? pickupSel.value : '',
             pickup_detail: detailInp ? detailInp.value : '',
             pickup_address: addressInp ? addressInp.value : '',
@@ -1581,7 +1647,8 @@ function validateCartTourDetails() {
         if (!form) return;
 
         const title = card.getAttribute('data-tour-title') || 'this tour';
-        const cabChecked = form.querySelector('input[name="cab_type"]:checked');
+        const cabChecked = form.querySelector('[data-cart-cab-radio]:checked:not(:disabled)');
+        const cabHidden = form.querySelector('[data-cart-cab-hidden]');
         const pickupSel = form.querySelector('[data-cart-pickup-place]');
         const pickupTime = form.querySelector('[data-cart-pickup-time]');
         const detailInp = form.querySelector('[data-cart-pickup-detail]');
@@ -1590,6 +1657,9 @@ function validateCartTourDetails() {
         const errorBox = form.querySelector('[data-cart-pickup-error]');
         const pickupWrap = form.querySelector('[data-cart-pickup-wrap]');
         let cardError = '';
+        const cabValue = cabChecked && cabChecked.value
+            ? cabChecked.value
+            : (cabHidden ? String(cabHidden.value || '').trim() : '');
 
         card.classList.remove('is-incomplete');
         if (pickupSel) pickupSel.classList.remove('is-invalid');
@@ -1606,11 +1676,15 @@ function validateCartTourDetails() {
         if (dateConflict) {
             cardError = dateConflict;
             if (dateInp) dateInp.classList.add('is-invalid');
-        } else if (!cabChecked || !cabChecked.value || cabChecked.disabled) {
+        } else if (!cabValue) {
             cardError = 'Please select a cab option for: ' + title;
         } else {
-            // Cab selected → pickup fields are required (don't rely only on [hidden], CSS can override it)
-            if (pickupWrap) pickupWrap.removeAttribute('hidden');
+            // Cab selected → pickup fields are required
+            if (pickupWrap) {
+                pickupWrap.removeAttribute('hidden');
+                pickupWrap.classList.add('is-visible');
+            }
+            if (cabHidden) cabHidden.value = cabValue;
             const place = pickupSel ? pickupSel.value.trim() : '';
             const time = pickupTime ? pickupTime.value.trim() : '';
             if (!place) {
@@ -1720,7 +1794,12 @@ function refreshCartValidationAlert() {
         const result = refreshCartValidationAlert();
         if (result.errors.length) {
             if (result.firstInvalid) {
-                const badField = result.firstInvalid.querySelector('.is-invalid, [data-cart-pickup-place], [data-cart-pickup-wrap]');
+                const pickupWrap = result.firstInvalid.querySelector('[data-cart-pickup-wrap]');
+                if (pickupWrap) {
+                    pickupWrap.removeAttribute('hidden');
+                    pickupWrap.classList.add('is-visible', 'is-attention');
+                }
+                const badField = result.firstInvalid.querySelector('.is-invalid, [data-cart-pickup-place], [data-cart-pickup-time], [data-cart-pickup-wrap]');
                 if (badField && typeof badField.focus === 'function') {
                     try { badField.focus(); } catch (err) {}
                 }
