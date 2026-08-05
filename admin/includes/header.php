@@ -91,6 +91,9 @@ try {
                     <a class="nav-link" href="cab-reports.php">
                         <i class="fas fa-chart-line me-2"></i> Cab Reports
                     </a>
+                    <a class="nav-link<?php echo basename($_SERVER['PHP_SELF']) === 'pickup-times.php' ? ' active' : ''; ?>" href="pickup-times.php">
+                        <i class="fas fa-clock me-2"></i> Pickup Times
+                    </a>
                     <a class="nav-link" href="blog.php">
                         <i class="fas fa-blog me-2"></i> Blog Posts
                     </a>
@@ -140,6 +143,7 @@ try {
                                 case 'cab-route-pricing': echo 'Cab Route Pricing'; break;
                                 case 'cab-bookings': echo 'Cab Bookings Management'; break;
                                 case 'cab-reports': echo 'Cab Bookings Reports'; break;
+                                case 'pickup-times': echo 'Pickup Times'; break;
                                 case 'blog': echo 'Blog Management'; break;
                                 case 'users': echo 'Users Management'; break;
                                 case 'contacts': echo 'Contact Messages'; break;

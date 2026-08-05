@@ -576,8 +576,8 @@ include 'includes/header.php';
                             if (preg_match('/^(\d{2}:\d{2})/', $selectedPickupTime, $m)) {
                                 $selectedPickupTime = $m[1];
                             }
-                            $pickupTimeOptions = getPickupTimeOptions();
-                            if ($selectedPickupTime !== '' && !isValidPickupTime($selectedPickupTime)) {
+                            $pickupTimeOptions = getPickupTimeOptions((int) $tour['id']);
+                            if ($selectedPickupTime !== '' && !isValidPickupTime($selectedPickupTime, (int) $tour['id'])) {
                                 $selectedPickupTime = '';
                             }
                             $showPickup = $selectedCab !== '';
@@ -756,7 +756,7 @@ include 'includes/header.php';
                                                         class="form-control cart-pickup-time"
                                                         data-cart-pickup-time
                                                         <?php echo $showPickup ? 'required' : ''; ?>>
-                                                    <option value="">Select time (9 AM – 6 PM)</option>
+                                                    <option value="">Select time</option>
                                                     <?php foreach ($pickupTimeOptions as $timeOpt): ?>
                                                         <option value="<?php echo htmlspecialchars($timeOpt['value']); ?>"
                                                             <?php echo $selectedPickupTime === $timeOpt['value'] ? 'selected' : ''; ?>>

@@ -4,50 +4,26 @@
  */
 
 require_once __DIR__ . '/cab_options.php';
+require_once __DIR__ . '/pickup_times.php';
 
 /**
- * Allowed pickup times: 9:00 AM – 6:00 PM (30-minute steps).
+ * Allowed pickup times for cart UI.
+ * Pass $tourId to use per-tour admin settings (falls back to global active slots).
  * @return array<int, array{value: string, label: string}>
  */
-function getPickupTimeOptions() {
-    $options = [];
-    for ($hour = 9; $hour <= 18; $hour++) {
-        foreach ([0, 30] as $minute) {
-            if ($hour === 18 && $minute > 0) {
-                break;
-            }
-            $value = sprintf('%02d:%02d', $hour, $minute);
-            $labelHour = $hour % 12;
-            if ($labelHour === 0) {
-                $labelHour = 12;
-            }
-            $ampm = $hour < 12 ? 'AM' : 'PM';
-            $options[] = [
-                'value' => $value,
-                'label' => sprintf('%d:%02d %s', $labelHour, $minute, $ampm),
-            ];
-        }
-    }
-    return $options;
+function getPickupTimeOptions(?int $tourId = null) {
+    return getPickupTimeOptionsForTour($tourId);
 }
 
 /**
  * @return string[]
  */
-function getAllowedPickupTimes() {
-    return array_column(getPickupTimeOptions(), 'value');
+function getAllowedPickupTimes(?int $tourId = null) {
+    return getAllowedPickupTimesForTour($tourId);
 }
 
-function isValidPickupTime($time) {
-    $time = trim((string) $time);
-    if ($time === '') {
-        return false;
-    }
-    // Accept HH:MM or HH:MM:SS from older browsers
-    if (preg_match('/^(\d{2}:\d{2})/', $time, $m)) {
-        $time = $m[1];
-    }
-    return in_array($time, getAllowedPickupTimes(), true);
+function isValidPickupTime($time, ?int $tourId = null) {
+    return isValidPickupTimeForTour($time, $tourId);
 }
 
 /**
@@ -229,6 +205,9 @@ function addTourToSessionCart(int $tourId, array $options = []) {
         ? trim((string) ($options['pickup_time'] ?? ''))
         : trim((string) ($_SESSION['tour_cart'][(string) $tourId]['pickup_time'] ?? ''));
     if ($pickupTime !== '' && !preg_match('/^\d{2}:\d{2}$/', $pickupTime)) {
+        $pickupTime = '';
+    }
+    if ($pickupTime !== '' && !isValidPickupTime($pickupTime, $tourId)) {
         $pickupTime = '';
     }
     if ($cabType === '') {
@@ -496,7 +475,7 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
         if (preg_match('/^(\d{2}:\d{2})/', $pickupTime, $m)) {
             $pickupTime = $m[1];
         }
-        if ($pickupTime !== '' && !isValidPickupTime($pickupTime)) {
+        if ($pickupTime !== '' && !isValidPickupTime($pickupTime, (int) $tour['id'])) {
             $pickupTime = '';
         }
         $cabPrice = 0.0;
@@ -519,8 +498,8 @@ function validateCartForCheckout($cartItems, $cab_functionality_enabled = false)
                 $errors[] = 'Please select a pickup point for: ' . $tour['title'];
                 continue;
             }
-            if ($pickupTime === '' || !isValidPickupTime($pickupTime)) {
-                $errors[] = 'Please select a pickup time between 9:00 AM and 6:00 PM for: ' . $tour['title'];
+            if ($pickupTime === '' || !isValidPickupTime($pickupTime, (int) $tour['id'])) {
+                $errors[] = 'Please select a valid pickup time for: ' . $tour['title'];
                 continue;
             }
             if ($pickupPlace === 'Hotel') {

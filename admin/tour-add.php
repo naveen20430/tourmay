@@ -2,9 +2,25 @@
 require_once '../config/config.php';
 require_once '../includes/html_helpers.php';
 require_once '../includes/tour_destinations.php';
+require_once '../includes/pickup_times.php';
 requireLogin();
 
 ensureTourDestinationsSchema();
+ensurePickupTimesSchema();
+$allPickupSlots = getAllPickupTimeSlots(true);
+$pickupUseDefaults = !isset($_POST['pickup_use_defaults']) ? true : !empty($_POST['pickup_use_defaults']);
+$selectedPickupTimes = [];
+if (!empty($_POST['pickup_times']) && is_array($_POST['pickup_times'])) {
+    foreach ($_POST['pickup_times'] as $tv) {
+        $n = normalizePickupTimeValue($tv);
+        if ($n !== '') {
+            $selectedPickupTimes[] = $n;
+        }
+    }
+}
+if ($_POST && empty($_POST['pickup_use_defaults'])) {
+    $pickupUseDefaults = false;
+}
 
 $errors = [];
 $success = false;
@@ -136,6 +152,12 @@ if ($_POST) {
             $tour_id = (int) $db->lastInsertId();
             if ($inserted && $tour_id > 0) {
                 saveTourDestinations($tour_id, $destination_ids, $db);
+                $pickupUseDefaultsPost = !empty($_POST['pickup_use_defaults']);
+                $pickupTimesPost = $_POST['pickup_times'] ?? [];
+                if (!is_array($pickupTimesPost)) {
+                    $pickupTimesPost = [];
+                }
+                saveTourPickupTimes($tour_id, $pickupTimesPost, $pickupUseDefaultsPost);
                 header('Location: tours.php?msg=added');
                 exit;
             } else {
@@ -481,6 +503,48 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
                                     </div>
                                 </div>
                                 
+                                <!-- Pickup Times (per tour) -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="card-title border-bottom pb-2">Pickup Times</h5>
+                                        <p class="text-muted small mb-3">
+                                            Choose which pickup times customers can select for this tour.
+                                            Manage the global list in <a href="pickup-times.php">Pickup Times</a>.
+                                        </p>
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="checkbox" name="pickup_use_defaults" id="pickup_use_defaults" value="1"
+                                                   <?php echo !empty($pickupUseDefaults) ? 'checked' : ''; ?>
+                                                   onchange="document.getElementById('pickupTimesCustom').style.display = this.checked ? 'none' : 'block';">
+                                            <label class="form-check-label" for="pickup_use_defaults">
+                                                Use all active global pickup times (default)
+                                            </label>
+                                        </div>
+                                        <div id="pickupTimesCustom" style="<?php echo !empty($pickupUseDefaults) ? 'display:none;' : ''; ?>">
+                                            <?php if (empty($allPickupSlots)): ?>
+                                                <div class="alert alert-warning mb-0">No active pickup times configured. <a href="pickup-times.php">Add pickup times</a> first.</div>
+                                            <?php else: ?>
+                                                <div class="row">
+                                                    <?php foreach ($allPickupSlots as $slot): ?>
+                                                        <?php $val = $slot['value']; ?>
+                                                        <div class="col-md-3 col-sm-4 col-6 mb-2">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                       name="pickup_times[]"
+                                                                       id="pickup_time_<?php echo htmlspecialchars(str_replace(':', '', $val)); ?>"
+                                                                       value="<?php echo htmlspecialchars($val); ?>"
+                                                                       <?php echo in_array($val, $selectedPickupTimes, true) ? 'checked' : ''; ?>>
+                                                                <label class="form-check-label" for="pickup_time_<?php echo htmlspecialchars(str_replace(':', '', $val)); ?>">
+                                                                    <?php echo htmlspecialchars($slot['label']); ?>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Availability -->
                                 <div class="row mb-4">
                                     <div class="col-12">

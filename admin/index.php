@@ -401,6 +401,11 @@ try {
                                                 <i class="fas fa-chart-line me-2"></i>Cab Reports
                                             </a>
                                         </div>
+                                        <div class="col-md-4 mb-3">
+                                            <a href="pickup-times.php" class="btn btn-primary w-100">
+                                                <i class="fas fa-clock me-2"></i>Pickup Times
+                                            </a>
+                                        </div>
                                     </div>
                                     <hr>
                                     <div class="row">
