@@ -1,5 +1,5 @@
 (function () {
-    var editorInstance = null;
+    var editorInstances = [];
 
     var premiumPluginsToRemove = [
         'AIAssistant',
@@ -94,32 +94,42 @@
         wrap.appendChild(notice);
     }
 
-    function initTourDescriptionEditor() {
-        var textarea = document.getElementById('tour-description-editor');
+    function initOneEditor(textarea) {
         var EditorClass = getEditorClass();
-
-        if (!textarea || !EditorClass || editorInstance) {
+        if (!textarea || !EditorClass || textarea.dataset.ckReady === '1') {
             return;
         }
 
         var wrap = textarea.closest('.tour-description-editor-wrap');
         textarea.removeAttribute('required');
+        textarea.dataset.ckReady = '1';
 
         EditorClass.create(textarea, getEditorConfig())
             .then(function (editor) {
-                editorInstance = editor;
+                editorInstances.push(editor);
 
                 var form = textarea.closest('form');
-                if (form) {
+                if (form && !form.dataset.ckSubmitBound) {
+                    form.dataset.ckSubmitBound = '1';
                     form.addEventListener('submit', function () {
-                        editor.updateSourceElement();
+                        editorInstances.forEach(function (ed) {
+                            try { ed.updateSourceElement(); } catch (e) {}
+                        });
                     });
                 }
             })
             .catch(function (error) {
                 console.error('CKEditor failed to initialize:', error);
+                textarea.dataset.ckReady = '0';
                 showEditorError(wrap);
             });
+    }
+
+    function initTourDescriptionEditors() {
+        var textareas = document.querySelectorAll('#tour-description-editor, #tour-useful-info-editor, [data-tour-rich-editor]');
+        textareas.forEach(function (textarea) {
+            initOneEditor(textarea);
+        });
     }
 
     function boot() {
@@ -129,7 +139,7 @@
             attempts += 1;
 
             if (getEditorClass()) {
-                initTourDescriptionEditor();
+                initTourDescriptionEditors();
                 return;
             }
 

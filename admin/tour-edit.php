@@ -9,16 +9,17 @@ requireLogin();
 $tour_id = $_GET['id'] ?? 0;
 $errors = [];
 
-// Get tour data
+ensureTourDestinationsSchema();
+ensureTourUsefulInfoSchema();
+ensureTourCabPricesSchema();
+ensurePickupTimesSchema();
+
+// Get tour data (after schema so useful_info column exists)
 $tour = $db->fetch("SELECT * FROM tours WHERE id = ?", [$tour_id]);
 if (!$tour) {
     header('Location: tours.php');
     exit;
 }
-
-ensureTourDestinationsSchema();
-ensureTourCabPricesSchema();
-ensurePickupTimesSchema();
 $selectedDestinationIds = getTourDestinationIds((int) $tour_id, $db);
 $selectedPickupTimes = getTourPickupTimeValues((int) $tour_id);
 $pickupUseDefaults = empty($selectedPickupTimes);
@@ -47,6 +48,7 @@ if ($_POST) {
     $destination_id = $destination_ids[0] ?? null;
     $selectedDestinationIds = $destination_ids;
     $description = sanitizeRichTextHtml(trim($_POST['description'] ?? ''));
+    $useful_info = sanitizeRichTextHtml(trim($_POST['useful_info'] ?? ''));
     $short_description = trim($_POST['short_description'] ?? '');
     $price = floatval($_POST['price'] ?? 0);
     $discount_price = $_POST['discount_price'] ? floatval($_POST['discount_price']) : null;
@@ -169,8 +171,8 @@ if ($_POST) {
     if (empty($errors)) {
         try {
             $updated = $db->execute(
-                "UPDATE tours SET title = ?, slug = ?, destination_id = ?, description = ?, short_description = ?, price = ?, discount_price = ?, duration_days = ?, duration_nights = ?, max_people = ?, min_people = ?, featured_image = ?, gallery = ?, inclusions = ?, exclusions = ?, itinerary = ?, difficulty_level = ?, tour_type = ?, featured = ?, popular = ?, status = ?, availability_start = ?, availability_end = ?, updated_at = NOW() WHERE id = ?",
-                [$title, $slug, $destination_id, $description, $short_description, $price, $discount_price, $duration_days, $duration_nights, $max_people, $min_people, $featured_image, json_encode($gallery_images), json_encode($inclusions), json_encode($exclusions), json_encode($itinerary), $difficulty_level, $tour_type, $featured, $popular, $status, $availability_start ?: null, $availability_end ?: null, $tour_id]
+                "UPDATE tours SET title = ?, slug = ?, destination_id = ?, description = ?, useful_info = ?, short_description = ?, price = ?, discount_price = ?, duration_days = ?, duration_nights = ?, max_people = ?, min_people = ?, featured_image = ?, gallery = ?, inclusions = ?, exclusions = ?, itinerary = ?, difficulty_level = ?, tour_type = ?, featured = ?, popular = ?, status = ?, availability_start = ?, availability_end = ?, updated_at = NOW() WHERE id = ?",
+                [$title, $slug, $destination_id, $description, $useful_info, $short_description, $price, $discount_price, $duration_days, $duration_nights, $max_people, $min_people, $featured_image, json_encode($gallery_images), json_encode($inclusions), json_encode($exclusions), json_encode($itinerary), $difficulty_level, $tour_type, $featured, $popular, $status, $availability_start ?: null, $availability_end ?: null, $tour_id]
             );
             
             // Always sync destinations (UPDATE can return 0 when only relations change)
@@ -199,6 +201,7 @@ if ($_POST) {
         $tour['destination_id'] = $destination_id;
         $selectedDestinationIds = $destination_ids;
         $tour['description'] = $description;
+        $tour['useful_info'] = $useful_info;
         $tour['short_description'] = $short_description;
         $tour['price'] = $price;
         $tour['discount_price'] = $discount_price;
@@ -377,6 +380,11 @@ $destinations = $db->fetchAll("
                                         <label class="form-label" for="tour-description-editor">Full Description *</label>
                                         <textarea id="tour-description-editor" name="description" class="form-control" rows="10"><?php echo htmlspecialchars($tour['description']); ?></textarea>
                                         <small class="text-muted">Use the toolbar for formatting, lists, links, and font size.</small>
+                                    </div>
+                                    <div class="col-md-12 mb-3 tour-description-editor-wrap">
+                                        <label class="form-label" for="tour-useful-info-editor">Useful Info</label>
+                                        <textarea id="tour-useful-info-editor" name="useful_info" class="form-control" rows="8"><?php echo htmlspecialchars($tour['useful_info'] ?? ''); ?></textarea>
+                                        <small class="text-muted">Shown on the Tours page under the Useful Info tab. Leave blank to use the destination description.</small>
                                     </div>
                                 </div>
                                 
@@ -829,6 +837,6 @@ $destinations = $db->fetchAll("
         });
     </script>
     <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/super-build/ckeditor.js"></script>
-    <script src="assets/js/tour-description-editor.js?v=2"></script>
+    <script src="assets/js/tour-description-editor.js?v=4"></script>
 </body>
 </html>

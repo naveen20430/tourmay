@@ -4,6 +4,7 @@ require_once 'includes/html_helpers.php';
 require_once 'includes/tour_destinations.php';
 
 ensureTourDestinationsSchema();
+ensureTourUsefulInfoSchema();
 
 // Get search and filter parameters
 $search = $_GET['search'] ?? '';
@@ -144,7 +145,7 @@ foreach ($tours as $tour) {
             'useful' => [
                 'title' => 'Useful Info',
                 'destination' => trim(($tour['destination_name'] ?? '') . (!empty($tour['country']) ? ', ' . $tour['country'] : '')),
-                'body' => formatTourDescriptionForDisplay($tour['destination_description'] ?? ''),
+                'body' => formatTourDescriptionForDisplay(resolveTourUsefulInfo($tour)),
             ],
         ],
     ];

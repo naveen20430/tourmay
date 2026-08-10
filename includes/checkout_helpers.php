@@ -100,6 +100,21 @@ function ensureCheckoutSchema() {
     if (!in_array('pickup_time', $cols, true)) {
         $pdo->exec('ALTER TABLE bookings ADD COLUMN pickup_time VARCHAR(10) NULL AFTER pickup_detail');
     }
+    if (!in_array('driver_name', $cols, true)) {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN driver_name VARCHAR(120) NULL");
+        $cols[] = 'driver_name';
+    }
+    if (!in_array('vehicle_number', $cols, true)) {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN vehicle_number VARCHAR(60) NULL");
+        $cols[] = 'vehicle_number';
+    }
+    if (!in_array('driver_contact', $cols, true)) {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN driver_contact VARCHAR(30) NULL");
+        $cols[] = 'driver_contact';
+    }
+    if (!in_array('driver_details_sent_at', $cols, true)) {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN driver_details_sent_at DATETIME NULL");
+    }
 
     $invoiceCols = array_column($db->fetchAll('SHOW COLUMNS FROM invoices'), 'Field');
     if (!in_array('gst_number', $invoiceCols, true)) {

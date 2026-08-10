@@ -4,12 +4,14 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto-hide alerts after 5 seconds
+        // Auto-hide alerts after 5 seconds (skip persistent notices)
         setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
+            const alerts = document.querySelectorAll('.alert:not(.alert-persist)');
             alerts.forEach(function(alert) {
-                const bootstrapAlert = new bootstrap.Alert(alert);
-                bootstrapAlert.close();
+                try {
+                    const bootstrapAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                    bootstrapAlert.close();
+                } catch (e) {}
             });
         }, 5000);
 

@@ -6,6 +6,7 @@ require_once '../includes/pickup_times.php';
 requireLogin();
 
 ensureTourDestinationsSchema();
+ensureTourUsefulInfoSchema();
 ensurePickupTimesSchema();
 $allPickupSlots = getAllPickupTimeSlots(true);
 $pickupUseDefaults = !isset($_POST['pickup_use_defaults']) ? true : !empty($_POST['pickup_use_defaults']);
@@ -38,6 +39,7 @@ if ($_POST) {
     $destination_ids = normalizeTourDestinationIds($_POST['destination_ids'] ?? []);
     $destination_id = $destination_ids[0] ?? null;
     $description = sanitizeRichTextHtml(trim($_POST['description'] ?? ''));
+    $useful_info = sanitizeRichTextHtml(trim($_POST['useful_info'] ?? ''));
     $short_description = trim($_POST['short_description'] ?? '');
     $price = floatval($_POST['price'] ?? 0);
     $discount_price = $_POST['discount_price'] ? floatval($_POST['discount_price']) : null;
@@ -144,9 +146,9 @@ if ($_POST) {
     if (empty($errors)) {
         try {
             $inserted = $db->execute(
-                "INSERT INTO tours (title, slug, destination_id, description, short_description, price, discount_price, duration_days, duration_nights, max_people, min_people, featured_image, gallery, inclusions, exclusions, itinerary, difficulty_level, tour_type, featured, popular, status, availability_start, availability_end, created_at) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
-                [$title, $slug, $destination_id, $description, $short_description, $price, $discount_price, $duration_days, $duration_nights, $max_people, $min_people, $featured_image, json_encode($gallery_images), json_encode($inclusions), json_encode($exclusions), json_encode($itinerary), $difficulty_level, $tour_type, $featured, $popular, $status, $availability_start ?: null, $availability_end ?: null]
+                "INSERT INTO tours (title, slug, destination_id, description, useful_info, short_description, price, discount_price, duration_days, duration_nights, max_people, min_people, featured_image, gallery, inclusions, exclusions, itinerary, difficulty_level, tour_type, featured, popular, status, availability_start, availability_end, created_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+                [$title, $slug, $destination_id, $description, $useful_info, $short_description, $price, $discount_price, $duration_days, $duration_nights, $max_people, $min_people, $featured_image, json_encode($gallery_images), json_encode($inclusions), json_encode($exclusions), json_encode($itinerary), $difficulty_level, $tour_type, $featured, $popular, $status, $availability_start ?: null, $availability_end ?: null]
             );
             
             $tour_id = (int) $db->lastInsertId();
@@ -313,6 +315,11 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
                                         <label class="form-label" for="tour-description-editor">Full Description *</label>
                                         <textarea id="tour-description-editor" name="description" class="form-control" rows="10"><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
                                         <small class="text-muted">Use the toolbar for bold text, font size, and lists.</small>
+                                    </div>
+                                    <div class="col-md-12 mb-3 tour-description-editor-wrap">
+                                        <label class="form-label" for="tour-useful-info-editor">Useful Info</label>
+                                        <textarea id="tour-useful-info-editor" name="useful_info" class="form-control" rows="8"><?php echo htmlspecialchars($_POST['useful_info'] ?? ''); ?></textarea>
+                                        <small class="text-muted">Shown on the Tours page under the Useful Info tab. Leave blank to use the destination description.</small>
                                     </div>
                                 </div>
                                 
@@ -688,6 +695,6 @@ $destinations = $db->fetchAll("SELECT * FROM destinations WHERE status = 'active
         });
     </script>
     <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/super-build/ckeditor.js"></script>
-    <script src="assets/js/tour-description-editor.js?v=2"></script>
+    <script src="assets/js/tour-description-editor.js?v=4"></script>
 </body>
 </html>

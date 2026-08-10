@@ -5,6 +5,7 @@ require_once 'includes/html_helpers.php';
 require_once 'includes/tour_destinations.php';
 
 ensureTourDestinationsSchema();
+ensureTourUsefulInfoSchema();
 
 // Get tour slug
 $slug = $_GET['slug'] ?? '';
@@ -1189,11 +1190,15 @@ $hero_images = array_slice($hero_images, 0, 6);
                                 </div>
                                 <div class="tour-detail-panel" id="tour-panel-useful" data-inline-panel="useful">
                                     <h3 class="tour-detail-panel__title">Useful Info</h3>
-                                    <?php if (!empty($tour['destination_name'])): ?>
-                                        <p><strong><?php echo htmlspecialchars(trim($tour['destination_name'] . (!empty($tour['country']) ? ', ' . $tour['country'] : ''))); ?></strong></p>
+                                    <?php
+                                    $usefulInfoHtml = resolveTourUsefulInfo($tour);
+                                    $usefulDestinationLabel = trim(($tour['destination_name'] ?? '') . (!empty($tour['country']) ? ', ' . $tour['country'] : ''));
+                                    ?>
+                                    <?php if ($usefulDestinationLabel !== ''): ?>
+                                        <p><strong><?php echo htmlspecialchars($usefulDestinationLabel); ?></strong></p>
                                     <?php endif; ?>
-                                    <?php if (!empty($tour['destination_description'])): ?>
-                                        <div class="tour-detail-panel__body"><?php echo nl2br(htmlspecialchars($tour['destination_description'])); ?></div>
+                                    <?php if (trim(strip_tags($usefulInfoHtml)) !== ''): ?>
+                                        <div class="tour-detail-panel__body"><?php echo formatTourDescriptionForDisplay($usefulInfoHtml); ?></div>
                                     <?php else: ?>
                                         <p class="tour-detail-panel__empty">No useful information available for this destination.</p>
                                     <?php endif; ?>

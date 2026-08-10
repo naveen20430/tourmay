@@ -739,16 +739,21 @@ include 'includes/header.php';
                                                            class="form-control cart-pickup-detail"
                                                            data-cart-pickup-detail
                                                            value="<?php echo htmlspecialchars($selectedPickupDetail); ?>"
-                                                           placeholder="<?php echo $selectedPickup === 'Hotel' ? 'Hotel name' : ($selectedPickup === 'Others' ? 'Enter location details' : 'Enter details'); ?>"
+                                                           placeholder="<?php echo $selectedPickup === 'Hotel' ? 'Enter Hotel name' : ($selectedPickup === 'Others' ? 'Enter location details' : 'Enter details'); ?>"
                                                            <?php echo $needsPickupDetail ? 'required' : ''; ?>>
                                                     <textarea
                                                            name="pickup_address"
                                                            class="form-control cart-pickup-address"
                                                            data-cart-pickup-address
                                                            rows="3"
-                                                           placeholder="Full address with location"
+                                                           placeholder="Enter pickup point"
                                                            <?php echo $needsHotelAddress ? '' : 'hidden'; ?>
                                                            <?php echo $needsHotelAddress ? 'required' : ''; ?>><?php echo htmlspecialchars($selectedPickupAddress); ?></textarea>
+                                                    <small class="cart-help cart-hotel-address-help"
+                                                           data-cart-hotel-address-help
+                                                           <?php echo $needsHotelAddress ? '' : 'hidden'; ?>>
+                                                        <strong>If the road to the hotel is not accessible by vehicle, we will pick you up from and drop you off at the nearest accessible pickup point.</strong>
+                                                    </small>
                                                 </div>
                                                 <label class="cart-field-label" for="pickup_time_<?php echo (int)$tour['id']; ?>">Pickup time <span class="text-danger">*</span></label>
                                                 <select name="pickup_time"
@@ -1275,7 +1280,7 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
         const needsAddress = place === 'Hotel';
         if (needsDetail) {
             detailWrap.removeAttribute('hidden');
-            detailInp.placeholder = place === 'Hotel' ? 'Hotel name' : 'Enter location details';
+            detailInp.placeholder = place === 'Hotel' ? 'Enter Hotel name' : 'Enter location details';
             detailInp.setAttribute('required', 'required');
         } else {
             detailWrap.setAttribute('hidden', '');
@@ -1286,14 +1291,17 @@ document.querySelectorAll('[data-cart-cab-picker]').forEach(function(picker) {
                 detailInp.placeholder = '';
             }
         }
+        const addressHelp = card ? card.querySelector('[data-cart-hotel-address-help]') : null;
         if (addressInp) {
             if (needsAddress) {
                 addressInp.removeAttribute('hidden');
                 addressInp.setAttribute('required', 'required');
+                if (addressHelp) addressHelp.removeAttribute('hidden');
             } else {
                 addressInp.setAttribute('hidden', '');
                 addressInp.removeAttribute('required');
                 addressInp.value = '';
+                if (addressHelp) addressHelp.setAttribute('hidden', '');
             }
         }
     }
@@ -1695,7 +1703,7 @@ function validateCartTourDetails() {
                     cardError = 'Please enter the hotel name for: ' + title;
                     detailInp.classList.add('is-invalid');
                 } else if (addressInp && !addressInp.value.trim()) {
-                    cardError = 'Please enter the hotel full address with location for: ' + title;
+                    cardError = 'Please enter the full hotel address for: ' + title;
                     addressInp.classList.add('is-invalid');
                 }
             } else if (place === 'Others' && detailInp && !detailInp.value.trim()) {

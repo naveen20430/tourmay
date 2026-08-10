@@ -12,7 +12,8 @@ function ensureTourDestinationsSchema() {
     }
 
     try {
-        $db->getConnection()->exec("CREATE TABLE IF NOT EXISTS tour_destinations (
+        $pdo = $db->getConnection();
+        $pdo->exec("CREATE TABLE IF NOT EXISTS tour_destinations (
             id INT AUTO_INCREMENT PRIMARY KEY,
             tour_id INT NOT NULL,
             destination_id INT NOT NULL,
@@ -24,17 +25,51 @@ function ensureTourDestinationsSchema() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         // Migrate legacy single destination_id rows once
-        $db->getConnection()->exec("
+        $pdo->exec("
             INSERT IGNORE INTO tour_destinations (tour_id, destination_id, sort_order)
             SELECT id, destination_id, 0
             FROM tours
             WHERE destination_id IS NOT NULL AND destination_id > 0
         ");
 
+        ensureTourUsefulInfoSchema();
+
         $ready = true;
     } catch (Exception $e) {
         // Table may already exist or DB may be unavailable
     }
+}
+
+/**
+ * Per-tour Useful Info shown on the tours listing / detail pages.
+ */
+function ensureTourUsefulInfoSchema() {
+    global $db;
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    try {
+        $cols = array_column($db->fetchAll('SHOW COLUMNS FROM tours'), 'Field');
+        if (!in_array('useful_info', $cols, true)) {
+            $db->getConnection()->exec('ALTER TABLE tours ADD COLUMN useful_info MEDIUMTEXT NULL AFTER description');
+        }
+        $ready = true;
+    } catch (Exception $e) {
+        // Column may already exist or DB may be unavailable
+    }
+}
+
+/**
+ * Prefer tour useful_info; fall back to destination description for legacy tours.
+ */
+function resolveTourUsefulInfo(array $tour): string {
+    $useful = trim((string) ($tour['useful_info'] ?? ''));
+    if ($useful !== '' && strip_tags($useful) !== '') {
+        return $useful;
+    }
+    return (string) ($tour['destination_description'] ?? '');
 }
 
 /**

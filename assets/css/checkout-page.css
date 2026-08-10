@@ -613,6 +613,19 @@
     font-size: 14px;
 }
 
+.cart-hotel-address-help {
+    display: block;
+    margin-top: 8px;
+    line-height: 1.45;
+    font-size: 12.5px;
+    color: #334155;
+    font-weight: 700;
+}
+
+.cart-hotel-address-help[hidden] {
+    display: none !important;
+}
+
 .cart-total {
     font-weight: 800;
     font-size: 20px;

@@ -10,6 +10,22 @@ try {
 } catch (Exception $e) {
     $newContacts = 0;
 }
+
+$needsDriverCount = 0;
+try {
+    $driverMailHelper = dirname(__DIR__) . '/../includes/booking_driver_mail.php';
+    if (!function_exists('countBookingsNeedingDriverDetails') && is_file($driverMailHelper)) {
+        require_once $driverMailHelper;
+    }
+    if (function_exists('ensureBookingDriverSchema')) {
+        ensureBookingDriverSchema();
+    }
+    if (function_exists('countBookingsNeedingDriverDetails')) {
+        $needsDriverCount = countBookingsNeedingDriverDetails();
+    }
+} catch (Exception $e) {
+    $needsDriverCount = 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,8 +95,11 @@ try {
                     <a class="nav-link" href="destinations.php">
                         <i class="fas fa-globe me-2"></i> Destinations
                     </a>
-                    <a class="nav-link" href="bookings.php">
+                    <a class="nav-link<?php echo basename($_SERVER['PHP_SELF']) === 'bookings.php' ? ' active' : ''; ?>" href="bookings.php">
                         <i class="fas fa-calendar-check me-2"></i> Bookings
+                        <?php if (!empty($needsDriverCount)): ?>
+                            <span class="badge bg-warning text-dark ms-1" title="Paid bookings needing driver details"><?php echo (int)$needsDriverCount; ?></span>
+                        <?php endif; ?>
                     </a>
                     <a class="nav-link" href="cab-routes.php">
                         <i class="fas fa-route me-2"></i> Cab Routes

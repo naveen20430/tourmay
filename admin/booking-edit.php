@@ -1,6 +1,9 @@
 <?php
 require_once '../config/config.php';
+require_once '../includes/booking_driver_mail.php';
 requireLogin();
+
+ensureBookingDriverSchema();
 
 $success_message = '';
 $error_message = '';
@@ -30,6 +33,7 @@ try {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && $booking) {
+    $previous_status = $booking['booking_status'] ?? '';
     $tour_id = (int)($_POST['tour_id'] ?? $booking['tour_id']);
     $guest_name = trim($_POST['guest_name'] ?? '');
     $guest_email = trim($_POST['guest_email'] ?? '');
@@ -43,6 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $booking) {
     $booking_status = $_POST['booking_status'] ?? 'pending';
     $special_requirements = trim($_POST['special_requirements'] ?? '');
     $notes = trim($_POST['notes'] ?? '');
+    $driver_name = trim($_POST['driver_name'] ?? '');
+    $vehicle_number = trim($_POST['vehicle_number'] ?? '');
+    $driver_contact = trim($_POST['driver_contact'] ?? '');
+    $send_driver_email = !empty($_POST['send_driver_email']);
     
     // Validation
     $errors = [];
@@ -72,6 +80,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $booking) {
     if ($total_amount <= 0) {
         $errors[] = 'Total amount must be greater than 0';
     }
+
+    if ($booking_status === 'confirmed') {
+        if ($driver_name === '') {
+            $errors[] = 'Driver name is required when confirming a booking';
+        }
+        if ($vehicle_number === '') {
+            $errors[] = 'Vehicle number is required when confirming a booking';
+        }
+        if ($driver_contact === '') {
+            $errors[] = 'Driver contact number is required when confirming a booking';
+        }
+    }
     
     if (empty($errors)) {
         try {
@@ -81,13 +101,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $booking) {
                     tour_id = ?, guest_name = ?, guest_email = ?, guest_phone = ?,
                     number_of_people = ?, tour_date = ?, total_amount = ?, paid_amount = ?,
                     payment_status = ?, payment_method = ?, booking_status = ?,
-                    special_requirements = ?, notes = ?, updated_at = NOW()
+                    special_requirements = ?, notes = ?,
+                    driver_name = ?, vehicle_number = ?, driver_contact = ?,
+                    updated_at = NOW()
                 WHERE id = ?
             ", [
                 $tour_id, $guest_name, $guest_email, $guest_phone,
                 $number_of_people, $tour_date, $total_amount, $paid_amount,
                 $payment_status, $payment_method, $booking_status,
-                $special_requirements, $notes, $booking_id
+                $special_requirements, $notes,
+                $driver_name !== '' ? $driver_name : null,
+                $vehicle_number !== '' ? $vehicle_number : null,
+                $driver_contact !== '' ? $driver_contact : null,
+                $booking_id
             ]);
             
             if ($result >= 0) {
@@ -100,6 +126,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $booking) {
                     LEFT JOIN destinations d ON t.destination_id = d.id 
                     WHERE b.id = ?
                 ", [$booking_id]);
+
+                $shouldEmail = $booking_status === 'confirmed' && (
+                    $send_driver_email || $previous_status !== 'confirmed'
+                );
+                if ($shouldEmail && $booking) {
+                    $mailResult = sendBookingDriverDetailsEmail($booking);
+                    if (!empty($mailResult['ok'])) {
+                        markBookingDriverDetailsSent($booking_id);
+                        $success_message .= ' Driver details emailed to ' . htmlspecialchars($mailResult['to']) . '.';
+                    } else {
+                        $error_message = 'Booking saved, but driver email failed: ' . htmlspecialchars($mailResult['error'] ?? 'Unknown error');
+                    }
+                }
             } else {
                 $error_message = 'Failed to update booking. Please try again.';
             }
@@ -180,6 +219,7 @@ include 'includes/header.php';
                     </div>
                     
                     <form method="POST" action="">
+<?php echo function_exists('csrfField') ? csrfField() : ''; ?>
                         <div class="card-body">
                             <div class="row">
                                 <!-- Tour Selection -->
@@ -315,6 +355,56 @@ include 'includes/header.php';
                                 </div>
                             </div>
 
+                            <div class="card card-outline card-success mb-3" id="driverDetailsCard">
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <i class="fas fa-car mr-2"></i>Driver details
+                                    </h3>
+                                    <div class="card-tools">
+                                        <span class="badge badge-success">Required when confirmed</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted mb-3">
+                                        When status is <strong>Confirmed</strong>, these details are emailed to the guest.
+                                    </p>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label for="driver_name">Driver name <span class="text-danger driver-required-mark">*</span></label>
+                                                <input type="text" class="form-control" id="driver_name" name="driver_name"
+                                                       value="<?php echo htmlspecialchars($booking['driver_name'] ?? ''); ?>"
+                                                       placeholder="e.g. Rajesh Kumar">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label for="vehicle_number">Vehicle number <span class="text-danger driver-required-mark">*</span></label>
+                                                <input type="text" class="form-control" id="vehicle_number" name="vehicle_number"
+                                                       value="<?php echo htmlspecialchars($booking['vehicle_number'] ?? ''); ?>"
+                                                       placeholder="e.g. HP 03 AB 1234">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label for="driver_contact">Driver contact number <span class="text-danger driver-required-mark">*</span></label>
+                                                <input type="tel" class="form-control" id="driver_contact" name="driver_contact"
+                                                       value="<?php echo htmlspecialchars($booking['driver_contact'] ?? ''); ?>"
+                                                       placeholder="e.g. 9876543210">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="send_driver_email" name="send_driver_email" value="1"
+                                            <?php echo ($booking['booking_status'] ?? '') === 'confirmed' ? '' : 'checked'; ?>>
+                                        <label class="form-check-label" for="send_driver_email">
+                                            Email driver details to guest
+                                            <small class="text-muted d-block">Always sent the first time status is set to Confirmed. Check again to resend after edits.</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <!-- Special Requirements -->
                                 <div class="col-md-6">
@@ -386,19 +476,47 @@ include 'includes/header.php';
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tourSelect = document.getElementById('tour_id');
-    const peopleInput = document.getElementById('number_of_people');
     const totalAmountInput = document.getElementById('total_amount');
-    
+    const statusSelect = document.getElementById('booking_status');
+    const sendEmailCheckbox = document.getElementById('send_driver_email');
+    const driverFields = [
+        document.getElementById('driver_name'),
+        document.getElementById('vehicle_number'),
+        document.getElementById('driver_contact')
+    ];
+
     function updateTotalAmount() {
         const selectedOption = tourSelect.options[tourSelect.selectedIndex];
         const basePrice = parseFloat(selectedOption.dataset.price) || 0;
-
         if (basePrice > 0) {
             totalAmountInput.value = basePrice.toFixed(2);
         }
     }
 
-    tourSelect.addEventListener('change', updateTotalAmount);
+    function syncDriverRequired() {
+        const confirmed = statusSelect && statusSelect.value === 'confirmed';
+        driverFields.forEach(function(field) {
+            if (field) field.required = !!confirmed;
+        });
+        document.querySelectorAll('.driver-required-mark').forEach(function(el) {
+            el.style.display = confirmed ? '' : 'none';
+        });
+        if (confirmed && sendEmailCheckbox && statusSelect.dataset.prev !== 'confirmed') {
+            sendEmailCheckbox.checked = true;
+        }
+        if (statusSelect) {
+            statusSelect.dataset.prev = statusSelect.value;
+        }
+    }
+
+    if (tourSelect) {
+        tourSelect.addEventListener('change', updateTotalAmount);
+    }
+    if (statusSelect) {
+        statusSelect.dataset.prev = statusSelect.value;
+        statusSelect.addEventListener('change', syncDriverRequired);
+        syncDriverRequired();
+    }
 });
 </script>
 
