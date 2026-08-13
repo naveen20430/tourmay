@@ -104,6 +104,9 @@ try {
                     <a class="nav-link" href="cab-routes.php">
                         <i class="fas fa-route me-2"></i> Cab Routes
                     </a>
+                    <a class="nav-link<?php echo basename($_SERVER['PHP_SELF']) === 'cab-types.php' ? ' active' : ''; ?>" href="cab-types.php">
+                        <i class="fas fa-car me-2"></i> Cab Types
+                    </a>
                     <a class="nav-link" href="cab-bookings.php">
                         <i class="fas fa-taxi me-2"></i> Cab Bookings
                     </a>
@@ -159,6 +162,7 @@ try {
                                 case 'booking-add': echo 'Add New Booking'; break;
                                 case 'booking-edit': echo 'Edit Booking'; break;
                                 case 'cab-routes': echo 'Cab Routes Management'; break;
+                                case 'cab-types': echo 'Cab Types'; break;
                                 case 'cab-route-pricing': echo 'Cab Route Pricing'; break;
                                 case 'cab-bookings': echo 'Cab Bookings Management'; break;
                                 case 'cab-reports': echo 'Cab Bookings Reports'; break;

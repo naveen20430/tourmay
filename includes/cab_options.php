@@ -155,6 +155,79 @@ function getCabDisplayName($cab_type) {
 }
 
 /**
+ * Ensure every active cab type has a pricing row on each cab route.
+ * Missing rows are seeded from sedan prices on that route (scaled by base_price).
+ */
+function ensureCabRoutePricingForActiveTypes($routeId = null) {
+    global $db;
+
+    try {
+        $cabTypes = $db->fetchAll("SELECT id, name, base_price FROM cab_types WHERE status = 'active' ORDER BY base_price ASC");
+        if (empty($cabTypes)) {
+            return;
+        }
+
+        $routeSql = 'SELECT id FROM cab_routes';
+        $routeParams = [];
+        if ($routeId !== null && (int) $routeId > 0) {
+            $routeSql .= ' WHERE id = ?';
+            $routeParams[] = (int) $routeId;
+        }
+        $routes = $db->fetchAll($routeSql, $routeParams);
+        if (empty($routes)) {
+            return;
+        }
+
+        $sedanType = null;
+        foreach ($cabTypes as $cab) {
+            if (($cab['name'] ?? '') === 'sedan') {
+                $sedanType = $cab;
+                break;
+            }
+        }
+        $sedanBase = $sedanType ? max(1, (float) $sedanType['base_price']) : 1;
+
+        foreach ($routes as $route) {
+            $rid = (int) $route['id'];
+            $existing = $db->fetchAll(
+                'SELECT cab_type_id, one_way_price, round_trip_price FROM cab_route_pricing WHERE route_id = ?',
+                [$rid]
+            );
+            $byType = [];
+            foreach ($existing as $row) {
+                $byType[(int) $row['cab_type_id']] = $row;
+            }
+
+            $sedanOneWay = 0.0;
+            $sedanRound = 0.0;
+            if ($sedanType && isset($byType[(int) $sedanType['id']])) {
+                $sedanOneWay = (float) $byType[(int) $sedanType['id']]['one_way_price'];
+                $sedanRound = (float) $byType[(int) $sedanType['id']]['round_trip_price'];
+            }
+
+            foreach ($cabTypes as $cab) {
+                $cabId = (int) $cab['id'];
+                if (isset($byType[$cabId])) {
+                    continue;
+                }
+
+                $scale = ((float) $cab['base_price']) / $sedanBase;
+                $oneWay = $sedanOneWay > 0 ? round($sedanOneWay * $scale / 100) * 100 : 0;
+                $roundTrip = $sedanRound > 0 ? round($sedanRound * $scale / 100) * 100 : ($oneWay > 0 ? round($oneWay * 1.8 / 100) * 100 : 0);
+
+                $db->execute(
+                    'INSERT INTO cab_route_pricing (route_id, cab_type_id, price, one_way_price, round_trip_price, status)
+                     VALUES (?, ?, ?, ?, ?, ?)',
+                    [$rid, $cabId, $oneWay, $oneWay, $roundTrip, 'active']
+                );
+            }
+        }
+    } catch (Exception $e) {
+        // Non-fatal: admin can still add pricing manually
+    }
+}
+
+/**
  * Ensure per-tour cab price table exists (tour_id × cab_type_id).
  */
 function ensureTourCabPricesSchema() {

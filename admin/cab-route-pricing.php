@@ -1,5 +1,6 @@
 ﻿<?php
 require_once '../config/config.php';
+require_once '../includes/cab_options.php';
 requireLogin();
 
 // Get route_id from URL
@@ -38,6 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_pricing'])) {
     header('Location: cab-route-pricing.php?route_id=' . $route_id);
     exit;
 }
+
+ensureCabRoutePricingForActiveTypes($route_id);
 
 // Get all pricing for this route with cab type details
 $pricing_data = $db->fetchAll("
@@ -165,6 +168,7 @@ $pricing_data = $db->fetchAll("
 
                     <!-- Pricing Form -->
                     <form method="POST" action="">
+<?php echo function_exists('csrfField') ? csrfField() : ''; ?>
                         <input type="hidden" name="update_pricing" value="1">
                         
                         <?php foreach ($pricing_data as $pricing): ?>

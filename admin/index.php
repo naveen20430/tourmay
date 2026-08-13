@@ -389,6 +389,11 @@ try {
                                             </a>
                                         </div>
                                         <div class="col-md-4 mb-3">
+                                            <a href="cab-types.php" class="btn btn-dark w-100">
+                                                <i class="fas fa-car me-2"></i>Cab Types
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
                                             <a href="cab-bookings.php" class="btn btn-success w-100">
                                                 <i class="fas fa-taxi me-2"></i>Cab Bookings
                                                 <?php if ($pendingCabBookings > 0): ?>
